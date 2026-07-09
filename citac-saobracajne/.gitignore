@@ -1,0 +1,4 @@
+# Referentni Baš Čelik izvor (AGPL) — samo za razvoj, ne ide u repo
+ref_*.go
+# Kompajlirani fajlovi
+*.class

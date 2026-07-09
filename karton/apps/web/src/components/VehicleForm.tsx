@@ -27,6 +27,29 @@ export function VehicleForm({
   const [plate, setPlate] = useState('');
   const [note, setNote] = useState(initial?.note ?? '');
   const [owner, setOwner] = useState<CustomerRef | null>(null);
+  const [reading, setReading] = useState(false);
+  const [cardMsg, setCardMsg] = useState<string | null>(null);
+  const [ownerHint, setOwnerHint] = useState<string | null>(null);
+
+  // Lokalni helper za čitač saobraćajne (127.0.0.1). Ako nije pokrenut, forma radi ručno.
+  async function loadFromCard(): Promise<void> {
+    setReading(true); setCardMsg(null);
+    try {
+      const res = await fetch('http://127.0.0.1:8765/read');
+      const c = await res.json();
+      if (c.error) { setCardMsg(c.error); return; }
+      if (c.vin) setVin(String(c.vin).toUpperCase());
+      if (c.make) setMake(c.make);
+      if (c.model) setModel(c.model);
+      if (c.year) setYear(String(c.year));
+      if (c.fuel) setFuel(c.fuel);
+      if (c.plate) setPlate(String(c.plate).toUpperCase());
+      setOwnerHint(c.ownerName ? `${c.ownerName}${c.ownerAddress ? ` — ${c.ownerAddress}` : ''}` : null);
+      setCardMsg('Podaci učitani sa saobraćajne.');
+    } catch {
+      setCardMsg('Čitač nije pokrenut. Uključite lokalnu aplikaciju „Karton čitač" ili unesite ručno.');
+    } finally { setReading(false); }
+  }
 
   function submit(e: FormEvent): void {
     e.preventDefault();
@@ -44,14 +67,13 @@ export function VehicleForm({
   return (
     <form onSubmit={submit} className="form">
       {mode === 'create' && (
-        <button
-          type="button"
-          className="btn-secondary"
-          disabled
-          title="Čitač saobraćajne — lokalna helper aplikacija (u izradi)"
-        >
-          Učitaj saobraćajnu (uskoro)
-        </button>
+        <>
+          <button type="button" className="btn-secondary" onClick={loadFromCard} disabled={reading}>
+            {reading ? 'Čitam karticu…' : '⬇ Učitaj saobraćajnu'}
+          </button>
+          {cardMsg && <div className={cardMsg.startsWith('Podaci') ? 'ok-box' : 'hint'}>{cardMsg}</div>}
+          {ownerHint && <div className="hint">Vlasnik sa kartice: <strong>{ownerHint}</strong> — izaberite ili dodajte klijenta ispod.</div>}
+        </>
       )}
 
       <label className="field">

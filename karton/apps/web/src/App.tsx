@@ -12,6 +12,9 @@ import { WorkOrders } from './pages/WorkOrders.tsx';
 import { WorkOrderDetail } from './pages/WorkOrderDetail.tsx';
 import { Documents } from './pages/Documents.tsx';
 import { DocumentView } from './pages/DocumentView.tsx';
+import { Calendar } from './pages/Calendar.tsx';
+import { Reports } from './pages/Reports.tsx';
+import { Settings } from './pages/Settings.tsx';
 
 function Protected({ children }: { children: React.JSX.Element }): React.JSX.Element {
   const { user, loading } = useAuth();
@@ -40,12 +43,12 @@ function AppRoutes(): React.JSX.Element {
         <Route path="/vozila/:id" element={<VehicleDetail />} />
         <Route path="/nalozi" element={<WorkOrders />} />
         <Route path="/nalozi/:id" element={<WorkOrderDetail />} />
-        <Route path="/kalendar" element={<Placeholder title="Kalendar" />} />
+        <Route path="/kalendar" element={<Calendar />} />
         <Route path="/dokumenti" element={<Documents />} />
         <Route path="/dokumenti/:id" element={<DocumentView />} />
         <Route path="/cenovnik" element={<Pricelist />} />
-        <Route path="/izvestaji" element={<Placeholder title="Izveštaji" />} />
-        <Route path="/podesavanja" element={<Placeholder title="Podešavanja" />} />
+        <Route path="/izvestaji" element={<Reports />} />
+        <Route path="/podesavanja" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

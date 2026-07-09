@@ -367,3 +367,43 @@ export interface UpdateProformaInput {
   note?: string | null;
   version: number;
 }
+
+// --- Termini / kalendar ---
+
+export type AppointmentStatusT = 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+export type ReminderSendStatusT = 'scheduled' | 'processing' | 'sent' | 'failed';
+
+export interface Appointment {
+  id: number;
+  date: string;
+  time: string;
+  durationMin: number;
+  customer: CustomerRef;
+  vehicle: VehicleRef;
+  mechanic: { id: number; fullName: string } | null;
+  note: string | null;
+  status: AppointmentStatusT;
+  workOrderId: number | null;
+  remindersEnabled: boolean;
+  reminderStatus: ReminderSendStatusT | null;
+  version: number;
+}
+
+export interface AppointmentInput {
+  date: string;
+  time: string;
+  durationMin?: number;
+  customerId: number;
+  vehicleId: number;
+  mechanicId?: number | null;
+  note?: string | null;
+  remindersEnabled?: boolean;
+  confirmed?: boolean; // potvrda mekih upozorenja (BR-27)
+}
+
+export interface CalendarBlock {
+  id: number;
+  fromDate: string;
+  toDate: string;
+  reason: string | null;
+}

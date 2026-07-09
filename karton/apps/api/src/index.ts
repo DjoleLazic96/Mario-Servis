@@ -17,6 +17,10 @@ import { mechanicRoutes } from './routes/mechanics.ts';
 import { serviceRoutes } from './routes/services.ts';
 import { workOrderRoutes } from './routes/work-orders.ts';
 import { documentRoutes } from './routes/documents.ts';
+import { appointmentRoutes } from './routes/appointments.ts';
+import { reportRoutes } from './routes/reports.ts';
+import { settingsRoutes } from './routes/settings.ts';
+import { dashboardRoutes } from './routes/dashboard.ts';
 
 const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
 
@@ -72,6 +76,10 @@ await app.register(mechanicRoutes, { prefix: '/api/v1' });
 await app.register(serviceRoutes, { prefix: '/api/v1' });
 await app.register(workOrderRoutes, { prefix: '/api/v1' });
 await app.register(documentRoutes, { prefix: '/api/v1' });
+await app.register(appointmentRoutes, { prefix: '/api/v1' });
+await app.register(reportRoutes, { prefix: '/api/v1' });
+await app.register(settingsRoutes, { prefix: '/api/v1' });
+await app.register(dashboardRoutes, { prefix: '/api/v1' });
 
 try {
   await app.listen({ port: config.API_PORT, host: '0.0.0.0' });

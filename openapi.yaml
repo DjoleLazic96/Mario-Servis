@@ -1,0 +1,1284 @@
+openapi: 3.0.3
+info:
+  title: Karton API
+  description: >
+    API za aplikaciju "Karton" — vođenje auto servisa. Backend je jedini autoritet
+    za poslovna pravila (specifikacija-finalna.md §7). Nazivi na engleskom (odluka 27),
+    poruke grešaka na srpskom. Sva vremena u UTC; poslovna logika Europe/Belgrade.
+
+    CSRF ugovor: svaki odgovor postavlja/osvežava XSRF-TOKEN cookie (čitljiv iz JS);
+    svaki non-GET zahtev MORA poslati header X-CSRF-Token sa tom vrednošću —
+    neslaganje ili izostanak → 403 CSRF_FAILED. Važi i za /auth/login (token se
+    dobija prethodnim GET pozivom, npr. /auth/me).
+
+    Optimističko zaključavanje: verzionisani agregati su work_order, document,
+    appointment i settings. Sve mutacione akcije nad njima nose "version" u telu;
+    zastarela verzija → 409 VERSION_CONFLICT. Akcije bez version polja (copy,
+    DELETE termina, izdavanje predračuna) backend izvršava u transakciji uz
+    row-lock i atomsku proveru aktuelnog stanja.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+security:
+  - cookieAuth: []
+
+tags:
+  - name: auth
+  - name: customers
+  - name: vehicles
+  - name: mechanics
+  - name: work-orders
+  - name: documents
+  - name: appointments
+  - name: reports
+  - name: settings
+  - name: dashboard
+
+paths:
+  # ---------- Auth ----------
+  /auth/login:
+    post:
+      tags: [auth]
+      security: []
+      summary: Prijava (kreira sesiju; postavlja session i XSRF-TOKEN cookie; deaktiviran korisnik → 401)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200': { description: Prijavljen, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Odjava (poništava sesiju)
+      responses: { '204': { description: Odjavljen } }
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: Trenutno prijavljeni korisnik
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  # ---------- Dashboard ----------
+  /dashboard:
+    get:
+      tags: [dashboard]
+      summary: Agregati za početnu (Danas / Posao / Novac)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  today:
+                    type: object
+                    properties:
+                      appointments: { type: array, items: { $ref: '#/components/schemas/Appointment' } }
+                      waitingParts: { type: array, items: { $ref: '#/components/schemas/WorkOrder' } }
+                  business:
+                    type: object
+                    properties:
+                      vehiclesInShop: { type: integer }
+                      openWorkOrders: { type: integer }
+                      pendingQuotes: { type: integer }
+                  money:
+                    type: object
+                    properties:
+                      monthRevenue: { type: number, description: Samo plaćeni računi, po datumu plaćanja }
+                      unpaidTotal: { type: number }
+                      unpaidInvoices: { type: array, items: { $ref: '#/components/schemas/Document' } }
+
+  # ---------- Customers ----------
+  /customers:
+    get:
+      tags: [customers]
+      summary: Lista klijenata (server-side filter/sort/paginacija)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Query'
+        - { name: type, in: query, schema: { type: string, enum: [individual, company] } }
+        - { name: status, in: query, schema: { type: string, enum: [active, archived] } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerPage' } } } }
+    post:
+      tags: [customers]
+      summary: Novi klijent (PIB obavezan za pravna lica; duplikat 409)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerInput' } } } }
+      responses:
+        '201': { description: Kreiran, content: { application/json: { schema: { $ref: '#/components/schemas/Customer' } } } }
+        '409': { $ref: '#/components/responses/Duplicate' }
+        '422': { $ref: '#/components/responses/BusinessRule' }
+  /customers/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [customers]
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Customer' } } } } }
+    patch:
+      tags: [customers]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerInput' } } } }
+      responses:
+        '200': { description: Izmenjen, content: { application/json: { schema: { $ref: '#/components/schemas/Customer' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /customers/{id}/contacts:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [customers]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Contact' } } } } } }
+    post:
+      tags: [customers]
+      summary: Dodaj telefon/email (zamena traži potvrdu na frontu)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ContactInput' } } } }
+      responses: { '201': { description: Kreiran } }
+  /customers/{id}/archive:
+    post:
+      tags: [customers]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: Arhiviraj (audit customer.archived)
+      responses: { '204': { description: Arhiviran } }
+  /customers/{id}/unarchive:
+    post:
+      tags: [customers]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses: { '204': { description: Dearhiviran } }
+
+  # ---------- Vehicles ----------
+  /vehicles:
+    get:
+      tags: [vehicles]
+      summary: Lista vozila; pretraga pogađa i stare tablice (BR-03)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Query'
+        - { name: status, in: query, schema: { type: string, enum: [active, archived] } }
+        - { name: customerId, in: query, schema: { type: integer } }
+        - { name: inShop, in: query, schema: { type: boolean }, description: Vozila sa aktivnim nalogom }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/VehiclePage' } } } }
+    post:
+      tags: [vehicles]
+      summary: Novo vozilo (VIN duplikat 409 sa existingId; otvara istoriju vlasnika i tablice)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/VehicleInput' } } } }
+      responses:
+        '201': { description: Kreirano, content: { application/json: { schema: { $ref: '#/components/schemas/Vehicle' } } } }
+        '409': { $ref: '#/components/responses/Duplicate' }
+  /vehicles/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [vehicles]
+      summary: Detalj vozila (trenutni vlasnik/tablica izvedeni iz aktivnih zapisa)
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Vehicle' } } } } }
+    patch:
+      tags: [vehicles]
+      summary: Izmena (VIN se ne menja)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/VehicleInput' } } } }
+      responses: { '200': { description: OK }, '409': { $ref: '#/components/responses/Conflict' } }
+  /vehicles/{id}/ownership:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [vehicles]
+      responses: { '200': { description: Istorija vlasništva, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/OwnershipRecord' } } } } } }
+    post:
+      tags: [vehicles]
+      summary: Promena vlasnika — zatvara aktivan zapis, otvara novi (transakciono)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customerId, validFrom]
+              properties:
+                customerId: { type: integer }
+                validFrom: { type: string, format: date }
+      responses: { '201': { description: Promenjen vlasnik }, '422': { $ref: '#/components/responses/BusinessRule' } }
+  /vehicles/{id}/registrations:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [vehicles]
+      responses: { '200': { description: Istorija tablica, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/RegistrationRecord' } } } } } }
+    post:
+      tags: [vehicles]
+      summary: Nova tablica — zatvara aktivan zapis, otvara novi
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plate, validFrom]
+              properties:
+                plate: { type: string }
+                validFrom: { type: string, format: date }
+                note: { type: string }
+      responses: { '201': { description: Evidentirano } }
+  /vehicles/{id}/archive:
+    post: { tags: [vehicles], parameters: [ { $ref: '#/components/parameters/Id' } ], responses: { '204': { description: Arhivirano } } }
+  /vehicles/{id}/unarchive:
+    post: { tags: [vehicles], parameters: [ { $ref: '#/components/parameters/Id' } ], responses: { '204': { description: Dearhivirano } } }
+
+  # ---------- Mechanics ----------
+  /mechanics:
+    get:
+      tags: [mechanics]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [active, inactive] } }
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Mechanic' } } } } } }
+    post:
+      tags: [mechanics]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/MechanicInput' } } } }
+      responses: { '201': { description: Kreiran } }
+  /mechanics/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    patch:
+      tags: [mechanics]
+      summary: Izmena (promena cene ne menja stare stavke — BR-07)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/MechanicInput' } } } }
+      responses: { '200': { description: OK } }
+  /mechanics/{id}/unavailabilities:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [mechanics]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Unavailability' } } } } } }
+    post:
+      tags: [mechanics]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/UnavailabilityInput' } } } }
+      responses: { '201': { description: Evidentirano } }
+
+  # ---------- Services (cenovnik usluga) ----------
+  /services:
+    get:
+      tags: [mechanics]
+      summary: Cenovnik usluga (tab „Usluge" na ekranu Cenovnik)
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [active, inactive] } }
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Service' } } } } } }
+    post:
+      tags: [mechanics]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ServiceInput' } } } }
+      responses: { '201': { description: Kreirana } }
+  /services/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    patch:
+      tags: [mechanics]
+      summary: Izmena (promena cene ne menja postojeće stavke — cena je zamrznuta, BR-07)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ServiceInput' } } } }
+      responses: { '200': { description: OK } }
+
+  # ---------- Work orders ----------
+  /work-orders:
+    get:
+      tags: [work-orders]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Query'
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/WorkOrderStatus' } }
+        - { name: customerId, in: query, schema: { type: integer } }
+        - { name: vehicleId, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/WorkOrderPage' } } } }
+    post:
+      tags: [work-orders]
+      summary: Novi nalog — backend dodeljuje broj RN- transakciono (BR-24); klijent predložen iz vlasnika (BR-06)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/WorkOrderInput' } } } }
+      responses:
+        '201': { description: Kreiran, content: { application/json: { schema: { $ref: '#/components/schemas/WorkOrder' } } } }
+        '422': { $ref: '#/components/responses/BusinessRule' }
+  /work-orders/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [work-orders]
+      summary: Detalj sa stavkama i dokument lancem (za dvorednu traku)
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/WorkOrderDetail' } } } } }
+    patch:
+      tags: [work-orders]
+      summary: Izmena zaglavlja (BR-08, BR-37); zaključan nalog → 422 ENTITY_LOCKED
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/WorkOrderInput' } } } }
+      responses: { '200': { description: OK }, '409': { $ref: '#/components/responses/Conflict' }, '422': { $ref: '#/components/responses/BusinessRule' } }
+  /work-orders/{id}/status:
+    post:
+      tags: [work-orders]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: Statusna tranzicija (§6); admin undo traži reason (audit)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, version]
+              properties:
+                status: { $ref: '#/components/schemas/WorkOrderStatus' }
+                reason: { type: string, description: Obavezan za admin undo tranzicije }
+                version: { type: integer }
+      responses: { '200': { description: OK }, '409': { $ref: '#/components/responses/Conflict' }, '422': { $ref: '#/components/responses/BusinessRule' } }
+  /work-orders/{id}/link-quote:
+    post:
+      tags: [work-orders]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: Veži prihvaćenu ponudu (BR-11); ne-prihvaćena → 422 QUOTE_NOT_ACCEPTED
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [quoteId, version], properties: { quoteId: { type: integer }, version: { type: integer, description: Verzija naloga } } } } }
+      responses: { '200': { description: OK }, '409': { $ref: '#/components/responses/Conflict' }, '422': { $ref: '#/components/responses/BusinessRule' } }
+  /work-orders/{id}/unlink-quote:
+    post:
+      tags: [work-orders]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: Skini ponudu — ne utiče na druge naloge iste ponude
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [version], properties: { version: { type: integer, description: Verzija naloga } } } } }
+      responses: { '200': { description: OK }, '409': { $ref: '#/components/responses/Conflict' } }
+  /work-orders/{id}/proforma:
+    post:
+      tags: [work-orders]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: 'Izdaj predračun (snapshot iz naloga; interne stavke preskočene; BR-14/15/16). Blokirano: valid predračun već postoji (ACTIVE_PROFORMA_EXISTS) ili nalog ima unpaid/paid račun (ACTIVE_INVOICE_EXISTS, BR-40). Transakciono uz row-lock naloga.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                validUntil: { type: string, format: date, description: Default = danas + default_validity_days }
+                amountEur: { type: number }
+                note: { type: string }
+      responses:
+        '201': { description: Predračun izdat, content: { application/json: { schema: { $ref: '#/components/schemas/Document' } } } }
+        '422': { $ref: '#/components/responses/BusinessRule' }
+  /work-orders/{id}/labor-items:
+    post:
+      tags: [work-orders]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/LaborItemInput' } } } }
+      responses: { '201': { description: Kreirana }, '422': { $ref: '#/components/responses/BusinessRule' } }
+  /work-orders/{id}/labor-items/{itemId}:
+    parameters: [ { $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/ItemId' } ]
+    patch:
+      tags: [work-orders]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/LaborItemInput' } } } }
+      responses: { '200': { description: OK }, '422': { $ref: '#/components/responses/BusinessRule' } }
+    delete:
+      tags: [work-orders]
+      responses: { '204': { description: Uklonjena }, '422': { $ref: '#/components/responses/BusinessRule' } }
+  /work-orders/{id}/part-items:
+    post:
+      tags: [work-orders]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PartItemInput' } } } }
+      responses: { '201': { description: Kreirana } }
+  /work-orders/{id}/part-items/{itemId}:
+    parameters: [ { $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/ItemId' } ]
+    patch:
+      tags: [work-orders]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PartItemInput' } } } }
+      responses: { '200': { description: OK } }
+    delete: { tags: [work-orders], responses: { '204': { description: Uklonjena } } }
+  /work-orders/{id}/external-items:
+    post:
+      tags: [work-orders]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ExternalItemInput' } } } }
+      responses: { '201': { description: Kreirana } }
+  /work-orders/{id}/external-items/{itemId}:
+    parameters: [ { $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/ItemId' } ]
+    patch:
+      tags: [work-orders]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ExternalItemInput' } } } }
+      responses: { '200': { description: OK } }
+    delete: { tags: [work-orders], responses: { '204': { description: Uklonjena } } }
+  /work-orders/{id}/items/{itemId}/internal:
+    patch:
+      tags: [work-orders]
+      parameters: [ { $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/ItemId' } ]
+      summary: Uključi/isključi „Interno — ne naplaćuje se" (samo part/external — BR-09)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemType, internalNoCharge]
+              properties:
+                itemType: { type: string, enum: [part, external] }
+                internalNoCharge: { type: boolean }
+      responses: { '200': { description: OK }, '422': { $ref: '#/components/responses/BusinessRule' } }
+
+  # ---------- Documents ----------
+  /documents:
+    get:
+      tags: [documents]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Query'
+        - { name: type, in: query, schema: { $ref: '#/components/schemas/DocumentType' } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/DocumentStatus' } }
+        - { name: customerId, in: query, schema: { type: integer } }
+        - { name: vehicleId, in: query, schema: { type: integer } }
+        - { name: workOrderId, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/DocumentPage' } } } }
+    post:
+      tags: [documents]
+      summary: Novi dokument — samo quote ili proforma (discriminator "type"); invoice → 422 INVOICE_DIRECT_CREATE_FORBIDDEN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/CreateQuoteInput'
+                - $ref: '#/components/schemas/CreateProformaInput'
+              discriminator:
+                propertyName: type
+                mapping:
+                  quote: '#/components/schemas/CreateQuoteInput'
+                  proforma: '#/components/schemas/CreateProformaInput'
+      responses:
+        '201': { description: Kreiran, content: { application/json: { schema: { $ref: '#/components/schemas/Document' } } } }
+        '422': { $ref: '#/components/responses/BusinessRule' }
+  /documents/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [documents]
+      summary: Detalj sa stavkama (snapshot), lancem i izvedenim oznakama dospeća
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/DocumentDetail' } } } } }
+    patch:
+      tags: [documents]
+      summary: 'Izmena — quote samo dok je pending (UpdatePendingQuoteInput); valid proforma SAMO validUntil/amountEur/note (UpdateValidProformaInput) — BR-10, BR-16; ostalo → 422 ENTITY_LOCKED/SNAPSHOT_IMMUTABLE'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/UpdatePendingQuoteInput'
+                - $ref: '#/components/schemas/UpdateValidProformaInput'
+      responses: { '200': { description: OK }, '409': { $ref: '#/components/responses/Conflict' }, '422': { $ref: '#/components/responses/BusinessRule' } }
+  /documents/{id}/accept:
+    post:
+      tags: [documents]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: Prihvati ponudu (opciono odmah otvara nalog)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                openWorkOrder: { type: boolean, default: false }
+                version: { type: integer }
+      responses:
+        '200': { description: Prihvaćena (+ workOrderId ako je otvoren) }
+        '422': { $ref: '#/components/responses/BusinessRule' }
+  /documents/{id}/reject:
+    post:
+      tags: [documents]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: { type: integer }
+      responses: { '200': { description: Odbijena }, '409': { $ref: '#/components/responses/Conflict' }, '422': { $ref: '#/components/responses/BusinessRule' } }
+  /documents/{id}/convert:
+    post:
+      tags: [documents]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: Pretvori predračun u račun (BR-19, transakciono; veza converted_from)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dueOn, version]
+              properties:
+                dueOn: { type: string, format: date }
+                version: { type: integer, description: Verzija predračuna }
+      responses:
+        '201': { description: Račun kreiran, content: { application/json: { schema: { $ref: '#/components/schemas/Document' } } } }
+        '422': { $ref: '#/components/responses/BusinessRule' }
+  /documents/{id}/mark-paid:
+    post:
+      tags: [documents]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: Naznači plaćeno (unpaid → paid)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paidOn, paymentMethod, version]
+              properties:
+                paidOn: { type: string, format: date }
+                paymentMethod: { type: string }
+                version: { type: integer }
+      responses: { '200': { description: Plaćen }, '422': { $ref: '#/components/responses/BusinessRule' } }
+  /documents/{id}/unmark-paid:
+    post:
+      tags: [documents]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: 'ADMIN: paid → unpaid; razlog obavezan (audit invoice.unmarked_paid, BR-21)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason, version]
+              properties:
+                reason: { type: string }
+                version: { type: integer }
+      responses:
+        '200': { description: Vraćen na neplaćeno }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/BusinessRule' }
+  /documents/{id}/correct:
+    post:
+      tags: [documents]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: 'Ispravi račun (unpaid) — u ISTOJ transakciji: stari → voided, pa novi valid predračun sa vezom correction_of (BR-20, jedini izuzetak od BR-40)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                note: { type: string, description: Prenosi se kao napomena novog predračuna }
+                version: { type: integer }
+      responses:
+        '201': { description: Novi predračun, content: { application/json: { schema: { $ref: '#/components/schemas/Document' } } } }
+        '422': { $ref: '#/components/responses/BusinessRule' }
+  /documents/{id}/copy:
+    post:
+      tags: [documents]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: 'Kopiraj — SAMO ponuda i predračun (BR-23); račun → 422 COPY_NOT_ALLOWED (za račun postoji „Ispravi račun"). Predračun se ne kopira dok po nalogu postoji drugi valid predračun (BR-39) ili unpaid/paid račun (BR-40). Novi broj, današnji datum, veza copied_from; original netaknut. Transakciono uz row-lock (bez version polja).'
+      responses:
+        '201': { description: Kopija, content: { application/json: { schema: { $ref: '#/components/schemas/Document' } } } }
+        '422': { $ref: '#/components/responses/BusinessRule' }
+
+  # ---------- Appointments ----------
+  /appointments:
+    get:
+      tags: [appointments]
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: mechanicId, in: query, schema: { type: integer } }
+        - $ref: '#/components/parameters/Query'
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Appointment' } } } } }
+    post:
+      tags: [appointments]
+      summary: Novi termin — meka upozorenja 409 CONFIRMATION_REQUIRED (MECHANIC_BUSY, OUTSIDE_WORK_HOURS), blokiran dan 422 CALENDAR_BLOCKED
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AppointmentInput' } } } }
+      responses:
+        '201': { description: Zakazan, content: { application/json: { schema: { $ref: '#/components/schemas/Appointment' } } } }
+        '409': { $ref: '#/components/responses/ConfirmationRequired' }
+        '422': { $ref: '#/components/responses/BusinessRule' }
+  /appointments/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    patch:
+      tags: [appointments]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AppointmentInput' } } } }
+      responses: { '200': { description: OK }, '409': { $ref: '#/components/responses/ConfirmationRequired' } }
+    delete:
+      tags: [appointments]
+      summary: Fizičko brisanje — samo termin koji nije počeo (BR-29)
+      responses: { '204': { description: Obrisan }, '422': { $ref: '#/components/responses/BusinessRule' } }
+  /appointments/{id}/status:
+    post:
+      tags: [appointments]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: Statusna tranzicija (§6); completed→scheduled samo bez naloga (BR-28); uz completed opciono workOrderId
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, version]
+              properties:
+                status: { $ref: '#/components/schemas/AppointmentStatus' }
+                workOrderId: { type: integer, description: Vezivanje realizacije za nalog }
+                reason: { type: string, description: Obavezan za admin korekcije }
+                version: { type: integer }
+      responses: { '200': { description: OK }, '409': { $ref: '#/components/responses/Conflict' }, '422': { $ref: '#/components/responses/BusinessRule' } }
+  /calendar-blocks:
+    get:
+      tags: [appointments]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/CalendarBlock' } } } } } }
+    post:
+      tags: [appointments]
+      summary: Blokiraj dane (tvrda blokada za termine)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CalendarBlockInput' } } } }
+      responses: { '201': { description: Blokirano } }
+
+  # ---------- Reports ----------
+  /reports/revenue:
+    get:
+      tags: [reports]
+      summary: Prihod — samo plaćeni računi po datumu plaćanja (BR-31); grafik po mesecima
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: format, in: query, schema: { type: string, enum: [json, xlsx] } }
+      responses: { '200': { description: OK } }
+  /reports/work-orders:
+    get:
+      tags: [reports]
+      summary: Pretraga naloga (klijent, vozilo, tablica, marka, model; delovi kao tagovi)
+      parameters:
+        - $ref: '#/components/parameters/Query'
+        - $ref: '#/components/parameters/Page'
+        - { name: format, in: query, schema: { type: string, enum: [json, xlsx] } }
+      responses: { '200': { description: OK } }
+  /reports/mechanics/{id}:
+    get:
+      tags: [reports]
+      summary: Po majstoru — nalozi, vrednost rada, period
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses: { '200': { description: OK } }
+  /reports/vehicle-types:
+    get:
+      tags: [reports]
+      summary: Po tipu vozila (marka, model, godina, gorivo)
+      parameters:
+        - { name: make, in: query, schema: { type: string } }
+        - { name: model, in: query, schema: { type: string } }
+        - { name: year, in: query, schema: { type: integer } }
+        - { name: fuel, in: query, schema: { type: string } }
+      responses: { '200': { description: OK } }
+
+  # ---------- Export ----------
+  /export/all.xlsx:
+    get:
+      tags: [reports]
+      summary: 'Pun izvoz cele baze u jedan Excel fajl (dugme „Izvezi sve u Excel" na ekranu Izveštaji). Sheetovi: Radni nalozi (1 nalog = 1 red, svi podaci po kolonama, stavke zbirno), Ponude, Predračuni, Računi (1 dokument = 1 red) + sheetovi stavki (stavke rada / delovi / eksterni servis / stavke dokumenata — 1 stavka = 1 red, sa brojem naloga odn. dokumenta). Bez filtera — uvek sve.'
+      responses:
+        '200':
+          description: XLSX fajl sa celom bazom
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
+
+  # ---------- Settings / users / backup (ADMIN) ----------
+  /settings:
+    get:
+      tags: [settings]
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }, '403': { $ref: '#/components/responses/Forbidden' } }
+    patch:
+      tags: [settings]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
+      responses: { '200': { description: OK }, '403': { $ref: '#/components/responses/Forbidden' }, '409': { $ref: '#/components/responses/Conflict' } }
+  /settings/logo:
+    post:
+      tags: [settings]
+      summary: 'ADMIN: upload logotipa (multipart)'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200': { description: Sačuvan, content: { application/json: { schema: { type: object, properties: { logo: { type: string } } } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /users:
+    get:
+      tags: [settings]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/User' } } } } }, '403': { $ref: '#/components/responses/Forbidden' } }
+    post:
+      tags: [settings]
+      summary: 'ADMIN: novi korisnik (nema samoregistracije)'
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/UserInput' } } } }
+      responses: { '201': { description: Kreiran }, '409': { $ref: '#/components/responses/Duplicate' } }
+  /users/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    patch:
+      tags: [settings]
+      summary: 'ADMIN: izmena, rola, status, reset lozinke'
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/UserInput' } } } }
+      responses: { '200': { description: OK } }
+  /backup/runs:
+    get:
+      tags: [settings]
+      summary: 'ADMIN: evidencija backup izvršavanja'
+      responses: { '200': { description: OK } }
+  /backup/restore:
+    post:
+      tags: [settings]
+      summary: 'ADMIN: vraćanje iz backupa — eksplicitna potvrda'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [backupRunId, confirmed]
+              properties:
+                backupRunId: { type: integer }
+                confirmed: { type: boolean }
+      responses: { '202': { description: Pokrenuto }, '403': { $ref: '#/components/responses/Forbidden' } }
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: karton_session
+
+  parameters:
+    Id: { name: id, in: path, required: true, schema: { type: integer } }
+    ItemId: { name: itemId, in: path, required: true, schema: { type: integer } }
+    Page: { name: page, in: query, schema: { type: integer, default: 1 } }
+    PageSize: { name: pageSize, in: query, schema: { type: integer, default: 20 }, description: Default iz Podešavanja }
+    Sort: { name: sort, in: query, schema: { type: string }, description: 'npr. name:asc' }
+    Query: { name: q, in: query, schema: { type: string }, description: Case-insensitive, ignoriše razmake }
+
+  responses:
+    Unauthenticated:
+      description: Nema/istekla sesija
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Forbidden:
+      description: Rola nema pravo (FORBIDDEN)
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Conflict:
+      description: VERSION_CONFLICT — optimističko zaključavanje
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Duplicate:
+      description: DUPLICATE_VIN / DUPLICATE_TAX_ID / DUPLICATE_EMAIL — nosi existingId
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    ConfirmationRequired:
+      description: CONFIRMATION_REQUIRED — warnings lista; ponoviti sa confirmed=true
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    BusinessRule:
+      description: 'Poslovno pravilo (422) — kod iz kataloga grešaka (spec §8)'
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: PROFORMA_NOT_VALID }
+        message: { type: string, example: 'Predračun je istekao i ne može se pretvoriti u račun.' }
+        fields: { type: object, additionalProperties: { type: string } }
+        warnings: { type: array, items: { type: string }, example: [MECHANIC_BUSY] }
+        existingId: { type: integer, description: Kod duplikata — ID postojećeg entiteta }
+
+    PageMeta:
+      type: object
+      properties:
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+
+    WorkOrderStatus: { type: string, enum: [open, in_progress, waiting_parts, completed, cancelled] }
+    DocumentType: { type: string, enum: [quote, proforma, invoice] }
+    DocumentStatus: { type: string, enum: [pending, accepted, rejected, expired, valid, used, unpaid, paid, voided] }
+    AppointmentStatus: { type: string, enum: [scheduled, completed, cancelled, no_show] }
+    FieldVisitOutcome:
+      type: string
+      nullable: true
+      enum: [solved_on_site, arrives_driving, arrives_towed, customer_declined]
+      description: 'Ishod izlaska — customer_declined NIJE status naloga; izlazak se uvek naplaćuje, nalog završava u completed (BR-42)'
+
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        role: { type: string, enum: [admin, user] }
+        status: { type: string, enum: [active, disabled] }
+    UserInput:
+      type: object
+      properties:
+        name: { type: string }
+        email: { type: string }
+        password: { type: string }
+        role: { type: string, enum: [admin, user] }
+        status: { type: string, enum: [active, disabled] }
+
+    Customer:
+      type: object
+      properties:
+        id: { type: integer }
+        type: { type: string, enum: [individual, company] }
+        name: { type: string }
+        taxId: { type: string, nullable: true }
+        address: { type: string }
+        status: { type: string, enum: [active, archived] }
+        contacts: { type: array, items: { $ref: '#/components/schemas/Contact' } }
+    CustomerInput:
+      type: object
+      required: [type, name]
+      properties:
+        type: { type: string, enum: [individual, company] }
+        name: { type: string }
+        taxId: { type: string, description: PIB obavezan za company (BR-04) }
+        address: { type: string }
+        phone: { type: string }
+        email: { type: string }
+    CustomerPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Customer' } }
+        meta: { $ref: '#/components/schemas/PageMeta' }
+    Contact:
+      type: object
+      properties:
+        id: { type: integer }
+        kind: { type: string, enum: [phone, email] }
+        value: { type: string }
+        isPrimary: { type: boolean }
+    ContactInput:
+      type: object
+      required: [kind, value]
+      properties:
+        kind: { type: string, enum: [phone, email] }
+        value: { type: string }
+        isPrimary: { type: boolean }
+
+    Vehicle:
+      type: object
+      properties:
+        id: { type: integer }
+        vin: { type: string }
+        make: { type: string }
+        model: { type: string }
+        year: { type: integer }
+        fuel: { type: string }
+        note: { type: string }
+        status: { type: string, enum: [active, archived] }
+        currentPlate: { type: string, description: Izvedeno iz aktivnog zapisa }
+        currentOwner: { $ref: '#/components/schemas/Customer' }
+    VehicleInput:
+      type: object
+      required: [vin, make, model]
+      properties:
+        vin: { type: string }
+        make: { type: string }
+        model: { type: string }
+        year: { type: integer }
+        fuel: { type: string }
+        plate: { type: string }
+        ownerId: { type: integer }
+        note: { type: string }
+    VehiclePage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Vehicle' } }
+        meta: { $ref: '#/components/schemas/PageMeta' }
+    OwnershipRecord:
+      type: object
+      properties:
+        id: { type: integer }
+        customer: { $ref: '#/components/schemas/Customer' }
+        validFrom: { type: string, format: date }
+        validTo: { type: string, format: date, nullable: true }
+    RegistrationRecord:
+      type: object
+      properties:
+        id: { type: integer }
+        plate: { type: string }
+        validFrom: { type: string, format: date }
+        validTo: { type: string, format: date, nullable: true }
+        note: { type: string }
+
+    Mechanic:
+      type: object
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        hiredOn: { type: string, format: date }
+        hourlyRate: { type: number }
+        specialty: { type: string, enum: [mechanical, electrical, other] }
+        status: { type: string, enum: [active, inactive] }
+    MechanicInput:
+      type: object
+      required: [fullName, hourlyRate, specialty]
+      properties:
+        fullName: { type: string }
+        hiredOn: { type: string, format: date }
+        hourlyRate: { type: number }
+        specialty: { type: string, enum: [mechanical, electrical, other] }
+        status: { type: string, enum: [active, inactive] }
+    Service:
+      type: object
+      description: Usluga iz cenovnika — paušal ili po kilometru (satni rad ide preko cenovnika majstora)
+      properties:
+        id: { type: integer }
+        name: { type: string, example: Izlazak na teren }
+        billingUnit: { type: string, enum: [km, flat] }
+        defaultPrice: { type: number, description: Cena/km ili paušalni iznos — na nalogu samo predlog }
+        status: { type: string, enum: [active, inactive] }
+    ServiceInput:
+      type: object
+      required: [name, billingUnit, defaultPrice]
+      properties:
+        name: { type: string }
+        billingUnit: { type: string, enum: [km, flat] }
+        defaultPrice: { type: number }
+        status: { type: string, enum: [active, inactive] }
+    Unavailability:
+      type: object
+      properties:
+        id: { type: integer }
+        fromDate: { type: string, format: date }
+        toDate: { type: string, format: date }
+        kind: { type: string, enum: [vacation, sick_leave] }
+    UnavailabilityInput:
+      type: object
+      required: [fromDate, toDate, kind]
+      properties:
+        fromDate: { type: string, format: date }
+        toDate: { type: string, format: date }
+        kind: { type: string, enum: [vacation, sick_leave] }
+
+    WorkOrder:
+      type: object
+      properties:
+        id: { type: integer }
+        number: { type: string, example: RN-2026-0001 }
+        vehicle: { $ref: '#/components/schemas/Vehicle' }
+        customer: { $ref: '#/components/schemas/Customer' }
+        receivedOn: { type: string, format: date }
+        receivedTime: { type: string, nullable: true, example: '10:30', description: Vreme prijema vozila (opciono) }
+        completedOn: { type: string, format: date, nullable: true }
+        completedTime: { type: string, nullable: true, example: '16:00', description: Vreme predaje vozila (opciono) }
+        odometerKm: { type: integer, description: Odometar klijentovog vozila na prijemu }
+        requestedWork: { type: string, nullable: true, description: Zahtevani radovi — sve što klijent traži i prijavljuje pri prijemu }
+        findings: { type: string, nullable: true, description: Utvrđeno stanje — nalaz majstora, unosi se tokom rada }
+        note: { type: string, nullable: true }
+        fieldVisit: { type: boolean, default: false, description: Izlazak na teren — kad je false, sva polja ispod su null (BR-41) }
+        fieldVisitDate: { type: string, format: date, nullable: true }
+        fieldVisitTime: { type: string, nullable: true, example: '21:40' }
+        fieldVisitLocation: { type: string, nullable: true }
+        fieldVisitKm: { type: integer, nullable: true, description: Pređeni km servisnog vozila, ukupno (oba pravca) — nije odometerKm }
+        vehicleDrivable: { type: boolean, nullable: true }
+        fieldVisitOutcome: { $ref: '#/components/schemas/FieldVisitOutcome' }
+        status: { $ref: '#/components/schemas/WorkOrderStatus' }
+        sourceQuoteId: { type: integer, nullable: true }
+        version: { type: integer }
+    WorkOrderInput:
+      type: object
+      properties:
+        vehicleId: { type: integer }
+        customerId: { type: integer, description: Default = trenutni vlasnik vozila }
+        receivedOn: { type: string, format: date }
+        receivedTime: { type: string, nullable: true, example: '10:30' }
+        completedOn: { type: string, format: date, description: Ručna korekcija — po roli (BR-37) }
+        completedTime: { type: string, nullable: true, example: '16:00' }
+        odometerKm: { type: integer }
+        requestedWork: { type: string }
+        findings: { type: string, description: Nalaz majstora — unosi se tokom rada, ne pri otvaranju }
+        note: { type: string }
+        fieldVisit: { type: boolean, default: false, description: Kad je false, polja izlaska moraju biti prazna (BR-41) }
+        fieldVisitDate: { type: string, format: date }
+        fieldVisitTime: { type: string, example: '21:40' }
+        fieldVisitLocation: { type: string }
+        fieldVisitKm: { type: integer, description: Servisno vozilo, ukupno oba pravca }
+        vehicleDrivable: { type: boolean }
+        fieldVisitOutcome: { $ref: '#/components/schemas/FieldVisitOutcome' }
+        sourceQuoteId: { type: integer, description: Samo accepted ponuda (BR-11) }
+        version: { type: integer }
+    WorkOrderDetail:
+      allOf:
+        - $ref: '#/components/schemas/WorkOrder'
+        - type: object
+          properties:
+            laborItems: { type: array, items: { $ref: '#/components/schemas/LaborItem' } }
+            partItems: { type: array, items: { $ref: '#/components/schemas/PartItem' } }
+            externalItems: { type: array, items: { $ref: '#/components/schemas/ExternalItem' } }
+            documentChain:
+              type: object
+              description: Za dvorednu dokument traku — aktuelni dokument po tipu (važeći odn. poslednji ne-voided); null znači da ne postoji
+              properties:
+                quote: { $ref: '#/components/schemas/ChainRef' }
+                proforma: { $ref: '#/components/schemas/ChainRef' }
+                invoice: { $ref: '#/components/schemas/ChainRef' }
+    ChainRef:
+      type: object
+      nullable: true
+      properties:
+        id: { type: integer }
+        number: { type: string }
+        status: { type: string }
+    WorkOrderPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/WorkOrder' } }
+        meta: { $ref: '#/components/schemas/PageMeta' }
+
+    LaborBillingUnit:
+      type: string
+      enum: [hour, km, flat]
+      description: 'hour = sati × cena/h · km = kilometri × cena/km (izlazak na teren) · flat = paušal, samo iznos (BR-43)'
+    LaborItem:
+      type: object
+      properties:
+        id: { type: integer }
+        mechanic: { $ref: '#/components/schemas/Mechanic' }
+        serviceId: { type: integer, nullable: true, description: Usluga iz cenovnika (opciono) }
+        name: { type: string }
+        billingUnit: { $ref: '#/components/schemas/LaborBillingUnit' }
+        quantity: { type: number, nullable: true, description: Sati ili kilometri; null kod flat }
+        unitPrice: { type: number, nullable: true, description: Cena/h ili cena/km — zamrznuta u trenutku unosa (BR-07); null kod flat }
+        amount: { type: number }
+    LaborItemInput:
+      type: object
+      required: [mechanicId, name, billingUnit]
+      description: >
+        hour/km: quantity i unitPrice obavezni, amount računa backend (ne šalje se).
+        flat: amount obavezan, quantity i unitPrice moraju biti prazni.
+        Neispravna kombinacija → 422 LABOR_BILLING_INVALID (BR-43).
+      properties:
+        mechanicId: { type: integer, description: Obavezan i kod km i flat stavki }
+        serviceId: { type: integer, description: Opciono — usluga iz cenovnika (predlaže naziv i cenu) }
+        name: { type: string }
+        billingUnit: { $ref: '#/components/schemas/LaborBillingUnit' }
+        quantity: { type: number, description: 'hour: sati · km: kilometri (default = work_order.fieldVisitKm)' }
+        unitPrice: { type: number, description: 'hour: default = cena majstora · km: default = cena iz cenovnika usluga' }
+        amount: { type: number, description: Samo kod flat (default = cena iz cenovnika usluga) }
+    PartItem:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        quantity: { type: number }
+        unitPrice: { type: number }
+        amount: { type: number }
+        internalNoCharge: { type: boolean }
+    PartItemInput:
+      type: object
+      required: [name, quantity, unitPrice]
+      properties:
+        name: { type: string }
+        quantity: { type: number }
+        unitPrice: { type: number }
+        internalNoCharge: { type: boolean, default: false }
+    ExternalItem:
+      type: object
+      properties:
+        id: { type: integer }
+        vendorName: { type: string }
+        description: { type: string }
+        price: { type: number }
+        note: { type: string }
+        internalNoCharge: { type: boolean }
+    ExternalItemInput:
+      type: object
+      required: [vendorName, price]
+      properties:
+        vendorName: { type: string }
+        description: { type: string }
+        price: { type: number }
+        note: { type: string }
+        internalNoCharge: { type: boolean, default: false }
+
+    Document:
+      type: object
+      properties:
+        id: { type: integer }
+        number: { type: string, example: PR-2026-0001 }
+        type: { $ref: '#/components/schemas/DocumentType' }
+        status: { $ref: '#/components/schemas/DocumentStatus' }
+        workOrderId: { type: integer, nullable: true }
+        customer: { $ref: '#/components/schemas/Customer' }
+        vehicle: { $ref: '#/components/schemas/Vehicle' }
+        issuedOn: { type: string, format: date }
+        dueOn: { type: string, format: date, nullable: true }
+        validUntil: { type: string, format: date, nullable: true }
+        paidOn: { type: string, format: date, nullable: true }
+        paymentMethod: { type: string, nullable: true }
+        sourceDocumentId: { type: integer, nullable: true, description: 'Uvek na novonastalom dokumentu — pokazuje UNAZAD na dokument iz kog je ovaj nastao (nikad stari na novi); istorija se rekonstruiše praćenjem unazad' }
+        sourceRelationType: { type: string, enum: [copied_from, converted_from, correction_of], nullable: true, description: 'copied_from = kopiran iz izvora; converted_from = nastao konverzijom iz predračuna; correction_of = korektivni predračun u odnosu na poništeni račun. Uvek u paru sa sourceDocumentId' }
+        note: { type: string, nullable: true }
+        totalAmount: { type: number, description: Bez internih stavki }
+        amountEur: { type: number, nullable: true }
+        dueLabel: { type: string, description: 'Izvedena UI oznaka: kasni X dana / dospeva / nije dospeo — nikad status' }
+        version: { type: integer }
+    CreateQuoteInput:
+      type: object
+      required: [type, customerId, vehicleId]
+      properties:
+        type: { type: string, enum: [quote] }
+        customerId: { type: integer }
+        vehicleId: { type: integer }
+        workOrderId: { type: integer, nullable: true, description: Opciona veza na nalog }
+        issuedOn: { type: string, format: date }
+        validUntil: { type: string, format: date }
+        amountEur: { type: number }
+        note: { type: string }
+        items:
+          type: array
+          description: Procena — dokument-stavke, ne stvarne stavke rada
+          items: { $ref: '#/components/schemas/DocumentItemInput' }
+    CreateProformaInput:
+      type: object
+      required: [type, workOrderId]
+      description: Stavke nastaju snapshotom iz naloga (BR-16); blokirano po BR-15 i BR-40
+      properties:
+        type: { type: string, enum: [proforma] }
+        workOrderId: { type: integer }
+        validUntil: { type: string, format: date }
+        amountEur: { type: number }
+        note: { type: string }
+    UpdatePendingQuoteInput:
+      type: object
+      required: [version]
+      description: Dozvoljeno samo dok je ponuda u statusu pending (BR-10)
+      properties:
+        customerId: { type: integer }
+        vehicleId: { type: integer }
+        issuedOn: { type: string, format: date }
+        validUntil: { type: string, format: date }
+        amountEur: { type: number }
+        note: { type: string }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentItemInput' }
+        version: { type: integer }
+    UpdateValidProformaInput:
+      type: object
+      required: [version]
+      description: 'Na važećem (valid) predračunu dozvoljeni ISKLJUČIVO: validUntil, amountEur, note (BR-16)'
+      properties:
+        validUntil: { type: string, format: date }
+        amountEur: { type: number }
+        note: { type: string }
+        version: { type: integer }
+    DocumentItemInput:
+      type: object
+      required: [itemType, name, amount]
+      properties:
+        itemType: { type: string, enum: [labor, part, external] }
+        name: { type: string }
+        quantity: { type: number, nullable: true, description: Null kod paušalne stavke rada }
+        unitPrice: { type: number, nullable: true }
+        amount: { type: number }
+        laborGroup: { type: string, enum: [mechanical, electrical, other], description: Samo satne stavke rada (grupisanje po specijalnosti) }
+        billingUnit: { $ref: '#/components/schemas/LaborBillingUnit' }
+    DocumentDetail:
+      allOf:
+        - $ref: '#/components/schemas/Document'
+        - type: object
+          properties:
+            items:
+              type: array
+              description: 'Snapshot; rad grupisan po specijalnosti, bez imena majstora (BR-26)'
+              items: { $ref: '#/components/schemas/DocumentItemInput' }
+            chain:
+              type: object
+              properties:
+                quote: { $ref: '#/components/schemas/ChainRef' }
+                workOrders: { type: array, items: { $ref: '#/components/schemas/ChainRef' }, description: 1 ponuda može imati više naloga }
+                proforma: { $ref: '#/components/schemas/ChainRef' }
+                invoice: { $ref: '#/components/schemas/ChainRef' }
+    DocumentPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Document' } }
+        meta: { $ref: '#/components/schemas/PageMeta' }
+
+    Appointment:
+      type: object
+      properties:
+        id: { type: integer }
+        date: { type: string, format: date }
+        time: { type: string, example: '10:30' }
+        durationMin: { type: integer }
+        customer: { $ref: '#/components/schemas/Customer' }
+        vehicle: { $ref: '#/components/schemas/Vehicle' }
+        mechanic: { $ref: '#/components/schemas/Mechanic' }
+        note: { type: string }
+        status: { $ref: '#/components/schemas/AppointmentStatus' }
+        workOrderId: { type: integer, nullable: true }
+        remindersEnabled: { type: boolean }
+        reminderStatus: { type: string, enum: [scheduled, processing, sent, failed], nullable: true, description: Status slanja — vidljiv na terminu }
+        version: { type: integer }
+    AppointmentInput:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        time: { type: string }
+        durationMin: { type: integer, default: 60 }
+        customerId: { type: integer }
+        vehicleId: { type: integer }
+        mechanicId: { type: integer, nullable: true }
+        note: { type: string }
+        remindersEnabled: { type: boolean, description: Klijent bez emaila → 422 NO_CUSTOMER_EMAIL }
+        confirmed: { type: boolean, default: false, description: Potvrda mekih upozorenja (BR-27) }
+        version: { type: integer }
+    CalendarBlock:
+      type: object
+      properties:
+        id: { type: integer }
+        fromDate: { type: string, format: date }
+        toDate: { type: string, format: date }
+        reason: { type: string }
+    CalendarBlockInput:
+      type: object
+      required: [fromDate, toDate]
+      properties:
+        fromDate: { type: string, format: date }
+        toDate: { type: string, format: date }
+        reason: { type: string }
+
+    Settings:
+      type: object
+      properties:
+        shopName: { type: string }
+        address: { type: string }
+        taxId: { type: string }
+        phone: { type: string }
+        logo: { type: string }
+        smtpHost: { type: string }
+        smtpPort: { type: integer }
+        smtpUsername: { type: string }
+        smtpPassword: { type: string, writeOnly: true }
+        senderEmail: { type: string }
+        workHoursFrom: { type: string, example: '08:00' }
+        workHoursTo: { type: string, example: '18:00' }
+        defaultValidityDays: { type: integer, default: 15 }
+        reminderSendTime: { type: string, example: '09:00' }
+        pageSize: { type: integer, default: 20 }
+        version: { type: integer }

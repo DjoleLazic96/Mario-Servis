@@ -1,0 +1,277 @@
+%% Karton — finalni ER dijagram (v4.0, 8.7.2026) — engleski nazivi (odluka 27), UI mapiranje u specifikacija-finalna.md §3/§5
+%% Sve poslovne tabele imaju i: created_at, updated_at, created_by FK(app_user) — izostavljeno radi preglednosti
+%% Kriticne tabele (work_order, document, appointment, settings) imaju i: version — optimisticko zakljucavanje (409 na konflikt)
+%% settings je singleton (id = 1, CHECK u bazi)
+%% Infrastrukturne tabele (session store) nisu deo domenskog modela — DDL u baza-shema.sql
+erDiagram
+    customer {
+        int id PK
+        string type "individual / company"
+        string name
+        string tax_id "PIB obavezan za company; JMBG opcion za individual"
+        string address
+        string status "active / archived"
+    }
+    customer_contact {
+        int id PK
+        int customer_id FK
+        string kind "phone / email"
+        string value
+        bool is_primary
+    }
+    vehicle {
+        int id PK
+        string vin "jedinstven, nepromenljiv"
+        string make
+        string model
+        int year
+        string fuel
+        string note
+        string status "active / archived"
+    }
+    ownership_history {
+        int id PK
+        int vehicle_id FK
+        int customer_id FK
+        date valid_from
+        date valid_to "NULL = aktivan vlasnik (max 1 po vozilu)"
+    }
+    registration_history {
+        int id PK
+        int vehicle_id FK
+        string plate
+        date valid_from
+        date valid_to "NULL = aktivna tablica (max 1 po vozilu)"
+        string note
+    }
+    mechanic {
+        int id PK
+        string full_name
+        date hired_on
+        decimal hourly_rate
+        string specialty "mechanical / electrical / other"
+        string status "active / inactive"
+    }
+    mechanic_unavailability {
+        int id PK
+        int mechanic_id FK
+        date from_date
+        date to_date
+        string kind "vacation / sick_leave"
+    }
+    work_order {
+        int id PK
+        string number "RN-2026-0001, unique"
+        int vehicle_id FK
+        int customer_id FK "predlog iz aktivnog vlasnika, izmenljiv"
+        date received_on
+        time received_time "opciono — vreme prijema vozila"
+        date completed_on "auto pri completed, rucno ispravljiv"
+        time completed_time "opciono — vreme predaje vozila"
+        bool completed_on_manual
+        int odometer_km
+        string requested_work "zahtevani radovi — klijent, pri prijemu"
+        string findings "utvrdjeno stanje — nalaz majstora, tokom rada"
+        string note
+        bool field_visit "izlazak na teren — otvara polja ispod (CHECK)"
+        date field_visit_date
+        time field_visit_time
+        string field_visit_location
+        int field_visit_km "servisno vozilo, ukupno oba pravca"
+        bool vehicle_drivable
+        string field_visit_outcome "solved_on_site/arrives_driving/arrives_towed/customer_declined"
+        string status "open/in_progress/waiting_parts/completed/cancelled"
+        int source_quote_id FK "opciono — document(quote)"
+        int version
+    }
+    labor_item {
+        int id PK
+        int work_order_id FK
+        int mechanic_id FK "obavezan u sva tri nacina obracuna"
+        int service_id FK "opciono — usluga iz cenovnika"
+        string name
+        string billing_unit "hour / km / flat"
+        decimal quantity "sati ili km; NULL kod flat"
+        decimal unit_price "cena/h ili cena/km; zamrznuta; NULL kod flat"
+        decimal amount "hour/km: quantity × unit_price; flat: rucni unos"
+    }
+    service_catalog {
+        int id PK
+        string name "npr. Izlazak na teren, Dijagnostika"
+        string billing_unit "km / flat (nikad hour)"
+        decimal default_price "cena/km ili pausalni iznos — samo predlog"
+        string status "active / inactive"
+    }
+    part_item {
+        int id PK
+        int work_order_id FK
+        string name
+        decimal quantity
+        decimal unit_price
+        decimal amount
+        bool internal_no_charge "interno — ne prenosi se na dokument"
+    }
+    external_service_item {
+        int id PK
+        int work_order_id FK
+        string vendor_name
+        string description
+        decimal price
+        string note
+        bool internal_no_charge "interno — ne prenosi se na dokument"
+    }
+    appointment {
+        int id PK
+        date date
+        time time
+        int duration_min "za kalendar i zauzetost majstora"
+        int customer_id FK
+        int vehicle_id FK
+        int mechanic_id FK "opciono"
+        string note
+        string status "scheduled/completed/cancelled/no_show"
+        int work_order_id FK "opciono — vise termina moze pokazivati na isti nalog"
+        bool reminders_enabled
+        int version
+    }
+    appointment_reminder {
+        int id PK
+        int appointment_id FK
+        int offset_min "koliko pre termina"
+        datetime scheduled_send_at
+        string send_status "scheduled/processing/sent/failed"
+        int attempt_count
+        datetime last_attempt_at
+        string last_error
+        datetime sent_at "vreme uspesnog slanja"
+    }
+    calendar_block {
+        int id PK
+        date from_date
+        date to_date
+        string reason
+    }
+    document {
+        int id PK
+        string number "P- / PR- / R-2026-0001, unique"
+        string type "quote / proforma / invoice"
+        int work_order_id FK "NULL dozvoljen samo za quote"
+        int customer_id FK
+        int vehicle_id FK
+        date issued_on
+        date due_on "samo invoice"
+        date valid_until "quote i proforma; ukljuciv, Europe/Belgrade"
+        string status "po tipu — vidi spec §5"
+        date paid_on
+        string payment_method
+        int source_document_id FK "na NOVOM dokumentu, pokazuje unazad na izvor (self-ref)"
+        string source_relation_type "copied_from / converted_from / correction_of — u paru sa source_document_id"
+        string note "editabilna i na valid predracunu"
+        decimal amount_eur "opciono, rucni unos, ne na invoice"
+        int version
+    }
+    document_item {
+        int id PK
+        int document_id FK
+        string item_type "labor / part / external"
+        string name
+        decimal quantity "NULL kod pausalne stavke rada"
+        decimal unit_price "NULL kad grupa rada nema jedinstvenu cenu, i kod pausala"
+        decimal amount
+        string labor_group "specijalnost — samo satne stavke rada"
+        string billing_unit "snapshot nacina obracuna — samo labor"
+    }
+    settings {
+        int id PK
+        string shop_name
+        string address
+        string tax_id
+        string phone
+        string logo
+        string smtp_host
+        int smtp_port
+        string smtp_username
+        string smtp_password
+        string sender_email
+        time work_hours_from
+        time work_hours_to
+        int default_validity_days "default 15"
+        time reminder_send_time "default 09:00 dan pre"
+        int page_size "default 20"
+        int version
+    }
+    reminder_config {
+        int id PK
+        int settings_id FK
+        int offset_min "vise podsetnika po terminu"
+    }
+    app_user {
+        int id PK
+        string name
+        string email "unique"
+        string password_hash
+        string role "admin / user"
+        string status "active / disabled"
+    }
+    number_sequence {
+        string doc_type PK "quote / work_order / proforma / invoice"
+        int year PK
+        int last_number "dodela u transakciji, FOR UPDATE — ne MAX+1"
+    }
+    audit_log {
+        int id PK
+        int user_id FK
+        string entity_type
+        int entity_id
+        string action "vidi spec §11"
+        jsonb old_value
+        jsonb new_value
+        string reason "obavezan za osetljive admin akcije"
+        datetime created_at
+    }
+    backup_config {
+        int id PK
+        string kind "local / cloud / both"
+        string destination
+        string frequency
+    }
+    backup_run {
+        int id PK
+        datetime started_at
+        datetime finished_at
+        string status "success / failed"
+        string destination
+        bigint size_bytes
+        string error
+    }
+
+    customer ||--o{ customer_contact : "kontakti"
+    customer ||--o{ ownership_history : "vlasnik u periodu"
+    vehicle ||--o{ ownership_history : "istorija vlasnika"
+    vehicle ||--o{ registration_history : "istorija tablica"
+    mechanic ||--o{ mechanic_unavailability : "godisnji / bolovanje"
+
+    vehicle ||--o{ work_order : "nalozi za vozilo"
+    customer ||--o{ work_order : "nalozi klijenta"
+    document |o--o{ work_order : "nastao iz ponude (opciono, 1 ponuda — vise naloga)"
+
+    work_order ||--o{ labor_item : "interni rad"
+    mechanic ||--o{ labor_item : "izvrsio"
+    service_catalog |o--o{ labor_item : "usluga iz cenovnika (opciono)"
+    work_order ||--o{ part_item : "delovi"
+    work_order ||--o{ external_service_item : "eksterni servis"
+
+    customer ||--o{ appointment : "zakazao"
+    vehicle ||--o{ appointment : "za vozilo"
+    mechanic |o--o{ appointment : "dodeljen (opciono)"
+    work_order |o--o{ appointment : "vezani termini (opciono — dijagnostika, nastavak, predaja)"
+    appointment ||--o{ appointment_reminder : "email podsetnici"
+
+    work_order |o--o{ document : "predracun / racun iz naloga"
+    customer ||--o{ document : "dokument za klijenta"
+    vehicle ||--o{ document : "dokument za vozilo"
+    document |o--o{ document : "izvor za novije dokumente — novi pokazuje unazad (source_relation_type)"
+    document ||--o{ document_item : "stavke (snapshot)"
+
+    settings ||--o{ reminder_config : "vise podsetnika"
+    app_user ||--o{ audit_log : "izvrsio akciju"

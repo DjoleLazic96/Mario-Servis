@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:18
+    container_name: karton-db
+    environment:
+      POSTGRES_USER: karton
+      POSTGRES_PASSWORD: karton
+      POSTGRES_DB: karton
+      TZ: UTC
+    ports:
+      # 5544 na hostu — 5432/5433 su zauzeti postojećim PostgreSQL-om na ovoj mašini
+      - "5544:5432"
+    volumes:
+      # PostgreSQL 18: mount na /var/lib/postgresql (ne .../data) — nova konvencija
+      - karton-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U karton -d karton"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: karton-mailpit
+    ports:
+      - "1025:1025"   # SMTP (hvata podsetnike)
+      - "8025:8025"   # web UI za pregled uhvaćenih mejlova
+    environment:
+      MP_MAX_MESSAGES: 500
+
+volumes:
+  karton-db-data:

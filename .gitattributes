@@ -1,0 +1,8 @@
+# Normalizuj krajeve redova na LF u repou (bitno za Linux VPS deploy)
+* text=auto eol=lf
+
+# Binarni fajlovi — ne diraj
+*.docx binary
+*.pdf binary
+*.png binary
+*.ico binary

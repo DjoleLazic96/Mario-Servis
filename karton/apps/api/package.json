@@ -1,0 +1,27 @@
+{
+  "name": "@karton/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=../../.env --watch src/index.ts",
+    "migrate": "node --env-file=../../.env src/migrate.ts",
+    "seed": "node --env-file=../../.env src/seed.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.0",
+    "@fastify/session": "^11.1.0",
+    "@karton/shared": "workspace:*",
+    "@node-rs/argon2": "^2.0.0",
+    "fastify": "^5.2.0",
+    "pg": "^8.13.0",
+    "pino-pretty": "^13.0.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.11.0",
+    "typescript": "^5.7.0"
+  }
+}

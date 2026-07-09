@@ -1,0 +1,7 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# esbuild (Vite) preuzima svoj platformski binarni fajl kroz build skriptu — dozvoljeno.
+allowBuilds:
+  esbuild: true

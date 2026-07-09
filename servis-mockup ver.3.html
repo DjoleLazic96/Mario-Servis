@@ -1,0 +1,2012 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karton — vođenje servisa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ECEFEC;
+    --surface:#FFFFFF;
+    --ink:#1C2127;
+    --ink-soft:#5B6470;
+    --ink-faint:#8B939B;
+    --sidebar:#182027;
+    --sidebar-soft:#26303A;
+    --sidebar-ink:#C9D2D6;
+    --sidebar-ink-dim:#7C8993;
+    --accent:#E2692B;
+    --accent-ink:#FFFFFF;
+    --petrol:#2D6E77;
+    --line:#D9DCD8;
+    --line-soft:#E6E8E5;
+    --ok:#3F8F5F; --ok-bg:#E7F2EC;
+    --warn:#E2692B; --warn-bg:#FBE9DE;
+    --wait:#7C848C; --wait-bg:#EAECED;
+    --danger:#C0443A; --danger-bg:#F7E4E1;
+    --radius:8px; --radius-sm:5px;
+    --font-display:'Barlow Semi Condensed',sans-serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:var(--font-body);
+    color:var(--ink);
+    background:var(--bg);
+    font-size:14px;
+    line-height:1.45;
+  }
+  h1,h2,h3{font-family:var(--font-display);margin:0;letter-spacing:0.2px;}
+  button{font-family:var(--font-body);cursor:pointer;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important;} }
+
+  .app{display:flex;min-height:100vh;}
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar{
+    width:228px;flex-shrink:0;background:var(--sidebar);color:var(--sidebar-ink);
+    display:flex;flex-direction:column;padding:20px 14px;
+  }
+  .brand{display:flex;align-items:center;gap:10px;padding:4px 8px 22px;}
+  .brand-mark{
+    width:32px;height:32px;border-radius:7px;background:var(--accent);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .brand-mark svg{width:18px;height:18px;}
+  .brand-text{font-family:var(--font-display);font-weight:700;font-size:19px;color:#fff;line-height:1;}
+  .brand-sub{font-size:10px;color:var(--sidebar-ink-dim);letter-spacing:0.6px;text-transform:uppercase;margin-top:2px;}
+
+  .nav{display:flex;flex-direction:column;gap:2px;margin-top:4px;}
+  .nav-item{
+    display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius-sm);
+    background:none;border:none;color:var(--sidebar-ink);text-align:left;font-size:13.5px;font-weight:500;
+    width:100%;
+  }
+  .nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:0.85;}
+  .nav-item:hover{background:var(--sidebar-soft);}
+  .nav-item.active{background:var(--accent);color:#fff;}
+  .nav-item.active svg{opacity:1;}
+  .nav-soon{opacity:0.55;}
+  .nav-group-label{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--sidebar-ink-dim);padding:14px 10px 4px;}
+  .sidebar-foot{margin-top:auto;padding:10px;border-top:1px solid var(--sidebar-soft);font-size:11.5px;color:var(--sidebar-ink-dim);}
+
+  /* ---------- MAIN ---------- */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 28px;border-bottom:1px solid var(--line);background:var(--surface);
+  }
+  .topbar h1{font-size:21px;font-weight:600;}
+  .topbar-right{display:flex;align-items:center;gap:16px;}
+  .topbar-date{font-size:12.5px;color:var(--ink-soft);}
+  .search-fake{
+    display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);
+    border-radius:var(--radius-sm);padding:6px 10px;font-size:12.5px;color:var(--ink-faint);width:200px;
+  }
+  .avatar{
+    width:30px;height:30px;border-radius:50%;background:var(--petrol);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;font-family:var(--font-display);
+  }
+  .content{padding:24px 28px 60px;overflow-x:hidden;}
+  .view{display:none;animation:fadeIn .18s ease;}
+  .view.active{display:block;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;}}
+
+  .section-title{font-size:15px;font-weight:600;margin:0 0 12px;color:var(--ink);}
+  .eyebrow{font-size:10.5px;text-transform:uppercase;letter-spacing:0.7px;color:var(--ink-faint);font-weight:600;}
+
+  /* ---------- DASHBOARD ---------- */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;margin-bottom:26px;}
+  .stat-card{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 16px;border-left:3px solid var(--petrol);
+  }
+  .stat-card.c-accent{border-left-color:var(--accent);}
+  .stat-card.c-ok{border-left-color:var(--ok);}
+  .stat-card.c-danger{border-left-color:var(--danger);}
+  .stat-card .eyebrow{margin-bottom:8px;}
+  .stat-num{font-family:var(--font-display);font-size:30px;font-weight:700;line-height:1;}
+  .stat-foot{font-size:11.5px;color:var(--ink-soft);margin-top:4px;}
+
+  .dash-cols{display:grid;grid-template-columns:1.1fr 1fr;gap:18px;}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .row-list{display:flex;flex-direction:column;}
+  .row-item{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:10px 0;border-top:1px solid var(--line-soft);
+  }
+  .row-item:first-child{border-top:none;}
+  .row-item.clickable{cursor:pointer;border-radius:var(--radius-sm);}
+  .row-item.clickable:hover{background:var(--bg);margin:0 -8px;padding:10px 8px;}
+  .row-main{display:flex;align-items:center;gap:10px;min-width:0;}
+  .row-title{font-weight:600;font-size:13.5px;}
+  .row-sub{font-size:11.5px;color:var(--ink-soft);}
+
+  /* ---------- PLATE (signature element) ---------- */
+  .plate{
+    display:inline-flex;align-items:center;border:1.5px solid var(--ink);border-radius:4px;
+    overflow:hidden;height:23px;background:#fff;flex-shrink:0;
+  }
+  .plate .band{
+    background:#1453A4;color:#fff;font-size:6px;font-weight:700;line-height:1.15;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    height:100%;width:13px;letter-spacing:0;
+  }
+  .plate .num{padding:0 7px;font-family:var(--font-mono);font-weight:600;font-size:12.5px;color:var(--ink);letter-spacing:0.5px;}
+  .plate.lg{height:30px;}
+  .plate.lg .band{width:16px;font-size:7px;}
+  .plate.lg .num{font-size:15px;padding:0 9px;}
+
+  /* ---------- STATUS CHIPS ---------- */
+  .status{
+    display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;
+    font-size:11px;font-weight:600;white-space:nowrap;
+  }
+  .status::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .status--progress{background:var(--warn-bg);color:var(--warn);}
+  .status--done{background:var(--ok-bg);color:var(--ok);}
+  .status--waiting{background:var(--danger-bg);color:var(--danger);}
+  .status--scheduled{background:var(--wait-bg);color:var(--wait);}
+
+  /* ---------- TABLE ---------- */
+  .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);}
+  table{width:100%;border-collapse:collapse;min-width:560px;}
+  thead th{
+    text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-faint);
+    padding:11px 14px;border-bottom:1px solid var(--line);font-weight:600;background:var(--bg);
+  }
+  tbody td{padding:12px 14px;border-bottom:1px solid var(--line-soft);font-size:13.5px;vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.clickable:hover{background:var(--bg);cursor:pointer;}
+  .tag-type{font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--bg);color:var(--ink-soft);}
+  .link-open{font-size:12.5px;color:var(--petrol);font-weight:600;cursor:pointer;}
+
+  .toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px;flex-wrap:wrap;}
+  .btn{
+    border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;
+    border-radius:var(--radius-sm);font-size:13px;font-weight:600;
+  }
+  .btn:hover{background:var(--bg);}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn-primary:hover{background:#cf5d23;}
+  .btn-ghost{border:none;background:none;color:var(--petrol);font-weight:600;padding:6px 4px;}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .back-link{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);font-weight:600;background:none;border:none;margin-bottom:14px;}
+  .back-link:hover{color:var(--ink);}
+
+  .doc-chain{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+  .doc-chain-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .doc-chain-label{font-size:10.5px;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-faint);font-weight:600;width:60px;flex-shrink:0;}
+  .doc-chain-btn{
+    display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:20px;
+    border:1px solid var(--line);background:var(--surface);font-size:12.5px;font-weight:600;color:var(--ink);
+  }
+  .doc-chain-btn:hover{border-color:var(--petrol);color:var(--petrol);}
+  .doc-chain-btn.current{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .doc-chain-btn.disabled{color:var(--ink-faint);background:var(--bg);cursor:default;border-style:dashed;}
+  .doc-chain-btn.disabled:hover{border-color:var(--line);color:var(--ink-faint);}
+
+  .filter-tabs{display:flex;gap:6px;}
+  .filter-tab{padding:6px 13px;border-radius:20px;border:1px solid var(--line);background:var(--surface);font-size:12.5px;font-weight:600;color:var(--ink-soft);}
+  .filter-tab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+  /* ---------- DETAIL LAYOUT ---------- */
+  .detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:20px;flex-wrap:wrap;}
+  .detail-title-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .detail-title-row h1{font-size:24px;}
+  .detail-meta{display:flex;gap:18px;margin-top:8px;flex-wrap:wrap;}
+  .meta-item .eyebrow{display:block;margin-bottom:2px;}
+  .meta-val{font-size:13.5px;font-weight:600;}
+  .meta-val.mono{font-family:var(--font-mono);}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;}
+  .field-row{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line-soft);font-size:13px;}
+  .field-row:first-child{border-top:none;}
+  .field-label{color:var(--ink-soft);}
+  .field-val{font-weight:600;}
+
+  .timeline{display:flex;flex-direction:column;}
+  .tl-item{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line-soft);}
+  .tl-item:first-child{border-top:none;}
+  .tl-dot{width:9px;height:9px;border-radius:50%;background:var(--line);margin-top:5px;flex-shrink:0;}
+  .tl-item.current .tl-dot{background:var(--petrol);}
+  .tl-body{flex:1;}
+  .tl-title{font-weight:600;font-size:13.5px;}
+  .tl-sub{font-size:12px;color:var(--ink-soft);margin-top:1px;}
+  .tl-item:not(.current){opacity:0.65;}
+
+  .vehicle-mini{
+    display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:var(--radius-sm);
+    margin-bottom:8px;cursor:pointer;background:var(--surface);
+  }
+  .vehicle-mini:hover{border-color:var(--petrol);}
+  .vehicle-mini .vm-info{flex:1;}
+  .vm-name{font-weight:600;font-size:13.5px;}
+  .vm-sub{font-size:11.5px;color:var(--ink-soft);}
+
+  /* ---------- ORDER VIEW ---------- */
+  .order-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:18px;align-items:start;}
+  .order-line{display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line-soft);font-size:13.5px;}
+  .order-line:first-child{border-top:none;}
+  .order-line .ol-name{font-weight:500;}
+  .order-line .ol-sub{font-size:11.5px;color:var(--ink-soft);}
+  .order-total{display:flex;justify-content:space-between;padding-top:14px;margin-top:6px;border-top:2px solid var(--ink);font-family:var(--font-display);font-size:18px;font-weight:700;}
+  .desc-box{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px;font-size:13px;color:var(--ink-soft);margin-bottom:4px;}
+  .badge-source{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border-radius:var(--radius-sm);background:var(--bg);border:1px solid var(--line);}
+
+  /* ---------- INVOICE ---------- */
+  .invoice-wrap{display:flex;justify-content:center;}
+  .invoice-doc{
+    width:100%;max-width:680px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:38px 40px;
+  }
+  .inv-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:20px;}
+  .inv-shop{font-family:var(--font-display);font-weight:700;font-size:19px;}
+  .inv-shop-sub{font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.5;}
+  .inv-doc-title{text-align:right;font-family:var(--font-display);font-size:16px;font-weight:700;}
+  .inv-doc-sub{text-align:right;font-size:11.5px;color:var(--ink-soft);margin-top:3px;}
+  .inv-parties{display:flex;justify-content:space-between;margin-bottom:22px;gap:24px;}
+  .inv-party .eyebrow{margin-bottom:5px;}
+  .inv-party-name{font-weight:700;font-size:14px;}
+  .inv-party-line{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+  .inv-table{width:100%;border-collapse:collapse;margin-bottom:18px;}
+  .inv-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:0.4px;color:var(--ink-faint);padding:8px 4px;border-bottom:1.5px solid var(--ink);}
+  .inv-table td{padding:9px 4px;border-bottom:1px solid var(--line-soft);font-size:13px;}
+  .inv-table th:last-child, .inv-table td:last-child{text-align:right;}
+  .inv-table th:nth-child(3), .inv-table td:nth-child(3){text-align:right;}
+  .inv-totals{display:flex;justify-content:flex-end;}
+  .inv-totals-box{width:240px;}
+  .inv-tot-row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;}
+  .inv-tot-row.grand{font-family:var(--font-display);font-size:18px;font-weight:700;border-top:2px solid var(--ink);padding-top:9px;margin-top:4px;}
+  .inv-note{margin-top:26px;font-size:11.5px;color:var(--ink-soft);border-top:1px solid var(--line-soft);padding-top:14px;}
+  .inv-actions{display:flex;justify-content:center;gap:10px;margin-top:20px;flex-wrap:wrap;}
+
+  .soon-box{padding:60px 20px;text-align:center;color:var(--ink-faint);}
+  .soon-box h2{font-size:18px;color:var(--ink-soft);margin-bottom:6px;}
+
+  /* ---------- KALENDAR ---------- */
+  .cal-nav{display:flex;align-items:center;gap:10px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;}
+  .cal-day{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px;min-height:170px;}
+  .cal-day.weekend{background:var(--bg);}
+  .cal-day.today{box-shadow:inset 0 0 0 1.5px var(--petrol);}
+  .cal-day-head{font-size:11px;font-weight:700;color:var(--ink-soft);margin-bottom:9px;text-transform:uppercase;letter-spacing:0.3px;}
+  .cal-day.today .cal-day-head{color:var(--petrol);}
+  .cal-appt{border-left:3px solid var(--petrol);border-radius:4px;padding:6px 8px;margin-bottom:6px;cursor:pointer;}
+  .cal-appt:hover{opacity:0.85;}
+  .cal-appt.status-zakazano{background:#EBF2FF;border-left-color:#2D6E77;}
+  .cal-appt.status-realizovano{background:var(--ok-bg);border-left-color:var(--ok);}
+  .cal-appt.status-otkazano{background:var(--danger-bg);border-left-color:var(--danger);}
+  .cal-appt.status-nije{background:var(--warn-bg);border-left-color:var(--warn);}
+  .cal-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;}
+  .cal-legend-item{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);}
+  .cal-legend-dot{width:10px;height:10px;border-radius:50%;}
+  .cal-search{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-sm);padding:6px 10px;font-size:12.5px;width:220px;}
+  .cal-filter-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+  .cal-appt .ca-time{font-weight:700;font-family:var(--font-mono);font-size:10.5px;}
+  .cal-appt .ca-desc{font-size:11.5px;margin-top:2px;line-height:1.3;}
+  .cal-appt .ca-who{color:var(--ink-soft);font-size:10.5px;margin-top:2px;}
+  .cal-empty{font-size:11px;color:var(--ink-faint);padding:14px 0;text-align:center;}
+
+  /* ---------- IZVEŠTAJI ---------- */
+  .subtabs{display:flex;gap:6px;margin-bottom:18px;}
+  .subtab{padding:7px 14px;border-radius:20px;border:1px solid var(--line);background:var(--surface);font-size:12.5px;font-weight:600;color:var(--ink-soft);}
+  .subtab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .report-pane{display:none;}
+  .report-pane.active{display:block;}
+  .mini-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;}
+
+  .bar-chart{display:flex;align-items:flex-end;gap:16px;height:170px;padding:10px 6px 0;border-bottom:1px solid var(--line);margin-bottom:8px;}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+  .bar-val{font-size:10.5px;color:var(--ink-soft);margin-bottom:4px;font-weight:600;}
+  .bar{width:100%;max-width:40px;background:var(--petrol);border-radius:4px 4px 0 0;}
+  .bar.current{background:var(--accent);}
+  .bar-col.out-range{opacity:.3;}
+  .bar-label{font-size:11px;color:var(--ink-soft);margin-top:8px;font-weight:600;text-align:center;}
+
+  .filter-line{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+  .pagination{display:flex;align-items:center;gap:6px;margin-top:12px;justify-content:flex-end;}
+  .page-btn{min-width:32px;height:32px;padding:0 8px;border:1px solid var(--line);background:var(--surface);border-radius:var(--radius-sm);font-size:12.5px;font-weight:600;color:var(--ink-soft);}
+  .page-btn:hover{background:var(--bg);}
+  .page-btn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .page-info{font-size:12px;color:var(--ink-faint);margin-right:6px;}
+  .select-fake{
+    display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);
+    border-radius:var(--radius-sm);padding:7px 12px;font-size:12.5px;font-weight:600;color:var(--ink);
+  }
+  .select-fake svg{width:12px;height:12px;color:var(--ink-faint);}
+
+  /* ---------- MODAL / FORME ---------- */
+  .modal-overlay{position:fixed;inset:0;background:rgba(18,22,26,0.5);display:none;align-items:center;justify-content:center;z-index:80;padding:20px;}
+  .modal-overlay.active{display:flex;}
+  .modal-card{background:var(--surface);border-radius:var(--radius);width:100%;max-width:460px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.28);}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line);}
+  .modal-head h3{font-size:15.5px;font-weight:600;font-family:var(--font-body);}
+  .modal-close{border:none;background:none;font-size:15px;color:var(--ink-soft);width:26px;height:26px;border-radius:50%;line-height:1;}
+  .modal-close:hover{background:var(--bg);}
+  .modal-body{padding:18px 20px 4px;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--line);}
+
+  .field{margin-bottom:14px;}
+  .field-label-top{display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-faint);font-weight:600;margin-bottom:6px;}
+  .field input[type=text], .field input[type=tel], .field input[type=date],
+  .field input[type=time], .field input[type=number], .field select, .field textarea{
+    width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);
+    font-size:13.5px;font-family:var(--font-body);color:var(--ink);background:#fff;
+  }
+  .field input:disabled{color:var(--ink-soft);background:var(--bg);}
+  .field textarea{resize:vertical;min-height:72px;}
+  .field-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+  .pill-group{display:flex;gap:8px;flex-wrap:wrap;}
+  .pill-group label{
+    display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:20px;
+    padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;
+  }
+  .pill-group input[type=radio]{accent-color:var(--accent);margin:0;}
+  .pill-group label:has(input:checked){background:var(--ink);border-color:var(--ink);}
+  .pill-group label:has(input:checked) span{color:#fff;}
+  .field-hint{font-size:11.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;}
+
+  .toast{
+    position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;padding:11px 18px;
+    border-radius:var(--radius-sm);font-size:13px;font-weight:600;opacity:0;transform:translateY(8px);
+    transition:opacity .2s ease, transform .2s ease;z-index:90;pointer-events:none;
+  }
+  .toast.show{opacity:1;transform:none;}
+
+  @media (max-width: 880px){
+    .sidebar{display:none;}
+    .content{padding:18px 16px 40px;}
+    .topbar{padding:14px 16px;}
+    .search-fake{display:none;}
+    .grid-2, .order-grid, .dash-cols{grid-template-columns:1fr;}
+    .invoice-doc{padding:24px 18px;}
+    .cal-grid{grid-template-columns:1fr;}
+    .bar-chart{overflow-x:auto;}
+  }
+
+  @page{
+    size: A4;
+    margin: 15mm;
+  }
+  @media print{
+    .sidebar, .topbar, .no-print, .modal-overlay, .toast{display:none !important;}
+    body, .content{background:#fff;padding:0;margin:0;}
+    .invoice-doc{border:none;box-shadow:none;max-width:100%;padding:0;}
+    .printable{border:none !important;box-shadow:none !important;padding:0 !important;max-width:100% !important;}
+    .order-grid{grid-template-columns:1fr !important;}
+    .detail-head{display:block !important;}
+    .view{display:none;}
+    .view.active{display:block;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="brand" style="cursor:pointer;" onclick="showView('dashboard', document.querySelector('.nav-item[data-view=dashboard]'))">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.97 7.97 0 0 0 0-2l2-1.6-2-3.4-2.4 1a8 8 0 0 0-1.7-1L15 3h-6l-.3 2.4a8 8 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a8 8 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a8 8 0 0 0 1.7 1L9 21h6l.3-2.4a8 8 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6z"/></svg>
+      </div>
+      <div>
+        <div class="brand-text">Karton</div>
+        <div class="brand-sub">servisna knjiga</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item active" data-view="dashboard" onclick="showView('dashboard', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        Početna
+      </button>
+      <button class="nav-item" data-view="clients" onclick="showView('clients', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><circle cx="17.5" cy="9" r="2.6"/><path d="M15.5 14c2.7 0 5 2 5.3 5"/></svg>
+        Klijenti
+      </button>
+      <button class="nav-item" data-view="vehicles" onclick="showView('vehicles', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 17H4a1 1 0 0 1-1-1v-3l2-5a2 2 0 0 1 2-1h8a2 2 0 0 1 2 1l2 5v3a1 1 0 0 1-1 1h-1"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 13h14"/></svg>
+        Vozila
+      </button>
+      <button class="nav-item" data-view="orders" onclick="showView('orders', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v2H9z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        Radni nalozi
+      </button>
+      <button class="nav-item" data-view="calendar" onclick="showView('calendar', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+        Kalendar
+      </button>
+      <button class="nav-item" data-view="invoices" onclick="showView('invoices', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l3 3v17H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Dokumenti
+      </button>
+      <button class="nav-item" data-view="pricelist" onclick="showView('pricelist', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M7 7c0-1.7 2-3 5-3s5 1.3 5 3-2 2.3-5 3-5 1.3-5 3 2 3 5 3 5-1.3 5-3"/></svg>
+        Cenovnik
+      </button>
+      <button class="nav-item" data-view="reports" onclick="showView('reports', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M11 19V4M18 19v-7"/></svg>
+        Izveštaji
+      </button>
+      <div class="nav-group-label">Admin</div>
+      <button class="nav-item" data-view="settings" onclick="showView('settings', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.97 7.97 0 0 0 0-2l2-1.6-2-3.4-2.4 1a8 8 0 0 0-1.7-1L15 3h-6l-.3 2.4a8 8 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a8 8 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a8 8 0 0 0 1.7 1L9 21h6l.3-2.4a8 8 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6z"/></svg>
+        Podešavanja
+      </button>
+    </nav>
+
+    <div class="sidebar-foot">Prijavljen: <strong style="color:#fff;">Dragan M.</strong><br>Servis Tomić</div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <header class="topbar">
+      <h1 id="pageTitle">Početna</h1>
+      <div class="topbar-right">
+        <div class="search-fake" onclick="openModal('global-search','Globalna pretraga')" style="cursor:pointer;width:240px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          Pretraži klijente, vozila, naloge...
+        </div>
+        <div class="topbar-date">Pon, 29. jun 2026.</div>
+        <div class="avatar">DM</div>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ===================== DASHBOARD ===================== -->
+      <section id="view-dashboard" class="view active">
+
+        <!-- DANAS -->
+        <div class="section-title" style="font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:var(--ink-faint);margin-bottom:10px;">Danas</div>
+        <div class="dash-cols" style="margin-bottom:22px;">
+          <div class="panel">
+            <div class="panel-head"><div class="section-title" style="margin:0;">Termini danas</div></div>
+            <div class="row-list">
+              <div class="row-item"><div class="row-main"><div><div class="row-title">09:30 — Zamena ulja i filtera</div><div class="row-sub">Renault Clio · Jovana Ilić · <span class="status status--done" style="font-size:10px;padding:2px 6px;">Realizovano</span></div></div></div></div>
+              <div class="row-item"><div class="row-main"><div><div class="row-title">11:00 — Dijagnostika kvara</div><div class="row-sub">Opel Combo · Pekara Zlatno Zrno · <span class="status status--done" style="font-size:10px;padding:2px 6px;">Realizovano</span></div></div></div></div>
+              <div class="row-item"><div class="row-main"><div><div class="row-title">13:00 — Redovan servis</div><div class="row-sub">VW Passat · Marko Petrović · <span class="status status--scheduled" style="font-size:10px;padding:2px 6px;">Zakazano</span></div></div></div></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><div class="section-title" style="margin:0;">Čekaju delove</div></div>
+            <div class="row-list">
+              <div class="row-item clickable" onclick="showView('vehicle', null)">
+                <div class="row-main"><span class="plate"><span class="band">SRB</span><span class="num">BG123AB</span></span><div><div class="row-title">VW Golf 7</div><div class="row-sub">Marko Petrović</div></div></div>
+                <span class="status status--waiting">Čeka delove</span>
+              </div>
+              <div class="row-item clickable">
+                <div class="row-main"><span class="plate"><span class="band">SRB</span><span class="num">NS789EF</span></span><div><div class="row-title">MB Sprinter</div><div class="row-sub">Trans-Logistika d.o.o.</div></div></div>
+                <span class="status status--waiting">Čeka delove</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- POSAO -->
+        <div class="section-title" style="font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:var(--ink-faint);margin-bottom:10px;">Posao</div>
+        <div class="stat-grid" style="margin-bottom:22px;">
+          <div class="stat-card c-accent" style="cursor:pointer;" onclick="showView('vehicles', null)">
+            <div class="eyebrow">Vozila u servisu</div>
+            <div class="stat-num">5</div>
+            <div class="stat-foot">trenutno aktivnih</div>
+          </div>
+          <div class="stat-card" style="cursor:pointer;" onclick="showView('orders', null)">
+            <div class="eyebrow">Otvoreni nalozi</div>
+            <div class="stat-num">7</div>
+            <div class="stat-foot">ukupno aktivnih</div>
+          </div>
+          <div class="stat-card" style="cursor:pointer;border-left-color:var(--petrol);" onclick="showView('invoices',null)">
+            <div class="eyebrow">Ponude na čekanju</div>
+            <div class="stat-num">1</div>
+            <div class="stat-foot">ističe za 15 dana</div>
+          </div>
+        </div>
+        <div class="panel" style="margin-bottom:22px;">
+          <div class="panel-head"><div class="section-title" style="margin:0;">Vozila trenutno u servisu</div></div>
+          <div class="row-list">
+            <div class="row-item clickable" onclick="showView('vehicle', null)">
+              <div class="row-main"><span class="plate"><span class="band">SRB</span><span class="num">BG123AB</span></span><div><div class="row-title">VW Golf 7</div><div class="row-sub">Marko Petrović</div></div></div>
+              <span class="status status--progress">U radu</span>
+            </div>
+            <div class="row-item clickable">
+              <div class="row-main"><span class="plate"><span class="band">SRB</span><span class="num">NS789EF</span></span><div><div class="row-title">MB Sprinter</div><div class="row-sub">Trans-Logistika d.o.o.</div></div></div>
+              <span class="status status--waiting">Čeka delove</span>
+            </div>
+            <div class="row-item clickable">
+              <div class="row-main"><span class="plate"><span class="band">SRB</span><span class="num">KG321GH</span></span><div><div class="row-title">Renault Clio</div><div class="row-sub">Jovana Ilić</div></div></div>
+              <span class="status status--progress">U radu</span>
+            </div>
+            <div class="row-item clickable">
+              <div class="row-main"><span class="plate"><span class="band">SRB</span><span class="num">BG654IJ</span></span><div><div class="row-title">Opel Combo</div><div class="row-sub">Pekara Zlatno Zrno</div></div></div>
+              <span class="status status--done">Završeno</span>
+            </div>
+            <div class="row-item clickable">
+              <div class="row-main"><span class="plate"><span class="band">SRB</span><span class="num">BG456CD</span></span><div><div class="row-title">VW Passat</div><div class="row-sub">Marko Petrović</div></div></div>
+              <span class="status status--progress">U radu</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- NOVAC -->
+        <div class="section-title" style="font-size:11px;text-transform:uppercase;letter-spacing:0.7px;color:var(--ink-faint);margin-bottom:10px;">Novac</div>
+        <div class="stat-grid" style="margin-bottom:14px;">
+          <div class="stat-card c-ok">
+            <div class="eyebrow">Prihod — jun 2026.</div>
+            <div class="stat-num">184.500</div>
+            <div class="stat-foot">RSD · plaćeni računi</div>
+          </div>
+          <div class="stat-card c-danger">
+            <div class="eyebrow">Nenaplaćeno</div>
+            <div class="stat-num">32.000</div>
+            <div class="stat-foot">RSD · 3 otvorena računa</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div class="section-title" style="margin:0;">Nenaplaćeni računi</div></div>
+          <div class="row-list">
+            <div class="row-item clickable" onclick="showView('invoices', null)">
+              <div class="row-main"><div><div class="row-title">R-2026-0118 · Trans-Logistika d.o.o.</div><div class="row-sub">12.500 RSD · dospeo 05.07.2026.</div></div></div>
+              <span class="status status--waiting" style="white-space:nowrap;">⚠ Dospeo</span>
+            </div>
+            <div class="row-item clickable" onclick="showView('invoices', null)">
+              <div class="row-main"><div><div class="row-title">R-2026-0124 · Jovana Ilić</div><div class="row-sub">9.500 RSD · dospeće 09.07.2026.</div></div></div>
+              <span class="status status--scheduled">Neplaćeno</span>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ===================== KLIJENTI ===================== -->
+      <section id="view-clients" class="view">
+        <div class="toolbar">
+          <div class="filter-tabs">
+            <button class="filter-tab active">Svi</button>
+            <button class="filter-tab">Fizička lica</button>
+            <button class="filter-tab">Pravna lica</button>
+            <button class="filter-tab">Arhivirani</button>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('new-client','Novi klijent')">+ Novi klijent</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tip</th><th>Ime / Naziv</th><th>Kontakt</th><th>Vozila</th><th></th></tr></thead>
+            <tbody>
+              <tr class="clickable" onclick="showView('client-detail', null)">
+                <td><span class="tag-type">Fizičko</span></td>
+                <td><strong>Marko Petrović</strong></td>
+                <td>064 123 4567</td>
+                <td>2 vozila</td>
+                <td><span class="link-open">Otvori →</span></td>
+              </tr>
+              <tr class="clickable" onclick="showView('client-detail', null)">
+                <td><span class="tag-type">Pravno</span></td>
+                <td><strong>Trans-Logistika d.o.o.</strong></td>
+                <td>021 445 110</td>
+                <td>1 vozilo</td>
+                <td><span class="link-open">Otvori →</span></td>
+              </tr>
+              <tr class="clickable" onclick="showView('client-detail', null)">
+                <td><span class="tag-type">Fizičko</span></td>
+                <td><strong>Jovana Ilić</strong></td>
+                <td>063 887 2210</td>
+                <td>1 vozilo</td>
+                <td><span class="link-open">Otvori →</span></td>
+              </tr>
+              <tr class="clickable" onclick="showView('client-detail', null)">
+                <td><span class="tag-type">Pravno</span></td>
+                <td><strong>Pekara Zlatno Zrno</strong></td>
+                <td>011 778 0033</td>
+                <td>1 vozilo</td>
+                <td><span class="link-open">Otvori →</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <span class="page-info">1–4 od 4 klijenata</span>
+          <button class="page-btn">‹</button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn">›</button>
+        </div>
+      </section>
+      <section id="view-client-detail" class="view">
+        <button class="back-link no-print" onclick="goBack()">← Nazad</button>
+        <div class="detail-head">
+          <div>
+            <div class="detail-title-row">
+              <h1>Marko Petrović</h1>
+              <span class="tag-type">Fizičko lice</span>
+            </div>
+            <div class="detail-meta">
+              <div class="meta-item"><span class="eyebrow">Telefon</span><div class="meta-val">064 123 4567</div></div>
+              <div class="meta-item"><span class="eyebrow">Adresa</span><div class="meta-val">Bulevar Oslobođenja 44, Beograd</div></div>
+              <div class="meta-item"><span class="eyebrow">Klijent od</span><div class="meta-val">mart 2021.</div></div>
+            </div>
+          </div>
+          <div class="btn-row no-print">
+            <button class="btn no-print" onclick="openModal('edit-client','Izmena podataka — Marko Petrović')">Izmeni podatke</button>
+            <button class="btn-ghost no-print" style="color:var(--danger);" onclick="archiveRecord('Klijent arhiviran')">Arhiviraj klijenta</button>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <div class="section-title">Vozila</div>
+            <div class="vehicle-mini" onclick="showView('vehicle', null)">
+              <span class="plate"><span class="band">SRB</span><span class="num">BG123AB</span></span>
+              <div class="vm-info"><div class="vm-name">VW Golf 7, 2017.</div><div class="vm-sub">142.300 km</div></div>
+              <span class="status status--progress">U radu</span>
+            </div>
+            <div class="vehicle-mini">
+              <span class="plate"><span class="band">SRB</span><span class="num">BG456CD</span></span>
+              <div class="vm-info"><div class="vm-name">VW Passat, 2015.</div><div class="vm-sub">201.400 km</div></div>
+              <span class="status status--progress">U radu</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-title">Istorija naloga (sva vozila)</div>
+            <div class="card" style="padding:4px 18px;">
+              <div class="field-row"><span class="field-label">12.06.2026 — Zamena ulja, Golf 7</span><span class="field-val">6.500 RSD</span></div>
+              <div class="field-row"><span class="field-label">02.05.2026 — Kočione pločice, Passat</span><span class="field-val">11.200 RSD</span></div>
+              <div class="field-row"><span class="field-label">19.02.2026 — Redovan servis, Golf 7</span><span class="field-val">8.900 RSD</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== SVA VOZILA ===================== -->
+      <section id="view-vehicles" class="view">
+        <div class="toolbar">
+          <div class="filter-tabs">
+            <button class="filter-tab active">Sva</button>
+            <button class="filter-tab">U servisu</button>
+            <button class="filter-tab">Arhivirana</button>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('new-vehicle','Novo vozilo')">+ Novo vozilo</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tablica</th><th>Vozilo</th><th>Gorivo</th><th>Vlasnik</th><th>Kilometraža</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr class="clickable" onclick="showView('vehicle', null)">
+                <td><span class="plate"><span class="band">SRB</span><span class="num">BG123AB</span></span></td>
+                <td>VW Golf 7, 2017.</td><td>Dizel</td><td>Marko Petrović</td><td>142.300 km</td>
+                <td><span class="status status--progress">U servisu</span></td>
+              </tr>
+              <tr class="clickable" onclick="showView('vehicle', null)">
+                <td><span class="plate"><span class="band">SRB</span><span class="num">BG456CD</span></span></td>
+                <td>VW Passat, 2015.</td><td>Dizel</td><td>Marko Petrović</td><td>201.400 km</td>
+                <td><span class="status status--progress">U servisu</span></td>
+              </tr>
+              <tr class="clickable" onclick="showView('vehicle', null)">
+                <td><span class="plate"><span class="band">SRB</span><span class="num">NS789EF</span></span></td>
+                <td>MB Sprinter, 2019.</td><td>Dizel</td><td>Trans-Logistika d.o.o.</td><td>88.200 km</td>
+                <td><span class="status status--waiting">Čeka delove</span></td>
+              </tr>
+              <tr class="clickable" onclick="showView('vehicle', null)">
+                <td><span class="plate"><span class="band">SRB</span><span class="num">KG321GH</span></span></td>
+                <td>Renault Clio, 2018.</td><td>Benzin</td><td>Jovana Ilić</td><td>96.500 km</td>
+                <td><span class="status status--progress">U servisu</span></td>
+              </tr>
+              <tr class="clickable" onclick="showView('vehicle', null)">
+                <td><span class="plate"><span class="band">SRB</span><span class="num">BG654IJ</span></span></td>
+                <td>Opel Combo, 2016.</td><td>Dizel</td><td>Pekara Zlatno Zrno</td><td>134.000 km</td>
+                <td><span class="status status--done">Završeno</span></td>
+              </tr>
+              <tr class="clickable" onclick="showView('vehicle', null)">
+                <td><span class="plate"><span class="band">SRB</span><span class="num">BG789KL</span></span></td>
+                <td>Škoda Octavia, 2020.</td><td>Benzin</td><td>Petar Nikolić</td><td>45.000 km</td>
+                <td><span class="status status--scheduled">Nije u servisu</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===================== VOZILO ===================== -->
+      <section id="view-vehicle" class="view">
+        <button class="back-link no-print" onclick="goBack()">← Nazad</button>
+        <div class="detail-head">
+          <div>
+            <div class="detail-title-row">
+              <span class="plate lg"><span class="band">SRB</span><span class="num">BG123AB</span></span>
+              <h1>VW Golf 7</h1>
+              <span class="status status--progress">U radu</span>
+            </div>
+            <div class="detail-meta">
+              <div class="meta-item"><span class="eyebrow">VIN</span><div class="meta-val mono">WVWZZZ1KZAW123456</div></div>
+              <div class="meta-item"><span class="eyebrow">Godina</span><div class="meta-val">2017.</div></div>
+              <div class="meta-item"><span class="eyebrow">Gorivo</span><div class="meta-val">Dizel</div></div>
+              <div class="meta-item"><span class="eyebrow">Kilometraža</span><div class="meta-val">142.300 km</div></div>
+              <div class="meta-item"><span class="eyebrow">Vlasnik</span><div class="meta-val">Marko Petrović</div></div>
+            </div>
+          </div>
+          <div class="btn-row no-print">
+            <button class="btn btn-primary no-print" onclick="openModal('new-order','Novi radni nalog')">+ Novi radni nalog</button>
+            <button class="btn-ghost no-print" style="color:var(--danger);" onclick="archiveRecord('Vozilo arhivirano')">Arhiviraj vozilo</button>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-title">Istorija vlasništva</div>
+            <div class="timeline">
+              <div class="tl-item current">
+                <div class="tl-dot"></div>
+                <div class="tl-body"><div class="tl-title">Marko Petrović</div><div class="tl-sub">od 12.03.2021. — aktuelno</div></div>
+              </div>
+              <div class="tl-item">
+                <div class="tl-dot"></div>
+                <div class="tl-body"><div class="tl-title">Stevan Tomić</div><div class="tl-sub">05.2017. — 03.2021.</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-title">Istorija registracije</div>
+            <div class="timeline">
+              <div class="tl-item current">
+                <div class="tl-dot"></div>
+                <div class="tl-body"><div class="tl-title">BG-123-AB</div><div class="tl-sub">od 03.2021. — aktuelno</div></div>
+              </div>
+              <div class="tl-item">
+                <div class="tl-dot"></div>
+                <div class="tl-body"><div class="tl-title">NS-998-XY</div><div class="tl-sub">05.2017. — 03.2021.</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-title">Napomena</div>
+            <div class="desc-box">Klijent uvek dolazi bez najave. Specifičnost: kvačilo menjano marta 2026.</div>
+            <button class="btn no-print" style="margin-top:8px;font-size:12px;padding:6px 12px;" onclick="openModal('edit-vehicle-note','Izmeni napomenu')">Izmeni napomenu</button>
+          </div>
+          <div class="card">
+            <div class="section-title">Statistika vozila</div>
+            <div class="field-row"><span class="field-label">Ukupno poseta servisu</span><span class="field-val">4</span></div>
+            <div class="field-row"><span class="field-label">Ukupno potrošeno</span><span class="field-val">48.100 RSD</span></div>
+            <div class="field-row"><span class="field-label">Poslednji servis</span><span class="field-val">29.06.2026.</span></div>
+          </div>
+        </div>
+
+        <div class="section-title">Istorija servisa</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Datum</th><th>Opis</th><th>Izvršio</th><th>Status</th><th>Cena</th></tr></thead>
+            <tbody>
+              <tr class="clickable" onclick="showView('order', null)">
+                <td>29.06.2026</td><td>Zamena kvačila, dijagnostika</td><td>Naš servis — Dragan M.</td>
+                <td><span class="status status--progress">U radu</span></td><td>—</td>
+              </tr>
+              <tr>
+                <td>12.06.2026</td><td>Zamena ulja i filtera</td><td>Naš servis — Dragan M.</td>
+                <td><span class="status status--done">Završeno</span></td><td>6.500 RSD</td>
+              </tr>
+              <tr>
+                <td>03.04.2026</td><td>Farbanje branika (lim/lak)</td><td>Eksterni — "Karoserija Vuk"</td>
+                <td><span class="status status--done">Završeno</span></td><td>22.000 RSD</td>
+              </tr>
+              <tr>
+                <td>19.02.2026</td><td>Redovan servis, 140.000 km</td><td>Naš servis — Dragan M.</td>
+                <td><span class="status status--done">Završeno</span></td><td>8.900 RSD</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===================== SVI RADNI NALOZI ===================== -->
+      <section id="view-orders" class="view">
+        <div class="toolbar">
+          <div class="filter-tabs">
+            <button class="filter-tab active">Svi</button>
+            <button class="filter-tab">Otvoren</button>
+            <button class="filter-tab">U radu</button>
+            <button class="filter-tab">Čeka delove</button>
+            <button class="filter-tab">Završeno</button>
+            <button class="filter-tab">Otkazano</button>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('new-order','Novi radni nalog')">+ Novi radni nalog</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nalog</th><th>Datum</th><th>Vozilo</th><th>Klijent</th><th>Izvršio</th><th>Status</th><th>Cena</th></tr></thead>
+            <tbody>
+              <tr class="clickable" onclick="showView('order', null)">
+                <td>#2026-0143</td><td>29.06.2026</td><td>Golf 7 · BG-123-AB</td><td>Marko Petrović</td><td>Dragan M.</td>
+                <td><span class="status status--progress">U radu</span></td><td>—</td>
+              </tr>
+              <tr class="clickable" onclick="showView('order', null)">
+                <td>#2026-0144</td><td>29.06.2026</td><td>Sprinter · NS-789-EF</td><td>Trans-Logistika d.o.o.</td><td>Nikola S.</td>
+                <td><span class="status status--waiting">Čeka delove</span></td><td>—</td>
+              </tr>
+              <tr class="clickable" onclick="showView('order', null)">
+                <td>#2026-0145</td><td>29.06.2026</td><td>Clio · KG-321-GH</td><td>Jovana Ilić</td><td>Saša P.</td>
+                <td><span class="status status--progress">U radu</span></td><td>—</td>
+              </tr>
+              <tr class="clickable" onclick="showView('order', null)">
+                <td>#2026-0146</td><td>28.06.2026</td><td>Combo · BG-654-IJ</td><td>Pekara Zlatno Zrno</td><td>Dragan M.</td>
+                <td><span class="status status--done">Završeno</span></td><td>7.800 RSD</td>
+              </tr>
+              <tr class="clickable" onclick="showView('order', null)">
+                <td>#2026-0142</td><td>12.06.2026</td><td>Golf 7 · BG-123-AB</td><td>Marko Petrović</td><td>Dragan M.</td>
+                <td><span class="status status--done">Završeno</span></td><td>6.500 RSD</td>
+              </tr>
+              <tr class="clickable" onclick="showView('order', null)">
+                <td>#2026-0131</td><td>03.04.2026</td><td>Golf 7 · BG-123-AB</td><td>Marko Petrović</td><td>Eksterni — Karoserija Vuk</td>
+                <td><span class="status status--done">Završeno</span></td><td>22.000 RSD</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===================== RADNI NALOG ===================== -->
+      <section id="view-order" class="view">
+        <button class="back-link no-print" onclick="goBack()">← Nazad</button>
+        <div class="doc-chain no-print">
+          <div class="doc-chain-row">
+            <span class="doc-chain-label">Posao</span>
+            <span class="doc-chain-btn disabled">Ponuda</span>
+            <span class="doc-chain-btn current">N-2026-0143 · U radu</span>
+          </div>
+          <div class="doc-chain-row">
+            <span class="doc-chain-label">Naplata</span>
+            <span class="doc-chain-btn" onclick="openPredracun143()">PR-2026-0143 · Važi</span>
+            <span class="doc-chain-btn disabled">Račun</span>
+          </div>
+        </div>
+        <div id="nalogPrintable">
+        <div class="detail-head">
+          <div>
+            <div class="detail-title-row">
+              <h1>Radni nalog #2026-0143</h1>
+              <span class="status status--progress">U radu</span>
+            </div>
+            <div class="detail-meta">
+              <div class="meta-item"><span class="eyebrow">Vozilo</span><div class="meta-val">VW Golf 7 · BG-123-AB</div></div>
+              <div class="meta-item"><span class="eyebrow">Klijent</span><div class="meta-val">Marko Petrović</div></div>
+              <div class="meta-item"><span class="eyebrow">Datum prijema</span><div class="meta-val">29.06.2026.</div></div>
+              <div class="meta-item"><span class="eyebrow">Km na prijemu</span><div class="meta-val">142.300 km</div></div>
+            </div>
+          </div>
+          <div class="btn-row no-print">
+            <button class="btn" onclick="openModal('change-status','Promena statusa — Nalog #2026-0143')">Promeni status</button>
+            <button class="btn btn-primary" onclick="openPredracun143()">Prikaz predračuna</button>
+            <button class="btn" onclick="openModal('link-offer','Veži za ponudu')">Veži za ponudu</button>
+            <button class="btn" onclick="window.print()">🖨 Štampaj / PDF</button>
+            <button class="btn" onclick="exportNalogWord()">Izvezi Word</button>
+            <button class="btn" onclick="exportNalogExcel()">Izvezi Excel</button>
+          </div>
+        </div>
+
+        <div class="order-grid">
+          <div>
+            <div class="card">
+              <div class="section-title">Opis kvara / posla</div>
+              <div class="desc-box">Klijent prijavio škripanje pri uključivanju kvačila i povremeno otežano ubacivanje u brzinu. Potrebna dijagnostika i, po nalazu, zamena kompleta kvačila.</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="section-title">Rad majstora <span style="font-weight:400;color:var(--ink-faint);font-size:11.5px;">(interni prikaz)</span></div>
+            <div style="overflow-x:auto;">
+              <table style="width:100%;border-collapse:collapse;">
+                <thead><tr><th>Majstor</th><th>Tip rada</th><th>Stavka</th><th>Sati</th><th>Cena/h</th><th>Iznos</th><th class="no-print"></th></tr></thead>
+                <tbody>
+                  <tr><td>Nikola S.</td><td><span class="tag-type">Električar</span></td><td>Provera senzora kvačila (el. instalacija)</td><td>1</td><td>2.200</td><td>2.200</td><td><span class="link-open no-print" onclick="openModal('reassign-mechanic','Izmena stavke — Nikola S.')">Izmeni</span></td></tr>
+                  <tr><td>Dragan M.</td><td><span class="tag-type">Mehaničar</span></td><td>Zamena kompleta kvačila — rad</td><td>3</td><td>2.500</td><td>7.500</td><td><span class="link-open no-print" onclick="openModal('reassign-mechanic','Izmena stavke — Dragan M.')">Izmeni</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="field-hint no-print" style="margin-top:8px;margin-bottom:0;">Ovaj prikaz vidi samo servis. Na predračunu/računu sati se sabiraju po tipu rada — bez imena majstora.</div>
+
+            <div class="section-title" style="margin-top:18px;">Delovi (uneto ručno na nalog)</div>
+            <div class="order-line">
+              <div><div class="ol-name">Komplet kvačila (LUK)</div><div class="ol-sub">1 kom × 14.500 RSD</div></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span>14.500 RSD</span><span class="link-open no-print" onclick="openModal('edit-part','Izmena dela — Komplet kvačila')">Izmeni</span></div>
+            </div>
+            <div class="order-line">
+              <div><div class="ol-name">Ulje za menjač</div><div class="ol-sub">2 L × 1.100 RSD</div></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span>2.200 RSD</span><span class="link-open no-print" onclick="openModal('edit-part','Izmena dela — Ulje za menjač')">Izmeni</span></div>
+            </div>
+
+            <div class="section-title" style="margin-top:18px;">Eksterni servis</div>
+            <div class="order-line">
+              <div><div class="ol-name">Farbanje branika</div><div class="ol-sub">Karoserija Vuk</div></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span>5.000 RSD</span><span class="link-open no-print" onclick="openModal('edit-external','Izmena — Karoserija Vuk')">Izmeni</span></div>
+            </div>
+
+            <div class="btn-row no-print" style="margin-top:14px;">
+              <button class="btn" style="font-size:12px;padding:6px 12px;" onclick="openModal('add-labor','Dodaj rad')">+ Dodaj rad</button>
+              <button class="btn" style="font-size:12px;padding:6px 12px;" onclick="openModal('add-part','Dodaj deo')">+ Dodaj deo</button>
+              <button class="btn" style="font-size:12px;padding:6px 12px;" onclick="openModal('add-external','Dodaj eksterni servis')">+ Dodaj eksterni servis</button>
+            </div>
+            <div class="order-total"><span>Ukupno</span><span>31.400 RSD</span></div>
+          </div>
+        </div>
+        </div>
+      </section>
+
+      <!-- ===================== PREDRAČUN ===================== -->
+      <section id="view-invoice" class="view">
+        <button class="back-link no-print" onclick="goBack()">← Nazad</button>
+        <div class="doc-chain no-print" id="docChain">
+          <div class="doc-chain-row">
+            <span class="doc-chain-label">Posao</span>
+            <span class="doc-chain-btn" id="chainPonuda">Ponuda</span>
+            <span class="doc-chain-btn" id="chainNalog">Radni nalog</span>
+          </div>
+          <div class="doc-chain-row">
+            <span class="doc-chain-label">Naplata</span>
+            <span class="doc-chain-btn" id="chainPredracun">Predračun</span>
+            <span class="doc-chain-btn" id="chainRacun">Račun</span>
+          </div>
+        </div>
+        <div class="invoice-wrap">
+          <div class="invoice-doc">
+            <div class="inv-head">
+              <div>
+                <div class="inv-shop">SERVIS TOMIĆ</div>
+                <div class="inv-shop-sub">Industrijska 12, 11000 Beograd<br>PIB: 105772231 · Tel: 011 234 5678</div>
+              </div>
+              <div>
+                <div class="inv-doc-title" id="invDocTitle">PREDRAČUN PR-2026-0143</div>
+                <div class="inv-doc-sub" id="invDocSub">Datum: 29.06.2026.<br>Važi do: 14.07.2026.</div>
+                <div style="margin-top:8px;"><span class="status status--scheduled" id="invStatusBadge">Važi</span></div>
+              </div>
+            </div>
+            <div class="inv-parties">
+              <div class="inv-party">
+                <div class="eyebrow">Klijent</div>
+                <div class="inv-party-name">Marko Petrović</div>
+                <div class="inv-party-line">Bulevar Oslobođenja 44, Beograd<br>064 123 4567</div>
+              </div>
+              <div class="inv-party" style="text-align:right;">
+                <div class="eyebrow">Vozilo</div>
+                <div class="inv-party-name">VW Golf 7</div>
+                <div class="inv-party-line">BG-123-AB · 142.300 km</div>
+              </div>
+            </div>
+            <table class="inv-table">
+              <thead><tr><th>Stavka</th><th>Kol.</th><th>Cena</th><th>Iznos</th></tr></thead>
+              <tbody>
+                <tr><td>Električarski rad</td><td>1 h</td><td>2.200</td><td>2.200</td></tr>
+                <tr><td>Mehaničarski rad</td><td>3 h</td><td>2.500</td><td>7.500</td></tr>
+                <tr><td>Komplet kvačila (LUK)</td><td>1 kom</td><td>14.500</td><td>14.500</td></tr>
+                <tr><td>Ulje za menjač</td><td>2 L</td><td>1.100</td><td>2.200</td></tr>
+                <tr><td>Farbanje branika — Karoserija Vuk (eksterno)</td><td>1</td><td>5.000</td><td>5.000</td></tr>
+              </tbody>
+            </table>
+            <div class="inv-totals">
+              <div class="inv-totals-box">
+                <div class="inv-tot-row"><span>Rad</span><span>9.700 RSD</span></div>
+                <div class="inv-tot-row"><span>Delovi</span><span>16.700 RSD</span></div>
+                <div class="inv-tot-row"><span>Eksterni servis</span><span>5.000 RSD</span></div>
+                <div class="inv-tot-row grand"><span>Ukupno</span><span>31.400 RSD</span></div>
+                <div class="inv-tot-row" style="color:var(--ink-faint);font-size:12px;border-top:1px dashed var(--line);padding-top:6px;margin-top:4px;"><span>Informativno u EUR</span><span>~268 EUR</span></div>
+              </div>
+            </div>
+            <div class="inv-note" id="invSnapshotNote">Predračun je informativnog karaktera i ne predstavlja fiskalni račun. Cene važe 15 dana od datuma izdavanja.</div>
+          </div>
+        </div>
+        <div class="inv-actions no-print">
+          <button class="btn" onclick="goBack()">Nazad</button>
+          <button class="btn" onclick="copyDocument()">Kopiraj</button>
+          <span id="btnGroupPonuda" style="display:none;">
+            <button class="btn" onclick="openModal('accept-offer','Prihvati ponudu')">Prihvati ponudu</button>
+            <button class="btn-ghost" style="color:var(--danger);" onclick="rejectOffer()">Odbij ponudu</button>
+          </span>
+          <span id="btnGroupPredracun">
+            <button class="btn" id="btnConvert" onclick="openModal('convert-to-invoice','Pretvori u račun')">Pretvori u račun</button>
+          </span>
+          <span id="btnGroupRacun" style="display:none;">
+            <button class="btn" id="btnMarkPaid" onclick="openModal('mark-paid','Naznači kao plaćeno')">Naznači kao plaćeno</button>
+            <button class="btn-ghost" id="btnCorrect" style="color:var(--danger);" onclick="openModal('correct-invoice','Ispravi račun')">Ispravi račun</button>
+          </span>
+          <button class="btn btn-primary" onclick="window.print()">🖨 Štampaj / PDF</button>
+          <button class="btn" onclick="exportDocWord()">Izvezi Word</button>
+          <button class="btn" onclick="exportDocExcel()">Izvezi Excel</button>
+        </div>
+      </section>
+
+      <!-- ===================== KALENDAR ===================== -->
+      <section id="view-calendar" class="view">
+        <div class="cal-filter-row">
+          <div class="cal-nav">
+            <button class="btn">‹ Prethodna</button>
+            <strong style="font-size:13.5px;">29. jun — 5. jul 2026.</strong>
+            <button class="btn">Sledeća ›</button>
+          </div>
+          <div class="cal-search">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            Pretraži termine...
+          </div>
+          <div class="select-fake">Svi majstori ⌄</div>
+          <button class="btn btn-primary" onclick="openModal('new-appointment','Novi termin')">+ Novi termin</button>
+        </div>
+        <div class="cal-legend">
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#2D6E77;"></div>Zakazano</div>
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--ok);"></div>Realizovano</div>
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--danger);"></div>Otkazano</div>
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--warn);"></div>Nije se pojavio</div>
+        </div>
+        <div class="cal-grid">
+          <div class="cal-day today">
+            <div class="cal-day-head">Pon · 29.06.</div>
+            <div class="cal-appt status-realizovano" onclick="openModal('appointment-status','Status termina — Zamena ulja i filtera')"><div class="ca-time">09:30</div><div class="ca-desc">Zamena ulja i filtera</div><div class="ca-who">Clio · Jovana Ilić · Dragan M.</div><span class="status status--done" style="margin-top:5px;">Realizovano</span></div>
+            <div class="cal-appt status-realizovano" onclick="openModal('appointment-status','Status termina — Dijagnostika kvara')"><div class="ca-time">11:00</div><div class="ca-desc">Dijagnostika kvara</div><div class="ca-who">Combo · Pekara Zlatno Zrno</div><span class="status status--done" style="margin-top:5px;">Realizovano</span></div>
+            <div class="cal-appt status-zakazano" onclick="openModal('appointment-status','Status termina — Redovan servis')"><div class="ca-time">13:00</div><div class="ca-desc">Redovan servis</div><div class="ca-who">Passat · Marko Petrović · Nikola S.</div><span class="status status--scheduled" style="margin-top:5px;">Zakazano</span></div>
+          </div>
+          <div class="cal-day">
+            <div class="cal-day-head">Uto · 30.06.</div>
+            <div class="cal-appt status-zakazano" onclick="openModal('appointment-status','Status termina — Kočione pločice')"><div class="ca-time">10:00</div><div class="ca-desc">Kočione pločice</div><div class="ca-who">Octavia · Petar Nikolić</div><span class="status status--scheduled" style="margin-top:5px;">Zakazano</span></div>
+            <div class="cal-appt status-otkazano" onclick="openModal('appointment-status','Status termina — Priprema za tehnički')"><div class="ca-time">15:30</div><div class="ca-desc">Priprema za tehnički</div><div class="ca-who">Punto · Ana Savić</div><span class="status status--waiting" style="margin-top:5px;">Otkazano</span></div>
+          </div>
+          <div class="cal-day">
+            <div class="cal-day-head">Sre · 01.07.</div>
+            <div class="cal-appt status-zakazano" onclick="openModal('appointment-status','Status termina — Preuzimanje vozila')"><div class="ca-time">09:00</div><div class="ca-desc">Preuzimanje vozila</div><div class="ca-who">Golf 7 · Marko Petrović</div><span class="status status--scheduled" style="margin-top:5px;">Zakazano</span></div>
+            <div class="cal-appt status-nije" onclick="openModal('appointment-status','Status termina — Provera klime')"><div class="ca-time">14:00</div><div class="ca-desc">Provera klime</div><div class="ca-who">Punto · Ana Savić</div><span class="status status--progress" style="margin-top:5px;">Nije se pojavio</span></div>
+          </div>
+          <div class="cal-day">
+            <div class="cal-day-head">Čet · 02.07.</div>
+            <div class="cal-empty">Nema zakazanih termina</div>
+          </div>
+          <div class="cal-day">
+            <div class="cal-day-head">Pet · 03.07.</div>
+            <div class="cal-appt status-zakazano" onclick="openModal('appointment-status','Status termina — Zamena guma (sezonska)')"><div class="ca-time">12:00</div><div class="ca-desc">Zamena guma (sezonska)</div><div class="ca-who">Sprinter · Trans-Logistika</div><span class="status status--scheduled" style="margin-top:5px;">Zakazano</span></div>
+            <div class="cal-appt status-zakazano" onclick="openModal('appointment-status','Status termina — Dijagnostika')"><div class="ca-time">14:00</div><div class="ca-desc">Dijagnostika</div><div class="ca-who">i20 · Milica Stojić · Saša P.</div><span class="status status--scheduled" style="margin-top:5px;">Zakazano</span></div>
+          </div>
+          <div class="cal-day weekend">
+            <div class="cal-day-head">Sub · 04.07.</div>
+            <div class="cal-appt status-zakazano" onclick="openModal('appointment-status','Status termina — Pregled pre puta')"><div class="ca-time">10:00</div><div class="ca-desc">Pregled pre puta</div><div class="ca-who">Clio · Jovana Ilić</div><span class="status status--scheduled" style="margin-top:5px;">Zakazano</span></div>
+          </div>
+          <div class="cal-day weekend">
+            <div class="cal-day-head">Ned · 05.07.</div>
+            <div class="cal-empty">Servis ne radi</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== CENOVNIK ===================== -->
+      <section id="view-pricelist" class="view">
+        <div class="toolbar">
+          <div class="filter-tabs">
+            <button class="filter-tab active">Svi</button>
+            <button class="filter-tab">Aktivni</button>
+            <button class="filter-tab">Neaktivni</button>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('new-mechanic','Novi majstor')">+ Novi majstor</button>
+        </div>
+        <p style="font-size:12.5px;color:var(--ink-soft);margin:-2px 0 16px;">Rad se obračunava po satu, po majstoru koji je odradio posao. Delovi se i dalje unose ručno na svakom radnom nalogu.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Majstor</th><th>Tip rada</th><th>Zaposlen od</th><th>Cena rada</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><strong>Dragan M.</strong></td><td><span class="tag-type">Mehaničar</span></td><td>mart 2019.</td><td>2.500 RSD / h</td><td><span class="status status--done">Aktivan</span></td><td><span class="link-open" onclick="openModal('edit-mechanic','Izmena — Dragan M.')">Izmeni</span></td></tr>
+              <tr><td><strong>Nikola S.</strong></td><td><span class="tag-type">Električar</span></td><td>jun 2022.</td><td>2.200 RSD / h</td><td><span class="status status--done">Aktivan</span></td><td><span class="link-open" onclick="openModal('edit-mechanic','Izmena — Nikola S.')">Izmeni</span></td></tr>
+              <tr><td><strong>Saša P.</strong></td><td><span class="tag-type">Mehaničar</span></td><td>januar 2024.</td><td>2.000 RSD / h</td><td><span class="status status--done">Aktivan</span></td><td><span class="link-open" onclick="openModal('edit-mechanic','Izmena — Saša P.')">Izmeni</span></td></tr>
+              <tr><td><strong>Ivan T.</strong></td><td><span class="tag-type">Mehaničar</span></td><td>2017. — 2023.</td><td>2.300 RSD / h</td><td><span class="status status--waiting">Neaktivan</span></td><td><span class="link-open" onclick="openModal('edit-mechanic','Izmena — Ivan T.')">Izmeni</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===================== DOKUMENTI ===================== -->
+      <section id="view-invoices" class="view">
+        <div class="toolbar">
+          <div class="filter-tabs">
+            <button class="filter-tab active">Sve</button>
+            <button class="filter-tab">Ponude</button>
+            <button class="filter-tab">Predračuni</button>
+            <button class="filter-tab">Računi</button>
+            <button class="filter-tab">Neplaćeno</button>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('new-invoice','Novi dokument')">+ Novi dokument</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Broj</th><th>Klijent</th><th>Vozilo</th><th>Datum</th><th>Tip</th><th>Status</th><th>RSD</th><th>EUR</th><th></th></tr></thead>
+            <tbody>
+              <tr class="clickable" onclick="openPonuda139()">
+                <td>P-2026-0139</td><td>Marko Petrović</td><td>Golf 7 · BG-123-AB</td><td>20.06.2026</td>
+                <td><span class="tag-type">Ponuda</span></td><td><span class="status status--scheduled">Na čekanju</span></td><td>9.700</td><td style="color:var(--ink-faint);">~83</td>
+                <td><span class="link-open">Otvori →</span></td>
+              </tr>
+              <tr class="clickable" onclick="openPredracun143()">
+                <td>PR-2026-0143</td><td>Marko Petrović</td><td>Golf 7 · BG-123-AB</td><td>29.06.2026</td>
+                <td><span class="tag-type">Predračun</span></td><td><span class="status status--scheduled">Važi do 14.07.</span></td><td>31.400</td><td style="color:var(--ink-faint);">~268</td>
+                <td><span class="link-open">Otvori →</span></td>
+              </tr>
+              <tr class="clickable" onclick="openPredracun142()">
+                <td>PR-2026-0142</td><td>Marko Petrović</td><td>Golf 7 · BG-123-AB</td><td>12.06.2026</td>
+                <td><span class="tag-type">Predračun</span></td><td><span class="status status--done">Iskorišćen</span></td><td>6.500</td><td>—</td>
+                <td><span class="link-open">Otvori →</span></td>
+              </tr>
+              <tr class="clickable" onclick="openRacun140()">
+                <td>R-2026-0140</td><td>Marko Petrović</td><td>Golf 7 · BG-123-AB</td><td>12.06.2026</td>
+                <td><span class="tag-type">Račun</span></td><td><span class="status status--done">Plaćeno</span></td><td>6.500</td><td>—</td>
+                <td><span class="link-open">Otvori →</span></td>
+              </tr>
+              <tr>
+                <td>R-2026-0118</td><td>Trans-Logistika d.o.o.</td><td>Sprinter · NS-789-EF</td><td>20.06.2026</td>
+                <td><span class="tag-type">Račun</span></td><td><span class="status status--waiting">⚠ Neplaćeno</span></td><td>12.500</td><td>—</td>
+                <td style="display:flex;gap:10px;"><span class="link-open" onclick="openRacun118()">Otvori →</span><span class="link-open" onclick="openModal('mark-paid','Naznači kao plaćeno — R-2026-0118')">Naplati</span></td>
+              </tr>
+              <tr>
+                <td>R-2026-0124</td><td>Jovana Ilić</td><td>Renault Clio · KG-321-GH</td><td>24.06.2026</td>
+                <td><span class="tag-type">Račun</span></td><td><span class="status status--waiting">Neplaćeno</span></td><td>9.500</td><td>—</td>
+                <td style="display:flex;gap:10px;"><span class="link-open" onclick="openRacun124()">Otvori →</span><span class="link-open" onclick="openModal('mark-paid','Naznači kao plaćeno — R-2026-0124')">Naplati</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <span class="page-info">1–6 od 6 dokumenata</span>
+          <button class="page-btn">‹</button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn">›</button>
+        </div>
+      </section>
+
+      <!-- ===================== IZVEŠTAJI ===================== -->
+      <section id="view-reports" class="view">
+        <div class="subtabs">
+          <button class="subtab active" data-pane="income" onclick="showReportTab('income', this)">Prihod</button>
+          <button class="subtab" data-pane="search" onclick="showReportTab('search', this)">Pretraga naloga</button>
+          <button class="subtab" data-pane="mechanic" onclick="showReportTab('mechanic', this)">Po majstoru</button>
+        </div>
+
+        <!-- PRIHOD -->
+        <div id="pane-income" class="report-pane active">
+          <div class="filter-line">
+            <div class="field" style="margin:0;width:auto;">
+              <label class="field-label-top" style="margin-bottom:4px;">Od</label>
+              <input type="date" id="incomeOd" value="2026-06-01" onchange="applyIncomeFilter()" style="width:auto;">
+            </div>
+            <div class="field" style="margin:0;width:auto;">
+              <label class="field-label-top" style="margin-bottom:4px;">Do</label>
+              <input type="date" id="incomeDo" value="2026-06-29" onchange="applyIncomeFilter()" style="width:auto;">
+            </div>
+            <button class="btn-ghost" style="margin-top:18px;" onclick="setIncomeRange('2026-01-01','2026-06-29')">Cela godina</button>
+          </div>
+          <div class="mini-stats">
+            <div class="stat-card c-ok"><div class="eyebrow">Prihod — izabrani period</div><div class="stat-num" id="statTotal">184.500</div><div class="stat-foot">RSD</div></div>
+            <div class="stat-card"><div class="eyebrow">Broj naloga</div><div class="stat-num" id="statCount">7</div><div class="stat-foot">u periodu</div></div>
+            <div class="stat-card"><div class="eyebrow">Prosečna vrednost</div><div class="stat-num" id="statAvg">26.357</div><div class="stat-foot">RSD po nalogu</div></div>
+          </div>
+          <div class="panel">
+            <div class="section-title">Prihod po mesecima — 2026.</div>
+            <div class="bar-chart" id="incomeChart">
+              <div class="bar-col" data-ym="2026-01" data-income="142000" data-orders="5"><div class="bar-val">142.000</div><div class="bar" style="height:77%;"></div><div class="bar-label">Jan</div></div>
+              <div class="bar-col" data-ym="2026-02" data-income="158500" data-orders="6"><div class="bar-val">158.500</div><div class="bar" style="height:86%;"></div><div class="bar-label">Feb</div></div>
+              <div class="bar-col" data-ym="2026-03" data-income="171000" data-orders="6"><div class="bar-val">171.000</div><div class="bar" style="height:93%;"></div><div class="bar-label">Mar</div></div>
+              <div class="bar-col" data-ym="2026-04" data-income="165000" data-orders="6"><div class="bar-val">165.000</div><div class="bar" style="height:89%;"></div><div class="bar-label">Apr</div></div>
+              <div class="bar-col" data-ym="2026-05" data-income="179800" data-orders="7"><div class="bar-val">179.800</div><div class="bar" style="height:97%;"></div><div class="bar-label">Maj</div></div>
+              <div class="bar-col" data-ym="2026-06" data-income="184500" data-orders="7"><div class="bar-val">184.500</div><div class="bar current" style="height:100%;"></div><div class="bar-label">Jun*</div></div>
+            </div>
+            <div class="stat-foot">Zasenčeni stubići su van izabranog perioda · * jun je u toku, prikazano do danas</div>
+          </div>
+        </div>
+
+        <!-- PRETRAGA NALOGA -->
+        <div id="pane-search" class="report-pane">
+          <div class="filter-line">
+            <div class="search-fake" style="width:240px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              Klijent, vozilo ili tablica...
+            </div>
+            <div class="select-fake">Svi klijenti ⌄</div>
+            <div class="select-fake">Svako vozilo ⌄</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Datum</th><th>Nalog</th><th>Vozilo</th><th>Klijent</th><th>Status</th><th>Cena</th></tr></thead>
+              <tbody>
+                <tr class="clickable" onclick="showView('order', null)"><td>29.06.2026</td><td>#2026-0143</td><td>Golf 7 · BG-123-AB</td><td>Marko Petrović</td><td><span class="status status--progress">U radu</span></td><td>—</td></tr>
+                <tr><td>12.06.2026</td><td>#2026-0142</td><td>Golf 7 · BG-123-AB</td><td>Marko Petrović</td><td><span class="status status--done">Završeno</span></td><td>6.500 RSD</td></tr>
+                <tr><td>02.05.2026</td><td>#2026-0139</td><td>Passat · BG-456-CD</td><td>Marko Petrović</td><td><span class="status status--done">Završeno</span></td><td>11.200 RSD</td></tr>
+                <tr><td>03.04.2026</td><td>#2026-0131</td><td>Golf 7 · BG-123-AB</td><td>Marko Petrović</td><td><span class="status status--done">Završeno (eksterni)</span></td><td>22.000 RSD</td></tr>
+                <tr><td>19.02.2026</td><td>#2026-0118</td><td>Golf 7 · BG-123-AB</td><td>Marko Petrović</td><td><span class="status status--done">Završeno</span></td><td>8.900 RSD</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- PO MAJSTORU -->
+        <div id="pane-mechanic" class="report-pane">
+          <div class="filter-line">
+            <div class="select-fake">👤 Dragan M. ⌄</div>
+            <div class="select-fake">Ovaj mesec ⌄</div>
+            <button class="btn-ghost">Od početka rada (mart 2019.)</button>
+          </div>
+          <div class="mini-stats">
+            <div class="stat-card"><div class="eyebrow">Broj naloga</div><div class="stat-num">5</div><div class="stat-foot">jun 2026.</div></div>
+            <div class="stat-card c-ok"><div class="eyebrow">Vrednost rada</div><div class="stat-num">38.700</div><div class="stat-foot">RSD, samo rad (bez delova)</div></div>
+            <div class="stat-card"><div class="eyebrow">Zaposlen od</div><div class="stat-num" style="font-size:20px;">mart 2019.</div></div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Datum</th><th>Nalog</th><th>Vozilo</th><th>Klijent</th><th>Vrednost rada</th></tr></thead>
+              <tbody>
+                <tr><td>29.06.2026</td><td>#2026-0143</td><td>Golf 7</td><td>Marko Petrović</td><td>7.500 RSD</td></tr>
+                <tr><td>12.06.2026</td><td>#2026-0142</td><td>Golf 7</td><td>Marko Petrović</td><td>2.500 RSD</td></tr>
+                <tr><td>08.06.2026</td><td>#2026-0140</td><td>Combo</td><td>Pekara Zlatno Zrno</td><td>3.000 RSD</td></tr>
+                <tr><td>02.05.2026</td><td>#2026-0139</td><td>Passat</td><td>Marko Petrović</td><td>4.000 RSD</td></tr>
+                <tr><td>19.02.2026</td><td>#2026-0118</td><td>Golf 7</td><td>Marko Petrović</td><td>3.200 RSD</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== PODEŠAVANJA ===================== -->
+      <section id="view-settings" class="view">
+        <div class="field-hint" style="background:var(--warn-bg);color:var(--warn);padding:10px 14px;border-radius:var(--radius-sm);margin-bottom:20px;font-weight:600;">🔒 Ovaj ekran je dostupan samo administratoru.</div>
+        <div class="grid-2">
+          <div>
+            <div class="card">
+              <div class="section-title">Podaci servisa</div>
+              <div class="field"><label class="field-label-top">Naziv servisa</label><input type="text" value="Servis Tomić"></div>
+              <div class="field"><label class="field-label-top">Adresa</label><input type="text" value="Industrijska 12, 11000 Beograd"></div>
+              <div class="field"><label class="field-label-top">PIB</label><input type="text" value="105772231"></div>
+              <div class="field"><label class="field-label-top">Telefon</label><input type="tel" value="011 234 5678"></div>
+              <div class="field"><label class="field-label-top">Logo</label><input type="text" placeholder="Dodaj logo (URL ili upload)"></div>
+              <button class="btn btn-primary" style="margin-top:8px;">Sačuvaj podatke</button>
+            </div>
+            <div class="card">
+              <div class="section-title">Radno vreme</div>
+              <div class="field field-grid2">
+                <div><label class="field-label-top">Od</label><input type="time" value="08:00"></div>
+                <div><label class="field-label-top">Do</label><input type="time" value="18:00"></div>
+              </div>
+              <div class="field-hint">Termini se ne mogu zakazivati van ovog perioda.</div>
+              <button class="btn btn-primary">Sačuvaj</button>
+            </div>
+          </div>
+          <div>
+            <div class="card">
+              <div class="section-title">Podsetnici na email</div>
+              <div class="row-list">
+                <div class="row-item">
+                  <div class="row-main"><div><div class="row-title">24h pre termina</div><div class="row-sub">Šalje se u 09:00</div></div></div>
+                  <span class="status status--done">Aktivan</span>
+                </div>
+                <div class="row-item">
+                  <div class="row-main"><div><div class="row-title">2h pre termina</div><div class="row-sub">Šalje se u vreme termina − 2h</div></div></div>
+                  <span class="status status--done">Aktivan</span>
+                </div>
+              </div>
+              <div class="field field-grid2" style="margin-top:12px;">
+                <div><label class="field-label-top">Novo vreme pre (min)</label><input type="number" placeholder="npr. 60"></div>
+                <div><label class="field-label-top">Vreme slanja</label><input type="time" value="09:00"></div>
+              </div>
+              <button class="btn" style="font-size:12px;padding:6px 12px;">+ Dodaj podsetnik</button>
+            </div>
+            <div class="card">
+              <div class="section-title">Backup</div>
+              <div class="field"><label class="field-label-top">Tip backupa</label>
+                <select><option>Lokalno + Cloud (kombinovano)</option><option>Samo lokalno</option><option>Samo cloud</option></select>
+              </div>
+              <div class="field"><label class="field-label-top">Cloud destinacija</label><input type="text" placeholder="npr. Google Drive folder"></div>
+              <div class="field"><label class="field-label-top">Učestalost</label><select><option>Dnevno</option><option>Nedeljno</option><option>Na svakih 12h</option></select></div>
+              <button class="btn btn-primary">Sačuvaj backup podešavanja</button>
+            </div>
+            <div class="card">
+              <div class="section-title">Prikaz</div>
+              <div class="field"><label class="field-label-top">Redova po strani (paginacija)</label><input type="number" value="20" min="5" max="100"></div>
+              <button class="btn btn-primary">Sačuvaj</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL ============ -->
+<div id="modalOverlay" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+  <div class="modal-card" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3 id="modalTitle">Forma</h3>
+      <button class="modal-close" onclick="closeModal()" aria-label="Zatvori">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal()">Otkaži</button>
+      <button class="btn btn-primary" onclick="saveModal()">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<!-- ============ ŠABLONI FORMI ============ -->
+<template id="tpl-edit-vehicle-note">
+  <div class="field"><label class="field-label-top">Napomena vozila</label><textarea style="min-height:100px;">Klijent uvek dolazi bez najave. Specifičnost: kvačilo menjano marta 2026.</textarea></div>
+  <div class="field-hint">Ova napomena je trajno vidljiva na kartici vozila i nije vezana za nijedan radni nalog.</div>
+</template>
+
+<template id="tpl-global-search">
+  <div class="field"><input type="text" placeholder="Pretražite klijente, vozila, naloge..." style="font-size:14px;padding:10px 12px;"></div>
+  <div style="margin-top:4px;">
+    <div class="eyebrow" style="margin-bottom:6px;">Klijenti</div>
+    <div class="row-item clickable" onclick="closeModal(); showView('client-detail', null);">
+      <div class="row-main"><div><div class="row-title">Marko Petrović</div><div class="row-sub">064 123 4567 · 2 vozila</div></div></div>
+    </div>
+    <div class="eyebrow" style="margin-bottom:6px;margin-top:12px;">Vozila</div>
+    <div class="row-item clickable" onclick="closeModal(); showView('vehicle', null);">
+      <div class="row-main">
+        <span class="plate"><span class="band">SRB</span><span class="num">BG123AB</span></span>
+        <div><div class="row-title">VW Golf 7, 2017.</div><div class="row-sub">Marko Petrović</div></div>
+      </div>
+    </div>
+    <div class="eyebrow" style="margin-bottom:6px;margin-top:12px;">Radni nalozi</div>
+    <div class="row-item clickable" onclick="closeModal(); showView('order', null);">
+      <div class="row-main"><div><div class="row-title">#2026-0143 — Zamena kvačila</div><div class="row-sub">Golf 7 · 29.06.2026.</div></div></div>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-link-offer">
+  <div class="field"><label class="field-label-top">Izaberi ponudu</label>
+    <select>
+      <option>Ponuda 2026-0139 — Golf 7 (prihvaćena, 20.06.2026.)</option>
+    </select>
+  </div>
+  <div class="field-hint">Samo ponude u statusu "Prihvaćena" mogu se vezati za radni nalog.</div>
+</template>
+
+<template id="tpl-appointment-status">
+  <div class="field"><label class="field-label-top">Status termina</label>
+    <select id="apptStatusSelect" onchange="toggleApptNalog(this)">
+      <option>Zakazano</option>
+      <option>Realizovano</option>
+      <option>Otkazano</option>
+      <option>Nije se pojavio</option>
+    </select>
+  </div>
+  <div class="field" id="grpApptNalog" style="display:none;">
+    <label class="field-label-top">Radni nalog</label>
+    <select>
+      <option>Napravi novi nalog</option>
+      <option>#2026-0143 — Golf 7</option>
+      <option>#2026-0145 — Clio</option>
+      <option>#2026-0146 — Combo</option>
+    </select>
+  </div>
+  <div class="field-hint">Kad termin postane "Realizovano", vezuje se za konkretan radni nalog — postojeći ili novi.</div>
+</template>
+
+<template id="tpl-new-client">
+  <div class="field">
+    <label class="field-label-top">Tip lica</label>
+    <div class="pill-group">
+      <label><input type="radio" name="tipLica" checked><span>Fizičko lice</span></label>
+      <label><input type="radio" name="tipLica"><span>Pravno lice</span></label>
+    </div>
+  </div>
+  <div class="field"><label class="field-label-top">Ime i prezime / Naziv firme</label><input type="text" placeholder="npr. Marko Petrović"></div>
+  <div class="field"><label class="field-label-top">PIB / JMBG</label><input type="text" placeholder="obavezno za pravna lica"></div>
+  <div class="field"><label class="field-label-top">Telefon</label><input type="tel" placeholder="06x xxx xxxx"></div>
+  <div class="field"><label class="field-label-top">Adresa</label><input type="text" placeholder="ulica, broj, mesto"></div>
+</template>
+
+<template id="tpl-edit-client">
+  <div class="field">
+    <label class="field-label-top">Tip lica</label>
+    <div class="pill-group">
+      <label><input type="radio" name="tipLicaE" checked><span>Fizičko lice</span></label>
+      <label><input type="radio" name="tipLicaE"><span>Pravno lice</span></label>
+    </div>
+  </div>
+  <div class="field"><label class="field-label-top">Ime i prezime</label><input type="text" value="Marko Petrović"></div>
+  <div class="field"><label class="field-label-top">Telefon</label><input type="tel" value="064 123 4567"></div>
+  <div class="field"><label class="field-label-top">Adresa</label><input type="text" value="Bulevar Oslobođenja 44, Beograd"></div>
+</template>
+
+<template id="tpl-new-order">
+  <div class="field"><label class="field-label-top">Vozilo</label>
+    <select>
+      <option>VW Golf 7 — BG-123-AB</option>
+      <option>VW Passat — BG-456-CD</option>
+      <option>MB Sprinter — NS-789-EF</option>
+      <option>Renault Clio — KG-321-GH</option>
+      <option>Opel Combo — BG-654-IJ</option>
+    </select>
+  </div>
+  <div class="field"><label class="field-label-top">Datum prijema</label><input type="date" value="2026-06-29"></div>
+  <div class="field"><label class="field-label-top">Kilometraža na prijemu</label><input type="number" placeholder="npr. 142300"></div>
+  <div class="field"><label class="field-label-top">Opis kvara / posla</label><textarea placeholder="Opišite prijavljeni problem..."></textarea></div>
+  <div class="field-hint">Majstor, delovi i eventualno eksterni servis dodaju se kasnije, kroz nalog — nisu potrebni pri otvaranju.</div>
+</template>
+
+<template id="tpl-change-status">
+  <div class="field"><label class="field-label-top">Status naloga</label>
+    <select><option>Otvoren</option><option>U radu</option><option>Čeka delove</option><option>Završeno</option><option>Otkazano</option></select>
+  </div>
+  <div class="field-hint">Promena na "Završeno" automatski upisuje datum završetka i zaključava nalog za dalje izmene stavki.</div>
+</template>
+
+<template id="tpl-add-labor">
+  <div class="field"><label class="field-label-top">Naziv rada</label><input type="text" placeholder="npr. Zamena filtera kabine"></div>
+  <div class="field"><label class="field-label-top">Majstor</label>
+    <select id="laborMajstor" onchange="fillLaborRate(this)">
+      <option value="2500">Dragan M. — Mehaničar</option>
+      <option value="2200">Nikola S. — Električar</option>
+      <option value="2000">Saša P. — Mehaničar</option>
+    </select>
+  </div>
+  <div class="field field-grid2">
+    <div><label class="field-label-top">Sati</label><input type="number" value="1" min="0" step="0.5"></div>
+    <div><label class="field-label-top">Cena po satu (RSD)</label><input type="number" id="laborRate" value="2500"></div>
+  </div>
+  <div class="field-hint">Cena po satu se predlaže iz cenovnika majstora — može se ručno izmeniti.</div>
+</template>
+
+<template id="tpl-add-part">
+  <div class="field"><label class="field-label-top">Naziv dela</label><input type="text" placeholder="npr. Filter kabine"></div>
+  <div class="field field-grid2">
+    <div><label class="field-label-top">Količina</label><input type="number" value="1" min="0" step="1"></div>
+    <div><label class="field-label-top">Cena po jedinici (RSD)</label><input type="number" placeholder="0"></div>
+  </div>
+</template>
+
+<template id="tpl-add-external">
+  <div class="field"><label class="field-label-top">Naziv eksterne radnje</label><input type="text" placeholder="npr. Karoserija Vuk"></div>
+  <div class="field"><label class="field-label-top">Opis posla</label><input type="text" placeholder="npr. Farbanje branika"></div>
+  <div class="field"><label class="field-label-top">Cena (RSD)</label><input type="number" placeholder="0"></div>
+  <div class="field"><label class="field-label-top">Napomena (opciono)</label><input type="text" placeholder="npr. broj njihovog računa"></div>
+  <div class="field-hint">Posao koji je odradila treća strana — prikazuje se na nalogu i na računu, bez vezivanja za našeg majstora.</div>
+</template>
+
+<template id="tpl-edit-part">
+  <div class="field"><label class="field-label-top">Naziv dela</label><input type="text" value="Komplet kvačila (LUK)"></div>
+  <div class="field field-grid2">
+    <div><label class="field-label-top">Količina</label><input type="number" value="1" min="0" step="1"></div>
+    <div><label class="field-label-top">Cena po jedinici (RSD)</label><input type="number" value="14500"></div>
+  </div>
+  <button type="button" class="btn-ghost" style="color:var(--danger);padding:4px 0;" onclick="closeModal(); showToast('Deo uklonjen sa naloga');">✕ Ukloni deo sa naloga</button>
+</template>
+
+<template id="tpl-edit-external">
+  <div class="field"><label class="field-label-top">Naziv eksterne radnje</label><input type="text" value="Karoserija Vuk"></div>
+  <div class="field"><label class="field-label-top">Opis posla</label><input type="text" value="Farbanje branika"></div>
+  <div class="field"><label class="field-label-top">Cena (RSD)</label><input type="number" value="5000"></div>
+  <div class="field"><label class="field-label-top">Napomena (opciono)</label><input type="text" placeholder="npr. broj njihovog računa"></div>
+  <button type="button" class="btn-ghost" style="color:var(--danger);padding:4px 0;" onclick="closeModal(); showToast('Eksterni servis uklonjen sa naloga');">✕ Ukloni sa naloga</button>
+</template>
+
+<template id="tpl-reassign-mechanic">
+  <div class="field"><label class="field-label-top">Majstor</label>
+    <select><option selected>Dragan M. — Mehaničar</option><option>Nikola S. — Električar</option><option>Saša P. — Mehaničar</option></select>
+  </div>
+  <div class="field"><label class="field-label-top">Sati rada</label><input type="number" value="3" min="0" step="0.5"></div>
+  <button type="button" class="btn-ghost" style="color:var(--danger);padding:4px 0;" onclick="removeMechanicFromOrder()">✕ Ukloni majstora sa naloga</button>
+</template>
+
+<template id="tpl-new-appointment">
+  <div class="field field-grid2">
+    <div><label class="field-label-top">Datum</label><input type="date" value="2026-07-02"></div>
+    <div><label class="field-label-top">Vreme</label><input type="time" value="10:00"></div>
+  </div>
+  <div class="field"><label class="field-label-top">Klijent</label>
+    <select><option>Marko Petrović</option><option>Jovana Ilić</option><option>Trans-Logistika d.o.o.</option><option>Pekara Zlatno Zrno</option></select>
+  </div>
+  <div class="field"><label class="field-label-top">Vozilo</label>
+    <select><option>VW Golf 7 — BG-123-AB</option><option>VW Passat — BG-456-CD</option></select>
+  </div>
+  <div class="field"><label class="field-label-top">Napomena</label><input type="text" placeholder="kratak opis termina"></div>
+</template>
+
+<template id="tpl-new-mechanic">
+  <div class="field"><label class="field-label-top">Ime i prezime</label><input type="text" placeholder="npr. Vladimir Đorđević"></div>
+  <div class="field">
+    <label class="field-label-top">Tip rada / specijalnost</label>
+    <div class="pill-group">
+      <label><input type="radio" name="tipRadaNovi" checked><span>Mehaničar</span></label>
+      <label><input type="radio" name="tipRadaNovi"><span>Električar</span></label>
+      <label><input type="radio" name="tipRadaNovi"><span>Drugo</span></label>
+    </div>
+  </div>
+  <div class="field"><label class="field-label-top">Datum zaposlenja</label><input type="date" value="2026-06-29"></div>
+  <div class="field"><label class="field-label-top">Cena rada po satu (RSD)</label><input type="number" placeholder="2000"></div>
+  <div class="field"><label class="field-label-top">Status</label><select><option>Aktivan</option><option>Neaktivan</option></select></div>
+</template>
+
+<template id="tpl-edit-mechanic">
+  <div class="field"><label class="field-label-top">Ime i prezime</label><input type="text" value="Dragan M."></div>
+  <div class="field">
+    <label class="field-label-top">Tip rada / specijalnost</label>
+    <div class="pill-group">
+      <label><input type="radio" name="tipRadaIzmena" checked><span>Mehaničar</span></label>
+      <label><input type="radio" name="tipRadaIzmena"><span>Električar</span></label>
+      <label><input type="radio" name="tipRadaIzmena"><span>Drugo</span></label>
+    </div>
+  </div>
+  <div class="field"><label class="field-label-top">Datum zaposlenja</label><input type="date" value="2019-03-15"></div>
+  <div class="field"><label class="field-label-top">Cena rada po satu (RSD)</label><input type="number" value="2500"></div>
+  <div class="field"><label class="field-label-top">Status</label><select><option selected>Aktivan</option><option>Neaktivan</option></select></div>
+</template>
+
+<template id="tpl-new-vehicle">
+  <div class="field"><label class="field-label-top">VIN broj</label><input type="text" placeholder="17 karaktera"></div>
+  <div class="field field-grid2">
+    <div><label class="field-label-top">Marka</label><input type="text" placeholder="npr. VW"></div>
+    <div><label class="field-label-top">Model</label><input type="text" placeholder="npr. Golf 7"></div>
+  </div>
+  <div class="field field-grid2">
+    <div><label class="field-label-top">Godina</label><input type="number" placeholder="2018"></div>
+    <div><label class="field-label-top">Tablica</label><input type="text" placeholder="BG-000-AA"></div>
+  </div>
+  <div class="field"><label class="field-label-top">Gorivo</label>
+    <select><option>Dizel</option><option>Benzin</option><option>Hibrid</option><option>Električno</option><option>Drugo</option></select>
+  </div>
+  <div class="field"><label class="field-label-top">Vlasnik</label>
+    <select><option>Marko Petrović</option><option>Jovana Ilić</option><option>Trans-Logistika d.o.o.</option><option>Pekara Zlatno Zrno</option><option>— Novi klijent —</option></select>
+  </div>
+  <div class="field"><label class="field-label-top">Napomena (opciono)</label><textarea placeholder="Slobodan tekst koji ostaje trajno na vozilu..."></textarea></div>
+</template>
+
+<template id="tpl-new-invoice">
+  <div class="field">
+    <label class="field-label-top">Tip dokumenta</label>
+    <div class="pill-group">
+      <label><input type="radio" name="tipDok" checked><span>Ponuda</span></label>
+      <label><input type="radio" name="tipDok"><span>Predračun</span></label>
+    </div>
+  </div>
+  <div class="field"><label class="field-label-top">Klijent</label>
+    <select><option>Marko Petrović</option><option>Jovana Ilić</option><option>Trans-Logistika d.o.o.</option><option>Pekara Zlatno Zrno</option></select>
+  </div>
+  <div class="field"><label class="field-label-top">Vozilo</label>
+    <select><option>VW Golf 7 — BG-123-AB</option><option>VW Passat — BG-456-CD</option></select>
+  </div>
+  <div class="field"><label class="field-label-top">Radni nalog</label>
+    <select><option>Bez naloga — ručni unos stavki</option><option>#2026-0143 — Golf 7</option></select>
+  </div>
+  <div class="field-hint" style="margin-top:-8px;">Radni nalog je opcion za Ponudu, a obavezan za Predračun.</div>
+  <div class="field"><label class="field-label-top">Datum izdavanja</label><input type="date" value="2026-06-29"></div>
+  <div class="field"><label class="field-label-top">Rok važenja do</label><input type="date" value="2026-07-14"></div>
+  <div class="field-hint">Stavke rada i delova preuzimaju se automatski iz izabranog naloga, ili se unose ručno ako nalog nije izabran (samo kod ponude).</div>
+</template>
+
+<template id="tpl-mark-paid">
+  <div class="field"><label class="field-label-top">Datum plaćanja</label><input type="date" value="2026-06-29"></div>
+  <div class="field"><label class="field-label-top">Način plaćanja</label>
+    <select><option>Keš</option><option>Kartica</option><option>Račun (uplata na žiro)</option></select>
+  </div>
+  <div class="field-hint">Status računa će biti promenjen u "Plaćeno" — nakon toga se ne može menjati niti ispravljati.</div>
+</template>
+
+<template id="tpl-convert-to-invoice">
+  <div class="field"><label class="field-label-top">Datum dospeća</label><input type="date" value="2026-07-13"></div>
+  <div class="field-hint">Ovo je prvi trenutak kad se datum dospeća unosi za ovaj dokument. Nakon konverzije, ni predračun ni novi račun se više ne mogu menjati direktno.</div>
+</template>
+
+<template id="tpl-correct-invoice">
+  <div class="field"><label class="field-label-top">Napomena / razlog ispravke (opciono)</label><input type="text" placeholder="npr. pogrešna količina dela"></div>
+  <div class="field-hint">Ovaj račun će biti obeležen kao "Neispravan" (ostaje u istoriji) i automatski će se otvoriti nov predračun, spreman za ispravku i ponovnu konverziju.</div>
+</template>
+
+<template id="tpl-interno">
+  <p style="font-size:13.5px;color:var(--ink-soft);margin:0 0 12px;">Stavka <strong>neće biti prikazana na dokumentu</strong> koji vidji klijent i neće ulaziti u ukupan iznos. Ostaje evidentirana interno na nalogu.</p>
+  <div class="field-hint">Ova opcija se zove <strong>Interno — ne naplaćuje se</strong>.</div>
+</template>
+
+<template id="tpl-accept-offer">
+  <div class="field">
+    <label class="field-label-top">Šta dalje?</label>
+    <div class="pill-group">
+      <label><input type="radio" name="acceptAction" checked><span>Prihvati i otvori radni nalog</span></label>
+      <label><input type="radio" name="acceptAction"><span>Samo prihvati</span></label>
+    </div>
+  </div>
+  <div class="field-hint">Stavke se ne prepisuju automatski na nalog — ponuda je samo procena, prava stavka rada se unosi kako se posao radi.</div>
+</template>
+
+<script>
+  var navHistory = [];
+  var currentView = null;
+
+  function showView(viewId, btn, soonLabel, skipHistory){
+    if(!skipHistory && currentView && currentView !== viewId){
+      navHistory.push(currentView);
+    }
+    currentView = viewId;
+
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + viewId).classList.add('active');
+
+    var titles = {
+      dashboard:'Početna', clients:'Klijenti', 'client-detail':'Profil klijenta',
+      vehicle:'Vozilo', order:'Radni nalog', invoice:'Predračun',
+      vehicles:'Vozila', orders:'Radni nalozi',
+      calendar:'Kalendar', pricelist:'Cenovnik', reports:'Izveštaji', invoices:'Dokumenti',
+      settings:'Podešavanja (Admin)',
+      soon: soonLabel || 'Uskoro'
+    };
+    document.getElementById('pageTitle').textContent = titles[viewId] || '';
+    if(viewId === 'soon' && soonLabel){
+      document.getElementById('soonTitle').textContent = soonLabel;
+    }
+
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    if(btn){ btn.classList.add('active'); }
+    else {
+      var match = document.querySelector('.nav-item[data-view="' + viewId + '"]');
+      if(match) match.classList.add('active');
+    }
+    window.scrollTo(0,0);
+  }
+
+  function goBack(){
+    var prev = navHistory.pop();
+    if(prev){
+      showView(prev, null, null, true);
+    } else {
+      showView('dashboard', null, null, true);
+    }
+  }
+
+  function showReportTab(paneId, btn){
+    document.querySelectorAll('.report-pane').forEach(p => p.classList.remove('active'));
+    document.getElementById('pane-' + paneId).classList.add('active');
+    document.querySelectorAll('.subtab').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  function openModal(key, title){
+    window._currentModalKey = key;
+    document.getElementById('modalTitle').textContent = title;
+    var tpl = document.getElementById('tpl-' + key);
+    var body = document.getElementById('modalBody');
+    body.innerHTML = '';
+    if(tpl){ body.appendChild(tpl.content.cloneNode(true)); }
+    document.getElementById('modalOverlay').classList.add('active');
+    var firstField = body.querySelector('input, select, textarea');
+    if(firstField){ firstField.focus(); }
+  }
+
+  function closeModal(){
+    document.getElementById('modalOverlay').classList.remove('active');
+  }
+
+  function closeModalOnOverlay(e){
+    if(e.target.id === 'modalOverlay'){ closeModal(); }
+  }
+
+  function saveModal(){
+    var key = window._currentModalKey;
+    var body = document.getElementById('modalBody');
+    if(key === 'new-invoice'){
+      closeModal();
+      showView('invoice', null);
+      showToast('Predračun kreiran');
+    } else if(key === 'mark-paid'){
+      closeModal();
+      var badge = document.getElementById('invStatusBadge');
+      if(badge){ badge.textContent = 'Plaćeno'; badge.className = 'status status--done'; }
+      var racGroup = document.getElementById('btnGroupRacun');
+      if(racGroup){ racGroup.style.display = 'none'; }
+      showToast('Račun naznačen kao plaćen');
+    } else if(key === 'convert-to-invoice'){
+      var dateInput = body.querySelector('input[type=date]');
+      var rawDate = dateInput ? dateInput.value : '';
+      var formatted = rawDate ? rawDate.split('-').reverse().join('.') + '.' : '13.07.2026.';
+      closeModal();
+      convertToInvoice(formatted);
+    } else if(key === 'correct-invoice'){
+      closeModal();
+      correctInvoice();
+    } else if(key === 'accept-offer'){
+      closeModal();
+      var badge2 = document.getElementById('invStatusBadge');
+      if(badge2){ badge2.textContent = 'Prihvaćena'; badge2.className = 'status status--done'; }
+      document.getElementById('btnGroupPonuda').style.display = 'none';
+      showToast('Ponuda prihvaćena — otvoren je radni nalog #2026-0151');
+    } else {
+      closeModal();
+      showToast('Sačuvano');
+    }
+  }
+
+  function fillLaborRate(sel){
+    var rate = sel.options[sel.selectedIndex].value;
+    var input = document.getElementById('laborRate');
+    if(input && rate){ input.value = rate; }
+  }
+
+  function toggleApptNalog(select){
+    var grp = document.getElementById('grpApptNalog');
+    if(grp){ grp.style.display = (select.value === 'Realizovano') ? 'block' : 'none'; }
+  }
+
+  function downloadBlob(htmlContent, filename, mime){
+    var fullHtml = '<html><head><meta charset="UTF-8"></head><body>' + htmlContent + '</body></html>';
+    var blob = new Blob(['\ufeff', fullHtml], {type: mime});
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  }
+
+  function cleanPrintableHtml(selector){
+    var src = document.querySelector(selector);
+    var clone = src.cloneNode(true);
+    clone.querySelectorAll('.no-print').forEach(function(el){ el.remove(); });
+    return clone.outerHTML;
+  }
+
+  function exportDocWord(){
+    var html = cleanPrintableHtml('.invoice-doc');
+    var title = (document.getElementById('invDocTitle').textContent || 'dokument').replace(/\s+/g,'_');
+    downloadBlob(html, title + '.doc', 'application/msword');
+    showToast('Izvezeno kao Word dokument');
+  }
+
+  function exportDocExcel(){
+    var table = document.querySelector('.invoice-doc .inv-table');
+    var html = table ? table.outerHTML : '';
+    var title = (document.getElementById('invDocTitle').textContent || 'dokument').replace(/\s+/g,'_');
+    downloadBlob(html, title + '.xls', 'application/vnd.ms-excel');
+    showToast('Izvezeno kao Excel tabela');
+  }
+
+  function exportNalogWord(){
+    var html = cleanPrintableHtml('#nalogPrintable');
+    downloadBlob(html, 'Radni_nalog_2026-0143.doc', 'application/msword');
+    showToast('Izvezeno kao Word dokument');
+  }
+
+  function exportNalogExcel(){
+    var html = '<table border="1"><tr><th>Majstor</th><th>Tip rada</th><th>Stavka</th><th>Sati</th><th>Cena/h</th><th>Iznos</th></tr>'
+      + '<tr><td>Nikola S.</td><td>Električar</td><td>Provera senzora kvačila (el. instalacija)</td><td>1</td><td>2.200</td><td>2.200</td></tr>'
+      + '<tr><td>Dragan M.</td><td>Mehaničar</td><td>Zamena kompleta kvačila — rad</td><td>3</td><td>2.500</td><td>7.500</td></tr>'
+      + '</table><br><table border="1"><tr><th>Deo</th><th>Količina</th><th>Cena</th><th>Iznos</th></tr>'
+      + '<tr><td>Komplet kvačila (LUK)</td><td>1 kom</td><td>14.500</td><td>14.500</td></tr>'
+      + '<tr><td>Ulje za menjač</td><td>2 L</td><td>1.100</td><td>2.200</td></tr>'
+      + '</table><br><table border="1"><tr><th>Eksterni servis</th><th>Opis</th><th>Iznos</th></tr>'
+      + '<tr><td>Karoserija Vuk</td><td>Farbanje branika</td><td>5.000</td></tr></table>';
+    downloadBlob(html, 'Radni_nalog_2026-0143_stavke.xls', 'application/vnd.ms-excel');
+    showToast('Izvezeno kao Excel tabela');
+  }
+
+  function copyDocument(){
+    showToast('Kreirana kopija — Predračun 2026-0151');
+  }
+
+  function archiveRecord(message){
+    showToast(message);
+  }
+
+  function openOrder143(){
+    showView('order', null);
+  }
+
+  function openPonuda139(){
+    setDocType('ponuda');
+    updateDocChain({
+      ponuda: {state:'current', label:'P-2026-0139 · Na čekanju'},
+      nalog: {state:'disabled'},
+      predracun: {state:'disabled'},
+      racun: {state:'disabled'}
+    });
+    showView('invoice', null);
+  }
+
+  function openPredracun143(){
+    setDocType('predracun');
+    updateDocChain({
+      ponuda: {state:'disabled'},
+      nalog: {state:'active', action: openOrder143, label:'N-2026-0143 · U radu'},
+      predracun: {state:'current', label:'PR-2026-0143 · Važi'},
+      racun: {state:'disabled'}
+    });
+    showView('invoice', null);
+  }
+
+  function openPredracun142(){
+    setDocType('predracun', {title:'PREDRAČUN PR-2026-0142', sub:'Datum: 12.06.2026.<br>Važi do: 27.06.2026.', status:'Iskorišćen'});
+    document.getElementById('invStatusBadge').className = 'status status--done';
+    updateDocChain({
+      ponuda: {state:'disabled'},
+      nalog: {state:'active', action: openOrder143, label:'N-2026-0143 · Završeno'},
+      predracun: {state:'current', label:'PR-2026-0142 · Iskorišćen'},
+      racun: {state:'active', action: openRacun140, label:'R-2026-0140 · Plaćeno'}
+    });
+    showView('invoice', null);
+  }
+
+  function openRacun140(){
+    setDocType('racun', {title:'RAČUN R-2026-0140', sub:'Datum izdavanja: 12.06.2026.<br>Datum dospeća: 27.06.2026.', status:'Plaćeno'});
+    document.getElementById('invStatusBadge').className = 'status status--done';
+    document.getElementById('btnGroupRacun').style.display = 'none';
+    updateDocChain({
+      ponuda: {state:'disabled'},
+      nalog: {state:'active', action: openOrder143, label:'N-2026-0143 · Završeno'},
+      predracun: {state:'active', action: openPredracun142, label:'PR-2026-0142 · Iskorišćen'},
+      racun: {state:'current', label:'R-2026-0140 · Plaćeno'}
+    });
+    showView('invoice', null);
+  }
+
+  function openRacun118(){
+    setDocType('racun', {title:'RAČUN 2026-0118', sub:'Datum izdavanja: 20.06.2026.<br>Datum dospeća: 05.07.2026.', status:'Neplaćeno'});
+    updateDocChain({
+      ponuda: {state:'disabled'},
+      nalog: {state:'disabled'},
+      predracun: {state:'disabled'},
+      racun: {state:'current'}
+    });
+    showView('invoice', null);
+  }
+
+  function openRacun124(){
+    setDocType('racun', {title:'RAČUN 2026-0124', sub:'Datum izdavanja: 24.06.2026.<br>Datum dospeća: 09.07.2026.', status:'Neplaćeno'});
+    updateDocChain({
+      ponuda: {state:'disabled'},
+      nalog: {state:'disabled'},
+      predracun: {state:'disabled'},
+      racun: {state:'current'}
+    });
+    showView('invoice', null);
+  }
+
+  function updateDocChain(config){
+    var defs = {
+      ponuda: document.getElementById('chainPonuda'),
+      nalog: document.getElementById('chainNalog'),
+      predracun: document.getElementById('chainPredracun'),
+      racun: document.getElementById('chainRacun')
+    };
+    var labels = {ponuda:'Ponuda', nalog:'Radni nalog', predracun:'Predračun', racun:'Račun'};
+    Object.keys(defs).forEach(function(key){
+      var el = defs[key];
+      if(!el) return;
+      var entry = config[key];
+      el.className = 'doc-chain-btn';
+      el.onclick = null;
+      el.textContent = (entry && entry.label) ? entry.label : labels[key];
+      if(!entry || entry.state === 'disabled'){
+        el.classList.add('disabled');
+      } else if(entry.state === 'current'){
+        el.classList.add('current');
+      } else if(entry.state === 'active'){
+        el.onclick = entry.action;
+      }
+    });
+  }
+
+  function setDocType(type, opts){
+    opts = opts || {};
+    var title = document.getElementById('invDocTitle');
+    var sub = document.getElementById('invDocSub');
+    var badge = document.getElementById('invStatusBadge');
+    var gPonuda = document.getElementById('btnGroupPonuda');
+    var gPredracun = document.getElementById('btnGroupPredracun');
+    var gRacun = document.getElementById('btnGroupRacun');
+    gPonuda.style.display = 'none';
+    gPredracun.style.display = 'none';
+    gRacun.style.display = 'none';
+
+    if(type === 'ponuda'){
+      title.textContent = opts.title || 'PONUDA 2026-0139';
+      sub.innerHTML = opts.sub || 'Datum: 20.06.2026.<br>Važi do: 05.07.2026.';
+      badge.textContent = opts.status || 'Na čekanju';
+      badge.className = 'status status--scheduled';
+      gPonuda.style.display = 'inline';
+    } else if(type === 'racun'){
+      title.textContent = opts.title || 'RAČUN 2026-0118';
+      sub.innerHTML = opts.sub || 'Datum izdavanja: 20.06.2026.<br>Datum dospeća: 05.07.2026.';
+      badge.textContent = opts.status || 'Neplaćeno';
+      badge.className = 'status status--waiting';
+      gRacun.style.display = 'inline';
+    } else {
+      title.textContent = opts.title || 'PREDRAČUN 2026-0143';
+      sub.innerHTML = opts.sub || 'Datum: 29.06.2026.<br>Važi do: 14.07.2026.';
+      badge.textContent = opts.status || 'Važi';
+      badge.className = 'status status--scheduled';
+      gPredracun.style.display = 'inline';
+    }
+  }
+
+  function rejectOffer(){
+    showToast('Ponuda odbijena');
+  }
+
+  function convertToInvoice(datumDospeca){
+    document.getElementById('invDocTitle').textContent = 'RAČUN 2026-0150';
+    document.getElementById('invDocSub').innerHTML = 'Datum izdavanja: 29.06.2026.<br>Datum dospeća: ' + (datumDospeca || '13.07.2026.') + '<br><span style="color:var(--ink-faint);">Nastao iz Predračuna 2026-0143</span>';
+    var badge = document.getElementById('invStatusBadge');
+    badge.textContent = 'Neplaćeno';
+    badge.className = 'status status--waiting';
+    document.getElementById('btnGroupPredracun').style.display = 'none';
+    document.getElementById('btnGroupRacun').style.display = 'inline';
+    updateDocChain({
+      ponuda: {state:'disabled'},
+      nalog: {state:'active', action: openOrder143},
+      predracun: {state:'active', action: openPredracun143},
+      racun: {state:'current'}
+    });
+    showToast('Predračun pretvoren u račun');
+  }
+
+  function correctInvoice(){
+    var badge = document.getElementById('invStatusBadge');
+    badge.textContent = 'Neispravan';
+    badge.className = 'status status--waiting';
+    document.getElementById('btnGroupRacun').style.display = 'none';
+    updateDocChain({
+      ponuda: {state:'disabled'},
+      nalog: {state:'active', action: openOrder143},
+      predracun: {state:'disabled'},
+      racun: {state:'current'}
+    });
+    showToast('Račun obeležen kao neispravan — kreiran je nov predračun za ispravku (2026-0152)');
+  }
+
+  function removeMechanicFromOrder(){
+    closeModal();
+    showToast('Majstor uklonjen sa naloga');
+  }
+
+  function showToast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+  }
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){ closeModal(); }
+  });
+
+  function formatRSD(n){
+    return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+
+  function setIncomeRange(od, doDate){
+    document.getElementById('incomeOd').value = od;
+    document.getElementById('incomeDo').value = doDate;
+    applyIncomeFilter();
+  }
+
+  function applyIncomeFilter(){
+    var od = document.getElementById('incomeOd').value;
+    var doVal = document.getElementById('incomeDo').value;
+    var odYM = od ? od.slice(0,7) : '0000-00';
+    var doYM = doVal ? doVal.slice(0,7) : '9999-99';
+    var totalIncome = 0, totalOrders = 0;
+    document.querySelectorAll('#incomeChart .bar-col').forEach(function(col){
+      var ym = col.getAttribute('data-ym');
+      var inRange = ym >= odYM && ym <= doYM;
+      col.classList.toggle('out-range', !inRange);
+      if(inRange){
+        totalIncome += parseInt(col.getAttribute('data-income'), 10);
+        totalOrders += parseInt(col.getAttribute('data-orders'), 10);
+      }
+    });
+    document.getElementById('statTotal').textContent = formatRSD(totalIncome);
+    document.getElementById('statCount').textContent = totalOrders;
+    document.getElementById('statAvg').textContent = totalOrders ? formatRSD(totalIncome / totalOrders) : '0';
+  }
+
+  applyIncomeFilter();
+</script>
+</body>
+</html>

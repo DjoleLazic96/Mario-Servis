@@ -1,0 +1,15 @@
+# Zavisnosti i build
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# Tajne / lokalna konfiguracija — NIKAD u repo
+.env
+.env.*
+!.env.example
+
+# Ostalo
+*.log
+.DS_Store
+Thumbs.db

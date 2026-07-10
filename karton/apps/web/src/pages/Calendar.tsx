@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { formatDate } from '../lib/documentHelpers.ts';
 import { useNavigate } from 'react-router-dom';
 import type { Appointment, Mechanic, CalendarBlock, WorkOrder, Paginated } from '@karton/shared';
 import { labels } from '@karton/shared';
@@ -173,7 +174,7 @@ export function Calendar(): React.JSX.Element {
         <Modal title={`Termin — ${selected.customer.name}`} onClose={() => setSelected(null)}>
           <div className="form">
             <dl className="kv">
-              <dt>Kada</dt><dd className="mono">{selected.date} {selected.time} ({selected.durationMin} min)</dd>
+              <dt>Kada</dt><dd className="mono">{formatDate(selected.date)} {selected.time} ({selected.durationMin} min)</dd>
               <dt>Vozilo</dt><dd>{selected.vehicle.make} {selected.vehicle.model} <span className="mono">{selected.vehicle.plate ?? ''}</span></dd>
               <dt>Majstor</dt><dd>{selected.mechanic?.fullName ?? '—'}</dd>
               <dt>Status</dt><dd><span className={`badge ${statusClass[selected.status]}`}>{labels.appointmentStatus[selected.status]}</span></dd>
@@ -247,7 +248,7 @@ function CompleteModal({ appt, onDone }: { appt: Appointment; onDone: (workOrder
       <label className="field"><span>Radni nalog ovog vozila</span>
         <select value={picked} onChange={(e) => setPicked(e.target.value)}>
           <option value="">— bez naloga —</option>
-          {orders?.map((w) => <option key={w.id} value={w.id}>{w.number} · {w.receivedOn}</option>)}
+          {orders?.map((w) => <option key={w.id} value={w.id}>{w.number} · {formatDate(w.receivedOn)}</option>)}
         </select>
       </label>
       {orders?.length === 0 && <p className="hint">Ovo vozilo nema nijedan radni nalog.</p>}

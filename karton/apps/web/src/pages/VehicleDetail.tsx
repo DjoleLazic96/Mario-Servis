@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, type FormEvent } from 'react';
+import { formatDate } from '../lib/documentHelpers.ts';
 import { useParams, useNavigate } from 'react-router-dom';
 import type {
   Vehicle,
@@ -159,8 +160,8 @@ export function VehicleDetail(): React.JSX.Element {
               {registrations.map((r) => (
                 <tr key={r.id}>
                   <td className="mono">{r.plate}</td>
-                  <td className="mono">{r.validFrom}</td>
-                  <td className="mono">{r.validTo ?? <span className="badge badge-accent">aktivna</span>}</td>
+                  <td className="mono">{formatDate(r.validFrom)}</td>
+                  <td className="mono">{r.validTo ? formatDate(r.validTo) : <span className="badge badge-accent">aktivna</span>}</td>
                 </tr>
               ))}
               {registrations.length === 0 && <tr><td colSpan={3} className="card-empty">Nema zapisa.</td></tr>}
@@ -176,8 +177,8 @@ export function VehicleDetail(): React.JSX.Element {
               {ownership.map((o) => (
                 <tr key={o.id}>
                   <td>{o.customer.name}</td>
-                  <td className="mono">{o.validFrom}</td>
-                  <td className="mono">{o.validTo ?? <span className="badge badge-accent">aktivan</span>}</td>
+                  <td className="mono">{formatDate(o.validFrom)}</td>
+                  <td className="mono">{o.validTo ? formatDate(o.validTo) : <span className="badge badge-accent">aktivan</span>}</td>
                 </tr>
               ))}
               {ownership.length === 0 && <tr><td colSpan={3} className="card-empty">Nema zapisa.</td></tr>}
@@ -248,7 +249,7 @@ function VehicleStatsPanel({ vehicleId }: { vehicleId: number }): React.JSX.Elem
     <div className="stat-row">
       <div className="stat"><span className="stat-num">{stats.orders}</span><span className="stat-label">radnih naloga</span></div>
       <div className="stat"><span className="stat-num mono">{stats.totalSpent.toLocaleString('sr-RS')}</span><span className="stat-label">RSD naplaćeno</span></div>
-      <div className="stat"><span className="stat-num mono">{stats.lastVisit ?? '—'}</span><span className="stat-label">poslednja poseta</span></div>
+      <div className="stat"><span className="stat-num mono">{formatDate(stats.lastVisit)}</span><span className="stat-label">poslednja poseta</span></div>
     </div>
   );
 }

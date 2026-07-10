@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Document, Paginated } from '@karton/shared';
 import { api } from '../api.ts';
-import { money } from '../lib/documentHelpers.ts';
+import { money, formatDate } from '../lib/documentHelpers.ts';
 
 /**
  * Bira prihvaćenu ponudu istog vozila. Filtriramo na serveru po vozilu,
@@ -33,7 +33,7 @@ export function LinkQuoteDialog({ vehicleId, onPick, busy }: {
         {quotes.map((q) => (
           <tr key={q.id}>
             <td className="mono strong">{q.number}</td>
-            <td className="mono">{q.issuedOn}</td>
+            <td className="mono">{formatDate(q.issuedOn)}</td>
             <td className="ta-r mono">{money(q.totalAmount)}</td>
             <td className="ta-r">
               <button className="btn-secondary" disabled={busy} onClick={() => onPick(q)}>Veži</button>

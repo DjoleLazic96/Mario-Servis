@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { WorkOrderStatus } from '@karton/shared';
 import { labels } from '@karton/shared';
 import { api } from '../api.ts';
-import { money } from '../lib/documentHelpers.ts';
+import { money, formatDate } from '../lib/documentHelpers.ts';
 import { statusClass } from '../lib/workOrderStatus.ts';
 
 interface DashboardData {
@@ -31,7 +31,7 @@ export function Dashboard(): React.JSX.Element {
         <section className="card">
           <h3 className="card-title">Termini (danas i sutra)</h3>
           {d.today.appointments.length === 0 ? <p className="card-empty">Nema termina.</p> :
-            <ul className="mini-list">{d.today.appointments.map((a) => <li key={a.id}><span className="mono">{a.date} {a.time}</span> · {a.customer} · {a.make} {a.model}</li>)}</ul>}
+            <ul className="mini-list">{d.today.appointments.map((a) => <li key={a.id}><span className="mono">{formatDate(a.date)} {a.time}</span> · {a.customer} · {a.make} {a.model}</li>)}</ul>}
         </section>
         <section className="card">
           <h3 className="card-title">Čeka delove</h3>
@@ -76,7 +76,7 @@ export function Dashboard(): React.JSX.Element {
           <h3 className="card-title">Nenaplaćeni računi</h3>
           <table className="mini-table">
             <thead><tr><th>Broj</th><th>Klijent</th><th>Dospeće</th><th className="ta-r">Iznos</th></tr></thead>
-            <tbody>{d.money.unpaidInvoices.map((i) => <tr key={i.number} className="clickable" onClick={() => navigate('/dokumenti')}><td className="mono">{i.number}</td><td>{i.customer}</td><td className="mono">{i.due_on ?? '—'}</td><td className="ta-r mono">{money(i.total)}</td></tr>)}</tbody>
+            <tbody>{d.money.unpaidInvoices.map((i) => <tr key={i.number} className="clickable" onClick={() => navigate('/dokumenti')}><td className="mono">{i.number}</td><td>{i.customer}</td><td className="mono">{formatDate(i.due_on)}</td><td className="ta-r mono">{money(i.total)}</td></tr>)}</tbody>
           </table>
         </section>
       )}

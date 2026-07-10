@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { formatDate } from '../lib/documentHelpers.ts';
 import type { Mechanic, MechanicInput, Service, ServiceInput } from '@karton/shared';
 import { labels } from '@karton/shared';
 import { api, ApiRequestError } from '../api.ts';
@@ -69,7 +70,7 @@ function MechanicsTab(): React.JSX.Element {
               <tr key={m.id} className="clickable" onClick={() => { setError(null); setDialog({ mode: 'edit', mechanic: m }); }}>
                 <td className="strong">{m.fullName}</td>
                 <td>{labels.specialty[m.specialty]}</td>
-                <td className="mono">{m.hiredOn ?? '—'}</td>
+                <td className="mono">{formatDate(m.hiredOn)}</td>
                 <td className="ta-r mono">{m.hourlyRate.toLocaleString('sr-RS')}</td>
                 <td>{m.status === 'active' ? 'Aktivan' : <span className="muted">Neaktivan</span>}</td>
               </tr>

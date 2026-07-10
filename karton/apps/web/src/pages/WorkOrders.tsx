@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { formatDate } from '../lib/documentHelpers.ts';
 import { useNavigate } from 'react-router-dom';
 import type { WorkOrder, WorkOrderInput, WorkOrderStatus, Paginated } from '@karton/shared';
 import { labels } from '@karton/shared';
@@ -88,7 +89,7 @@ export function WorkOrders(): React.JSX.Element {
                 <td className="mono strong" data-label="Broj">{w.number}</td>
                 <td data-label="Vozilo"><span className="mono">{w.vehicle.plate ?? '—'}</span> {w.vehicle.make} {w.vehicle.model}</td>
                 <td data-label="Klijent">{w.customer.name}</td>
-                <td className="mono" data-label="Prijem">{w.receivedOn}</td>
+                <td className="mono" data-label="Prijem">{formatDate(w.receivedOn)}</td>
                 <td data-label="Status"><span className={`badge ${statusClass[w.status]}`}>{labels.workOrderStatus[w.status]}</span></td>
               </tr>
             ))}

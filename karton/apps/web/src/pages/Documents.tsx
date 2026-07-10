@@ -4,7 +4,7 @@ import type { Document, Paginated } from '@karton/shared';
 import { api } from '../api.ts';
 import { Modal } from '../components/Modal.tsx';
 import { QuoteForm } from '../components/QuoteForm.tsx';
-import { docTypeLabel, docStatusLabel, docStatusClass, money } from '../lib/documentHelpers.ts';
+import { docTypeLabel, docStatusLabel, docStatusClass, money, formatDate } from '../lib/documentHelpers.ts';
 import { SortableTh } from '../components/SortableTh.tsx';
 
 type Tab = 'all' | 'quote' | 'proforma' | 'invoice' | 'unpaid';
@@ -81,7 +81,7 @@ export function Documents(): React.JSX.Element {
                 <td data-label="Tip">{docTypeLabel[d.type]}</td>
                 <td data-label="Klijent">{d.customer.name}</td>
                 <td data-label="Vozilo"><span className="mono">{d.vehicle.plate ?? '—'}</span> {d.vehicle.make} {d.vehicle.model}</td>
-                <td className="mono" data-label="Datum">{d.issuedOn}</td>
+                <td className="mono" data-label="Datum">{formatDate(d.issuedOn)}</td>
                 <td className="ta-r mono" data-label="Iznos">{money(d.totalAmount)}</td>
                 <td data-label="Status"><span className={`badge ${docStatusClass[d.status]}`}>{docStatusLabel(d.type, d.status)}</span></td>
               </tr>

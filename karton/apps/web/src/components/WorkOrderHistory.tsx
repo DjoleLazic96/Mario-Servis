@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatDate } from '../lib/documentHelpers.ts';
 import { useNavigate } from 'react-router-dom';
 import type { WorkOrder, Paginated } from '@karton/shared';
 import { labels } from '@karton/shared';
@@ -40,7 +41,7 @@ export function WorkOrderHistory({ scope, showVehicle = true }: { scope: Scope; 
           {orders.map((w) => (
             <tr key={w.id} className="clickable" onClick={() => navigate(`/nalozi/${w.id}`)}>
               <td className="mono strong" data-label="Broj">{w.number}</td>
-              <td className="mono" data-label="Prijem">{w.receivedOn}</td>
+              <td className="mono" data-label="Prijem">{formatDate(w.receivedOn)}</td>
               {showVehicle && <td data-label="Vozilo"><span className="mono">{w.vehicle.plate ?? '—'}</span> {w.vehicle.make} {w.vehicle.model}</td>}
               <td data-label="Zahtevani radovi" className="truncate">{w.requestedWork ?? '—'}</td>
               <td data-label="Status"><span className={`badge ${statusClass[w.status]}`}>{labels.workOrderStatus[w.status]}</span></td>

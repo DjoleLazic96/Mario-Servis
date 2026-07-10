@@ -5,7 +5,7 @@ import { api, ApiRequestError } from '../api.ts';
 import { useAuth } from '../auth.tsx';
 import { Modal } from '../components/Modal.tsx';
 import { DocumentChainBar } from '../components/DocumentChain.tsx';
-import { docTypeLabel, docStatusLabel, docStatusClass, money, dueInfo, validityWarn } from '../lib/documentHelpers.ts';
+import { docTypeLabel, docStatusLabel, docStatusClass, money, dueInfo, validityWarn, formatDate } from '../lib/documentHelpers.ts';
 
 const RUBRICS: { key: DocumentItem['itemType']; title: string }[] = [
   { key: 'labor', title: 'Rad' },
@@ -113,11 +113,11 @@ export function DocumentView(): React.JSX.Element {
       {/* Papir dokumenta */}
       <div className="doc-paper">
         <div className="doc-meta">
-          <div><span className="dm-label">Datum izdavanja</span><span className="mono">{doc.issuedOn}</span></div>
+          <div><span className="dm-label">Datum izdavanja</span><span className="mono">{formatDate(doc.issuedOn)}</span></div>
           {doc.type === 'invoice'
-            ? <div><span className="dm-label">Datum dospeća</span><span className="mono">{doc.dueOn ?? '—'}</span>{due && <span className={`due-tag ${due.warn ? 'warn' : ''}`}>{due.text}</span>}</div>
-            : <div><span className="dm-label">Rok važenja</span><span className="mono">{doc.validUntil ?? '—'}</span>{expired && <span className="due-tag warn">isteklo</span>}</div>}
-          {doc.paidOn && <div><span className="dm-label">Plaćeno</span><span className="mono">{doc.paidOn}</span> {doc.paymentMethod}</div>}
+            ? <div><span className="dm-label">Datum dospeća</span><span className="mono">{formatDate(doc.dueOn)}</span>{due && <span className={`due-tag ${due.warn ? 'warn' : ''}`}>{due.text}</span>}</div>
+            : <div><span className="dm-label">Rok važenja</span><span className="mono">{formatDate(doc.validUntil)}</span>{expired && <span className="due-tag warn">isteklo</span>}</div>}
+          {doc.paidOn && <div><span className="dm-label">Plaćeno</span><span className="mono">{formatDate(doc.paidOn)}</span> {doc.paymentMethod}</div>}
         </div>
 
         {RUBRICS.map((rub) => {

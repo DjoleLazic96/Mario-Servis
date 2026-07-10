@@ -13,7 +13,7 @@ import { WorkOrderEditForm } from '../components/WorkOrderEditForm.tsx';
 import { DocumentChainBar } from '../components/DocumentChain.tsx';
 import { LinkQuoteDialog } from '../components/LinkQuoteDialog.tsx';
 import { allowedTransitions, isEditable, statusClass } from '../lib/workOrderStatus.ts';
-import { money } from '../lib/documentHelpers.ts';
+import { money, formatDate } from '../lib/documentHelpers.ts';
 
 const outcomeLabel: Record<FieldVisitOutcome, string> = labels.fieldVisitOutcome;
 
@@ -144,9 +144,9 @@ export function WorkOrderDetail(): React.JSX.Element {
         <section className="card">
           <h2 className="card-title">Prijem</h2>
           <dl className="kv">
-            <dt>Datum</dt><dd className="mono">{wo.receivedOn}{wo.receivedTime ? ` ${wo.receivedTime}` : ''}</dd>
+            <dt>Datum</dt><dd className="mono">{formatDate(wo.receivedOn)}{wo.receivedTime ? ` ${wo.receivedTime}` : ''}</dd>
             <dt>Kilometraža</dt><dd className="mono">{wo.odometerKm != null ? `${money(wo.odometerKm)} km` : '—'}</dd>
-            <dt>Završen</dt><dd className="mono">{wo.completedOn ?? '—'}{wo.completedTime ? ` ${wo.completedTime}` : ''}</dd>
+            <dt>Završen</dt><dd className="mono">{formatDate(wo.completedOn)}{wo.completedTime ? ` ${wo.completedTime}` : ''}</dd>
           </dl>
         </section>
         <section className="card">
@@ -161,7 +161,7 @@ export function WorkOrderDetail(): React.JSX.Element {
           <section className="card">
             <h2 className="card-title">Izlazak na teren</h2>
             <dl className="kv">
-              <dt>Kada</dt><dd className="mono">{wo.fieldVisitDate ?? '—'}{wo.fieldVisitTime ? ` ${wo.fieldVisitTime}` : ''}</dd>
+              <dt>Kada</dt><dd className="mono">{formatDate(wo.fieldVisitDate)}{wo.fieldVisitTime ? ` ${wo.fieldVisitTime}` : ''}</dd>
               <dt>Lokacija</dt><dd>{wo.fieldVisitLocation ?? '—'}</dd>
               <dt>Pređeno</dt><dd className="mono">{wo.fieldVisitKm != null ? `${wo.fieldVisitKm} km` : '—'}</dd>
               <dt>Ishod</dt><dd>{wo.fieldVisitOutcome ? outcomeLabel[wo.fieldVisitOutcome] : '—'}</dd>

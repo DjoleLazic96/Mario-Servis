@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatDate } from '../lib/documentHelpers.ts';
 import { useParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import type { WorkOrderDetail } from '@karton/shared';
@@ -76,9 +77,9 @@ export function WorkOrderPrint(): React.JSX.Element {
       </div>
 
       <div className="pl-strip">
-        <div><span className="pl-lbl">Datum prijema</span><span className="mono">{wo.receivedOn}</span></div>
+        <div><span className="pl-lbl">Datum prijema</span><span className="mono">{formatDate(wo.receivedOn)}</span></div>
         <div><span className="pl-lbl">Vreme prijema</span>{wo.receivedTime ? <span className="mono">{wo.receivedTime}</span> : <Blank />}</div>
-        <div><span className="pl-lbl">Datum predaje</span>{wo.completedOn ? <span className="mono">{wo.completedOn}</span> : <Blank />}</div>
+        <div><span className="pl-lbl">Datum predaje</span>{wo.completedOn ? <span className="mono">{formatDate(wo.completedOn)}</span> : <Blank />}</div>
         <div><span className="pl-lbl">Vreme predaje</span>{wo.completedTime ? <span className="mono">{wo.completedTime}</span> : <Blank />}</div>
       </div>
 
@@ -86,7 +87,7 @@ export function WorkOrderPrint(): React.JSX.Element {
         <>
           <div className="pl-sec">Izlazak na teren</div>
           <div className="pl-strip">
-            <div><span className="pl-lbl">Datum izlaska</span>{wo.fieldVisitDate ? <span className="mono">{wo.fieldVisitDate}</span> : <Blank />}</div>
+            <div><span className="pl-lbl">Datum izlaska</span>{wo.fieldVisitDate ? <span className="mono">{formatDate(wo.fieldVisitDate)}</span> : <Blank />}</div>
             <div><span className="pl-lbl">Vreme izlaska</span>{wo.fieldVisitTime ? <span className="mono">{wo.fieldVisitTime}</span> : <Blank />}</div>
             <div><span className="pl-lbl">Lokacija</span>{wo.fieldVisitLocation ?? <Blank />}</div>
             <div><span className="pl-lbl">Pređeni km</span>{wo.fieldVisitKm != null ? <span className="mono">{wo.fieldVisitKm}</span> : <Blank />}</div>

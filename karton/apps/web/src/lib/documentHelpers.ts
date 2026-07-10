@@ -21,6 +21,14 @@ export const docStatusClass: Record<string, string> = {
 
 export const money = (n: number): string => n.toLocaleString('sr-RS');
 
+/** ISO 'YYYY-MM-DD' → srpski 'DD.MM.YYYY.'. Čista obrada stringa — bez Date/timezone rizika. */
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  if (!y || !m || !d) return iso;
+  return `${d}.${m}.${y}.`;
+}
+
 /** Izvedena UI oznaka dospeća računa (BR-31): „dospeo" nije status. */
 export function dueInfo(dueOn: string | null): { text: string; warn: boolean } | null {
   if (!dueOn) return null;

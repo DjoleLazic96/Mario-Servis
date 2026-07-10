@@ -15,17 +15,32 @@ packages/
   shared/     centralni statusi, tipovi, katalog grešaka (deli se front/back)
 ```
 
-## Pokretanje (lokalno)
+## Pokretanje — najlakše
 
-Preduslovi: Node 24+, pnpm, Docker Desktop (pokrenut).
+Iz nadređenog foldera dupli klik na **`pokreni.bat`**. Skript sam:
+diže Docker Desktop, bazu i Mailpit, primeni migracije, pokrene API, worker,
+web i čitač saobraćajne, pa otvori aplikaciju u browseru.
+
+Za gašenje: **`zaustavi.bat`** (podaci u bazi ostaju sačuvani).
+
+## Pokretanje — ručno
+
+Preduslovi: Node 24+, pnpm, Docker Desktop (pokrenut), JDK 21 (za čitač).
 
 ```bash
 pnpm install            # zavisnosti
-cp .env.example .env    # lokalna konfiguracija (već postoji)
+cp .env.example .env    # lokalna konfiguracija
 pnpm dev:db             # PostgreSQL 18 + Mailpit (Docker)
 pnpm migrate            # napravi šemu iz apps/api/src/migrations
 pnpm seed               # prvi admin + podešavanja
-pnpm dev:api            # API na http://localhost:3000 (watch)
+pnpm dev:api            # API na http://localhost:3000
+pnpm dev:worker         # podsetnici + auto-istek dokumenata
+pnpm dev:web            # aplikacija na http://localhost:5173
+```
+
+Čitač saobraćajne (poseban prozor):
+```bash
+cd ../citac-saobracajne/src && java -Dfile.encoding=UTF-8 CitacServer.java
 ```
 
 Provera: `curl http://localhost:3000/health`

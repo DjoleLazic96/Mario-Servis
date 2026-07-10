@@ -49,11 +49,16 @@ public class CitacServer {
     try (OutputStream os = ex.getResponseBody()) { os.write(b); }
   }
 
+  /** Lista čitača; ako nijedan nije priključen PC/SC baca izuzetak — prevodimo ga u jasnu poruku. */
+  static List<CardTerminal> terminals() throws Exception {
+    try { return TerminalFactory.getDefault().terminals().list(); }
+    catch (CardException e) { throw new Exception("Nema priključenog čitača."); }
+  }
+
   static String statusJson() throws Exception {
-    TerminalFactory f = TerminalFactory.getDefault();
-    List<CardTerminal> terms = f.terminals().list();
     boolean present = false; String reader = "";
-    for (CardTerminal t : terms) { reader = t.getName(); if (t.isCardPresent()) { present = true; break; } }
+    for (CardTerminal t : terminals()) { reader = t.getName(); if (t.isCardPresent()) { present = true; break; } }
+    if (reader.isEmpty()) throw new Exception("Nema priključenog čitača.");
     return "{\"reader\":\"" + jesc(reader) + "\",\"cardPresent\":" + present + "}";
   }
 
@@ -143,9 +148,8 @@ public class CitacServer {
   static String jesc(String s) { return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").trim(); }
 
   static String readVehicle() throws Exception {
-    TerminalFactory f = TerminalFactory.getDefault();
     CardTerminal term = null;
-    for (CardTerminal t : f.terminals().list()) if (t.isCardPresent()) { term = t; break; }
+    for (CardTerminal t : terminals()) if (t.isCardPresent()) { term = t; break; }
     if (term == null) throw new Exception("Nema kartice u čitaču.");
     Card card = term.connect("*");
     try {

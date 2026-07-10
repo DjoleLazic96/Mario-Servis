@@ -86,6 +86,7 @@ export function WorkOrderDetail(): React.JSX.Element {
           </p>
         </div>
         <div className="btn-group">
+          <button className="btn-secondary" onClick={() => window.open(`/nalozi/${id}/stampa`, '_blank')}>Štampaj prijemni list</button>
           {wo.status !== 'cancelled' && (
             <button className="btn-secondary" onClick={issueProforma} disabled={saving}>Izdaj predračun</button>
           )}

@@ -13,6 +13,7 @@ import { WorkOrderDetail } from './pages/WorkOrderDetail.tsx';
 import { Documents } from './pages/Documents.tsx';
 import { DocumentView } from './pages/DocumentView.tsx';
 import { Calendar } from './pages/Calendar.tsx';
+import { WorkOrderPrint } from './pages/WorkOrderPrint.tsx';
 import { Reports } from './pages/Reports.tsx';
 import { Settings } from './pages/Settings.tsx';
 
@@ -29,6 +30,8 @@ function AppRoutes(): React.JSX.Element {
   return (
     <Routes>
       <Route path="/login" element={user && !loading ? <Navigate to="/" replace /> : <Login />} />
+      {/* Prijemni list — bez sidebar-a, otvara dijalog štampe */}
+      <Route path="/nalozi/:id/stampa" element={<Protected><WorkOrderPrint /></Protected>} />
       <Route
         element={
           <Protected>

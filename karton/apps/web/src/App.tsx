@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { AuthProvider, useAuth } from './auth.tsx';
 import { Login } from './pages/Login.tsx';
 import { Layout } from './components/Layout.tsx';
-import { Dashboard, Placeholder } from './pages/Dashboard.tsx';
+import { Dashboard } from './pages/Dashboard.tsx';
 import { Customers } from './pages/Customers.tsx';
 import { CustomerProfile } from './pages/CustomerProfile.tsx';
 import { Vehicles } from './pages/Vehicles.tsx';

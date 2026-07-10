@@ -83,7 +83,3 @@ export function Dashboard(): React.JSX.Element {
     </div>
   );
 }
-
-export function Placeholder({ title }: { title: string }): React.JSX.Element {
-  return (<div className="page"><header className="page-head"><h1>{title}</h1></header><div className="card"><p className="card-empty">Ovaj ekran je u izradi.</p></div></div>);
-}

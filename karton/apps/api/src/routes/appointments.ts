@@ -6,7 +6,6 @@ import { pool, tx } from '../db.ts';
 import { sendError } from '../http.ts';
 import { requireAuth } from '../auth-guards.ts';
 import { writeAudit } from '../audit.ts';
-import { todayBelgrade } from '../time.ts';
 
 const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const TIME = z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/);

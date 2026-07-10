@@ -4,8 +4,7 @@ import type {
   LaborItem, LaborItemInput, PartItem, PartItemInput, ExternalItem, ExternalItemInput,
 } from '@karton/shared';
 import { api } from '../api.ts';
-
-const money = (n: number): string => n.toLocaleString('sr-RS');
+import { money } from '../lib/documentHelpers.ts';
 
 /** Stavka rada — tri načina obračuna (sat/km/paušal, BR-43). */
 export function LaborItemForm({

@@ -13,8 +13,8 @@ import { WorkOrderEditForm } from '../components/WorkOrderEditForm.tsx';
 import { DocumentChainBar } from '../components/DocumentChain.tsx';
 import { LinkQuoteDialog } from '../components/LinkQuoteDialog.tsx';
 import { allowedTransitions, isEditable, statusClass } from '../lib/workOrderStatus.ts';
+import { money } from '../lib/documentHelpers.ts';
 
-const money = (n: number): string => n.toLocaleString('sr-RS');
 const outcomeLabel: Record<FieldVisitOutcome, string> = labels.fieldVisitOutcome;
 
 type Dialog =

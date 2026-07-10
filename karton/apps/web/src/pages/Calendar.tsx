@@ -10,6 +10,10 @@ const DAYS = ['Ponedeljak', 'Utorak', 'Sreda', 'Četvrtak', 'Petak', 'Subota', '
 const DAYS_SHORT = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'];
 const HOUR_H = 46; // visina jednog sata u px
 const statusClass: Record<string, string> = { scheduled: 'st-open', completed: 'st-done', cancelled: 'st-cancel', no_show: 'st-wait' };
+// Bedž statusa podsetnika: jasno razdvaja poslato (zeleno), grešku (crveno) i
+// poslovno preskakanje (neutralno sivo — NIJE greška).
+const REM_CLASS: Record<string, string> = { scheduled: 'st-open', processing: 'st-progress', sent: 'st-done', failed: 'rem-error', skipped: 'rem-skip' };
+function remClass(s: string | null): string { return s ? REM_CLASS[s] ?? 'st-open' : 'st-open'; }
 
 const mondayOf = (d: Date): Date => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); x.setHours(0, 0, 0, 0); return x; };
 const iso = (d: Date): string => d.toLocaleDateString('sv-SE');
@@ -173,7 +177,17 @@ export function Calendar(): React.JSX.Element {
               <dt>Vozilo</dt><dd>{selected.vehicle.make} {selected.vehicle.model} <span className="mono">{selected.vehicle.plate ?? ''}</span></dd>
               <dt>Majstor</dt><dd>{selected.mechanic?.fullName ?? '—'}</dd>
               <dt>Status</dt><dd><span className={`badge ${statusClass[selected.status]}`}>{labels.appointmentStatus[selected.status]}</span></dd>
-              {selected.remindersEnabled && <><dt>Podsetnik</dt><dd>{selected.reminderStatus ? labels.reminderStatus[selected.reminderStatus] : 'Zakazan'}</dd></>}
+              {selected.remindersEnabled && <>
+                <dt>Podsetnik</dt>
+                <dd>
+                  <span className={`badge ${remClass(selected.reminderStatus)}`}>
+                    {selected.reminderStatus ? labels.reminderStatus[selected.reminderStatus] : 'Zakazan'}
+                  </span>
+                  {(selected.reminderStatus === 'skipped' || selected.reminderStatus === 'failed') && (
+                    <div className="hint">{selected.reminderReason ?? (selected.reminderStatus === 'skipped' ? 'klijent nema email u trenutku slanja' : 'greška pri slanju')}</div>
+                  )}
+                </dd>
+              </>}
             </dl>
             <div className="btn-group" style={{ flexWrap: 'wrap' }}>
               {selected.status === 'scheduled' && <>

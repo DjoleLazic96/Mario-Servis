@@ -404,6 +404,7 @@ export interface Appointment {
   workOrderId: number | null;
   remindersEnabled: boolean;
   reminderStatus: ReminderSendStatusT | null;
+  reminderReason: string | null; // razlog za skipped/failed (npr. „klijent nema email u trenutku slanja")
   version: number;
 }
 

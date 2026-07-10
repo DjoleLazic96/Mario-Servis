@@ -459,6 +459,9 @@ select:focus { border-color: var(--accent); }
 .badge.st-wait { background:#f3eef7; color:#6b5a8a; }
 .badge.st-done { background:#e8f1ea; color:#3f7a56; }
 .badge.st-cancel { background:#eef0f2; color:#77808a; }
+/* Podsetnik: greška (crveno — tehnički problem) vs preskočen (sivo — poslovno, NIJE greška) */
+.badge.rem-error { background:var(--danger-bg); color:var(--danger); }
+.badge.rem-skip { background:#eef0f2; color:#77808a; }
 
 /* --- Textarea, checkbox inline, field visit box --- */
 textarea { padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px; font-family: inherit; outline: none; resize: vertical; }

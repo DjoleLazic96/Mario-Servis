@@ -33,7 +33,7 @@ function toAppt(r: any): Appointment {
     vehicle: { id: r.vehicle_id, vin: r.vin, make: r.make, model: r.model, plate: r.plate },
     mechanic: r.mechanic_id ? { id: r.mechanic_id, fullName: r.mechanic_name } : null,
     note: r.note, status: r.status, workOrderId: r.work_order_id,
-    remindersEnabled: r.reminders_enabled, reminderStatus: r.reminder_status, version: r.version,
+    remindersEnabled: r.reminders_enabled, reminderStatus: r.reminder_status, reminderReason: r.reminder_reason, version: r.version,
   };
 }
 const APPT_SELECT = `
@@ -42,7 +42,8 @@ const APPT_SELECT = `
     c.name customer_name, c.type customer_type, v.vin, v.make, v.model,
     (SELECT rh.plate FROM registration_history rh WHERE rh.vehicle_id=v.id AND rh.valid_to IS NULL LIMIT 1) plate,
     m.full_name mechanic_name,
-    (SELECT ar.send_status FROM appointment_reminder ar WHERE ar.appointment_id=a.id ORDER BY ar.id DESC LIMIT 1) reminder_status
+    (SELECT ar.send_status FROM appointment_reminder ar WHERE ar.appointment_id=a.id ORDER BY ar.id DESC LIMIT 1) reminder_status,
+    (SELECT ar.last_error FROM appointment_reminder ar WHERE ar.appointment_id=a.id ORDER BY ar.id DESC LIMIT 1) reminder_reason
   FROM appointment a
   JOIN customer c ON c.id=a.customer_id JOIN vehicle v ON v.id=a.vehicle_id
   LEFT JOIN mechanic m ON m.id=a.mechanic_id`;

@@ -94,8 +94,8 @@ export const labels = {
     scheduled: 'Zakazan',
     processing: 'Šalje se',
     sent: 'Poslat',
-    failed: 'Neuspeo',
-    skipped: 'Preskočen (bez emaila)',
+    failed: 'Greška u slanju',
+    skipped: 'Preskočen',
   } as Record<string, string>,
   documentType: {
     quote: 'Ponuda',

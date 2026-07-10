@@ -49,7 +49,7 @@ cd ../citac-saobracajne/src && java -Dfile.encoding=UTF-8 CitacServer.java
 
 Provera: `curl http://localhost:3000/health`
 
-- **Admin (lokalno):** `admin@karton.local` / `admin123`
+- **Admin (lokalno):** `admin` / `admin`
 - **Baza:** `localhost:5544` (5432/5433 su zauzeti postojećim PostgreSQL-om na ovoj mašini)
 - **Mailpit (uhvaćeni mejlovi):** http://localhost:8025
 

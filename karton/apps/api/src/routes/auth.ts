@@ -7,7 +7,8 @@ import { requireAuth } from '../auth-guards.ts';
 import type { CurrentUser } from '../fastify.d.ts';
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  // Korisničko ime (identifikator). Ne mora biti email — dozvoljava npr. „admin".
+  email: z.string().min(1),
   password: z.string().min(1),
 });
 
@@ -28,7 +29,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const user = rows[0];
 
     // Ista poruka za "nema korisnika" i "pogrešna lozinka" — ne odajemo koji nalog postoji.
-    const invalid = (): void => void sendError(reply, 401, 'UNAUTHENTICATED', 'Pogrešan email ili lozinka.');
+    const invalid = (): void => void sendError(reply, 401, 'UNAUTHENTICATED', 'Pogrešno korisničko ime ili lozinka.');
 
     if (!user || user.status !== 'active') {
       invalid();

@@ -41,9 +41,9 @@ export function Login(): React.JSX.Element {
         </div>
 
         <label className="field">
-          <span>Email</span>
+          <span>Korisnik</span>
           <input
-            type="email"
+            type="text"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="username"

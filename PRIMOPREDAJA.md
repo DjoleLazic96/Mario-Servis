@@ -12,7 +12,7 @@ proverene uživo protiv pokrenute aplikacije (vidi „Acceptance rezultati").
 **1. Pristup aplikaciji (lokalno).** Web: `http://localhost:5173`. API: `http://localhost:5173/api/v1` (kroz Vite proxy) ili direktno `http://localhost:3000`. Najlakše pokretanje: dupli klik na `pokreni.bat` u korenu (diže sve i otvori browser).
 
 **2. Nalozi za proveru rola.**
-- Admin (seed): `admin@karton.local` / `admin123` — **samo za test, ugasiti pre produkcije** (vidi t. 15).
+- Admin (seed): `admin` / `admin` — **samo za test, ugasiti pre produkcije** (vidi t. 15).
 - Običan korisnik: ne postoji u seed-u. Napravi ga kao admin: **Podešavanja → Korisnici → Novi korisnik**, rola „korisnik". (Acceptance test ga sam kreira radi provere rola.)
 
 **3. Lokalno pokretanje od nule** (Node 24+, pnpm, Docker Desktop pokrenut):
@@ -90,7 +90,7 @@ Sve četiri stavke su dokazane end-to-end (worker + Mailpit).
 | 19 | `openapi.yaml`, baza i implementacija usklađeni | ✅ vidi ispod |
 | 20 | Dokumentacija ažurirana | ✅ vidi ispod |
 
-**15. Demo admin.** `admin@karton.local` / `admin123` postoji samo u `apps/api/src/seed.ts` za lokalni razvoj. **Pre produkcije obavezno:** napravi pravog admina, pa demo nalog ugasi (Podešavanja → Korisnici → status „isključen") ili obriši. Isto važi za sve `admin123` iz dokumentacije.
+**15. Demo admin.** Nalog `admin` / `admin` (pojednostavljen za lokalno testiranje) kreira `apps/api/src/seed.ts`. **Pre produkcije obavezno:** napravi pravog admina sa jakom lozinkom, pa demo nalog ugasi (Podešavanja → Korisnici → status „isključen") ili obriši.
 
 **16. Testovi.**
 - **`karton/tests/acceptance.py`** — 45 provera protiv živog API-ja, u tri celine:
@@ -142,7 +142,7 @@ Ključni dokazi: interna stavka ostaje na nalogu ali NE ide na predračun/račun
 ## Produkciona checklista (pre stvarne upotrebe)
 
 1. ☐ Napraviti pravog admin korisnika (Podešavanja → Korisnici).
-2. ☐ Ugasiti/obrisati `admin@karton.local` / `admin123`.
+2. ☐ Ugasiti/obrisati `admin` / `admin`.
 3. ☐ Obrisati test podatke (test klijenti, vozila, nalozi, dokumenti).
 4. ☐ Postaviti pravi logo (Podešavanja → Servis → Logo).
 5. ☐ Podesiti SMTP — **trenutno kroz `.env`** (`SMTP_HOST`/`SMTP_PORT`); za autentifikovani server prvo dovezati `auth` u worker (t. 17).

@@ -23,7 +23,7 @@ Pokriva:
 ### Preduslovi
 
 1. Podignut stack (DB, API, worker, web) — vidi glavni `README.md`.
-2. Postoji demo admin `admin@karton.local` / `admin123` (kreira ga `pnpm seed`).
+2. Postoji demo admin `admin` / `admin` (kreira ga `pnpm seed`).
 3. Python 3 i `docker` na PATH-u (test radi par provera direktno nad bazom
    kroz `docker exec karton-db`).
 

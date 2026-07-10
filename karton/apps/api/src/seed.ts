@@ -6,8 +6,9 @@ import { pool } from './db.ts';
  * Nema samoregistracije (spec §6) — admin se pravi ovde, kasnije preko Podešavanja.
  * Idempotentno: ponovni seed ne pravi duplikate.
  */
-const ADMIN_EMAIL = 'admin@karton.local';
-const ADMIN_PASSWORD = 'admin123';
+// Demo nalog za lokalno testiranje. OBAVEZNO promeniti pre produkcije/VPS-a.
+const ADMIN_EMAIL = 'admin';
+const ADMIN_PASSWORD = 'admin';
 
 async function seed(): Promise<void> {
   const exists = await pool.query('SELECT 1 FROM app_user WHERE email = $1', [ADMIN_EMAIL]);

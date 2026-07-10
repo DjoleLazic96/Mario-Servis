@@ -85,7 +85,7 @@ echo ==========================================
 echo   Karton je pokrenut!
 echo.
 echo   Aplikacija:  http://localhost:5173
-echo   Prijava:     admin@karton.local  /  admin123
+echo   Prijava:     admin  /  admin
 echo   Mejlovi:     http://localhost:8025  (Mailpit)
 echo.
 echo   Za gasenje pokrenite:  zaustavi.bat

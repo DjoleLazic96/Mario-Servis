@@ -66,7 +66,7 @@ def db(sql):
 
 # ═══════════════════════ PRIPREMA ═══════════════════════
 A('GET', '/settings')
-st, _ = A('POST', '/auth/login', {'email': 'admin@karton.local', 'password': 'admin123'})
+st, _ = A('POST', '/auth/login', {'email': 'admin', 'password': 'admin'})
 assert st == 200, 'admin prijava pala'
 
 # napravi običnog korisnika (za test rola) i prijavi ga
@@ -299,7 +299,7 @@ check('6b. Korisnička sesija poništena posle restore-a', st == 401, str(st))
 
 # 7. audit zapis za restore (prijavi se ponovo da bismo proverili)
 A('GET', '/settings')
-A('POST', '/auth/login', {'email': 'admin@karton.local', 'password': 'admin123'})
+A('POST', '/auth/login', {'email': 'admin', 'password': 'admin'})
 restored_audit = db("SELECT count(*) FROM audit_log WHERE action='backup.restored'")
 check('7. Audit zapis za restore', int(restored_audit) >= 1, f'{restored_audit} zapis(a)')
 

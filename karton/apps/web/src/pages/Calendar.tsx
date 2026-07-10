@@ -131,7 +131,7 @@ export function Calendar(): React.JSX.Element {
                       <span className="cal-appt-time mono">{a.time}</span>
                       <span className="cal-appt-who">{a.customer.name}</span>
                       <span className="cal-appt-veh">{a.vehicle.make} {a.vehicle.model}</span>
-                      {a.remindersEnabled && <span className="cal-appt-rem" title={`podsetnik: ${a.reminderStatus ?? '—'}`}>✉</span>}
+                      {a.remindersEnabled && <span className="cal-appt-rem" title={`podsetnik: ${a.reminderStatus ? labels.reminderStatus[a.reminderStatus] : 'zakazan'}`}>✉</span>}
                     </button>
                   );
                 })}
@@ -173,7 +173,7 @@ export function Calendar(): React.JSX.Element {
               <dt>Vozilo</dt><dd>{selected.vehicle.make} {selected.vehicle.model} <span className="mono">{selected.vehicle.plate ?? ''}</span></dd>
               <dt>Majstor</dt><dd>{selected.mechanic?.fullName ?? '—'}</dd>
               <dt>Status</dt><dd><span className={`badge ${statusClass[selected.status]}`}>{labels.appointmentStatus[selected.status]}</span></dd>
-              {selected.remindersEnabled && <><dt>Podsetnik</dt><dd>{selected.reminderStatus ?? '—'}</dd></>}
+              {selected.remindersEnabled && <><dt>Podsetnik</dt><dd>{selected.reminderStatus ? labels.reminderStatus[selected.reminderStatus] : 'Zakazan'}</dd></>}
             </dl>
             <div className="btn-group" style={{ flexWrap: 'wrap' }}>
               {selected.status === 'scheduled' && <>

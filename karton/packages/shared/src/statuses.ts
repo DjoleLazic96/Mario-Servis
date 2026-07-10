@@ -90,6 +90,13 @@ export const labels = {
     cancelled: 'Otkazano',
     no_show: 'Nije se pojavio',
   } satisfies Record<AppointmentStatus, string>,
+  reminderStatus: {
+    scheduled: 'Zakazan',
+    processing: 'Šalje se',
+    sent: 'Poslat',
+    failed: 'Neuspeo',
+    skipped: 'Preskočen (bez emaila)',
+  } as Record<string, string>,
   documentType: {
     quote: 'Ponuda',
     proforma: 'Predračun',

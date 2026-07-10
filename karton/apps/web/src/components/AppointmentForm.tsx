@@ -9,6 +9,7 @@ const WARN_LABEL: Record<string, string> = {
   MECHANIC_BUSY: 'Majstor je zauzet u to vreme.',
   OUTSIDE_WORK_HOURS: 'Termin je van radnog vremena.',
   MECHANIC_UNAVAILABLE: 'Majstor je tog dana odsutan (godišnji ili bolovanje).',
+  NO_CUSTOMER_EMAIL: 'Klijent nema email — podsetnik će biti poslat samo ako se email doda pre termina.',
 };
 
 /** Ista forma zakazuje i menja termin — pravila (BR-27) su identična, razlikuje se samo glagol. */

@@ -67,6 +67,13 @@ karton/
 
 **11. SMTP / email.** ⚠️ **Važno — trenutno ponašanje:** worker koji stvarno šalje podsetnike čita **`SMTP_HOST` i `SMTP_PORT` iz `.env`** i šalje **bez autentifikacije** (podrazumevano Mailpit `localhost:1025`). SMTP polja u **Podešavanja → Servis** (host/port/korisnik/lozinka/pošiljalac) se **čuvaju u bazi ali ih slanje još ne koristi** — to je poznati tehnički dug (vidi t. 17). Za produkciju sa pravim mejlom trenutno se konfiguriše `.env`, a za autentifikovani SMTP treba dovezati `auth` u worker.
 
+**Pravila podsetnika (potvrđena i ugrađena, spec §4.11):**
+1. Klijent može bez emaila; email se dodaje naknadno; može ih imati više (prvi = primarni).
+2. Podsetnik se **naoruža** čim je uključen i termin je `scheduled` — bez obzira na email (klijent bez emaila daje meko upozorenje, ne grešku).
+3. Šalje se **samo ako** je u trenutku slanja: termin `scheduled` + podsetnik uključen + klijent ima email.
+4. Email dodat **pre** vremena slanja → podsetnik se pošalje. Email dodat **posle** → podsetnik se terminalno **preskoči** (`skipped`), bez zakašnjelog slanja.
+Sve četiri stavke su dokazane end-to-end (worker + Mailpit).
+
 ---
 
 ## 12–20. Potvrde

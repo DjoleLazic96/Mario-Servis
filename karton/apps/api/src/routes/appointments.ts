@@ -60,7 +60,10 @@ async function syncReminder(client: PoolClient, apptId: number): Promise<void> {
       EXISTS(SELECT 1 FROM customer_contact cc WHERE cc.customer_id=a.customer_id AND cc.kind='email') has_email
      FROM appointment a WHERE a.id=$1`, [apptId]);
   const row = a.rows[0];
-  if (!row || !row.enabled || row.status !== 'scheduled' || !row.has_email) return;
+  // Podsetnik se zakazuje na osnovu namere (uključen + termin zakazan), BEZ obzira na email.
+  // Email se proverava tek u trenutku slanja u workeru (pravila podsetnika 4–6): tako
+  // email dodat pre vremena slanja stigne na vreme, a onaj dodat posle ne izaziva zakašnjelo slanje.
+  if (!row || !row.enabled || row.status !== 'scheduled') return;
   const s = await client.query<{ t: string }>(`SELECT to_char(reminder_send_time,'HH24:MI') t FROM settings WHERE id=1`);
   const sendTime = s.rows[0]?.t ?? '09:00';
   // dan pre termina u sendTime
@@ -98,6 +101,14 @@ async function checkConstraints(b: z.infer<typeof apptSchema>, excludeId?: numbe
       [b.mechanicId, b.date]);
     if ((away.rowCount ?? 0) > 0) warnings.push('MECHANIC_UNAVAILABLE');
   }
+
+  // Uključen podsetnik, a klijent nema email → meko upozorenje (ne tvrda greška):
+  // podsetnik se „naoruža" i poslaće se samo ako se email doda pre vremena slanja (pravilo 5).
+  if (b.remindersEnabled) {
+    const em = await pool.query(`SELECT 1 FROM customer_contact WHERE customer_id=$1 AND kind='email'`, [b.customerId]);
+    if (em.rowCount === 0) warnings.push('NO_CUSTOMER_EMAIL');
+  }
+
   return { block: false, warnings };
 }
 
@@ -121,10 +132,6 @@ export async function appointmentRoutes(app: FastifyInstance): Promise<void> {
     const chk = await checkConstraints(b);
     if (chk.block) return sendError(reply, 422, 'CALENDAR_BLOCKED', 'Taj dan je blokiran u kalendaru.');
     if (chk.warnings.length && !b.confirmed) return sendError(reply, 409, 'CONFIRMATION_REQUIRED', 'Postoje upozorenja — potvrdite.', { warnings: chk.warnings });
-    if (b.remindersEnabled) {
-      const em = await pool.query(`SELECT 1 FROM customer_contact WHERE customer_id=$1 AND kind='email'`, [b.customerId]);
-      if (em.rowCount === 0) return sendError(reply, 422, 'NO_CUSTOMER_EMAIL', 'Klijent nema email — isključite podsetnik.');
-    }
     const created = await tx(async (client) => {
       const ins = await client.query<{ id: number }>(
         `INSERT INTO appointment (date, time, duration_min, customer_id, vehicle_id, mechanic_id, note, reminders_enabled, created_by)

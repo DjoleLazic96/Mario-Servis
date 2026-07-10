@@ -103,7 +103,15 @@ Imena majstora se **nikad** ne prikazuju na ponudi/predračunu/računu. **Satne*
 Termin: datum, vreme, trajanje (min), klijent, vozilo, majstor (opciono), napomena, podsetnici on/off. Preklapanje termina majstora i termin van radnog vremena → **upozorenje uz mogućnost potvrde** (`confirmed: true`); blokiran dan → **tvrda blokada**. `completed` → `scheduled` korisnik sme samo ako termin nije vezan za nalog; admin može korigovati status i vezu uz audit i razlog. Kardinalnost: **više termina može biti vezano za isti nalog** (npr. dijagnostika, nastavak radova, predaja vozila); jedan termin pokazuje na najviše jedan nalog. Fizičko brisanje samo budućeg termina. Kalendar: nedeljni prikaz, boje po statusu, filter po majstoru, status slanja podsetnika vidljiv.
 
 ### 4.11 Email podsetnici (odluka 19)
-Šalju se samo ako: termin `scheduled` + klijent ima email + podsetnik uključen; uslovi se proveravaju u trenutku slanja (ako je termin prešao u drugi status — ne šalje se). Default vreme: 09:00 dan pre (podešavanje). Čuva se: uključen, planirano vreme, status (`scheduled`/`processing`/`sent`/`failed`), broj pokušaja, poslednji pokušaj, poslednja greška, vreme uspešnog slanja. Retry sa rastućim razmakom (5 → 15 → 60 min, max 5 pokušaja). Šablon (izmenljiv u fazi 2, u v1 konstanta u kodu): naslov „Podsetnik za zakazani termin — [Naziv servisa]"; sadržaj: ime klijenta, naziv servisa, datum, vreme, vozilo, tablica, telefon servisa, napomena da je poruka automatska; pošiljalac: naziv servisa iz Podešavanja.
+**Zakazivanje (naoružavanje):** red podsetnika se kreira čim je podsetnik uključen i termin je `scheduled` — **bez obzira da li klijent u tom trenutku ima email**. Uključivanje podsetnika za klijenta bez emaila daje **meko upozorenje** (`CONFIRMATION_REQUIRED` → `NO_CUSTOMER_EMAIL`), ne tvrdu grešku.
+
+**Slanje — uslovi se proveravaju u trenutku slanja:** šalje se samo ako je tada termin `scheduled` + podsetnik uključen + klijent ima (primarni) email. Posledice:
+- email dodat **pre** planiranog vremena slanja → podsetnik se pošalje;
+- email dodat **posle** tog vremena → podsetnik se u trenutku slanja **terminalno preskače** (`skipped`) i ne šalje se naknadno (nema zakašnjelog slanja); ista sudbina ako je termin u međuvremenu otkazan/realizovan ili je podsetnik isključen.
+
+Default vreme: 09:00 dan pre (podešavanje). Statusi: `scheduled` / `processing` / `sent` / `failed` (greška slanja, ide u retry) / `skipped` (svesno preskočen — nije greška). Čuva se: uključen, planirano vreme, status, broj pokušaja, poslednji pokušaj, poslednja greška, vreme uspešnog slanja. Retry (samo za `failed`) sa rastućim razmakom (5 → 15 → 60 → 180 → 360 min, max 5 pokušaja). Šablon (izmenljiv u fazi 2, u v1 konstanta u kodu): naslov „Podsetnik za zakazani termin — [Naziv servisa]"; sadržaj: ime klijenta, naziv servisa, datum, vreme, vozilo, tablica, telefon servisa, napomena da je poruka automatska; pošiljalac: naziv servisa iz Podešavanja.
+
+> **Napomena o SMTP-u (tehnički dug):** slanje trenutno koristi `SMTP_HOST`/`SMTP_PORT` iz `.env` bez autentifikacije (lokalno: Mailpit). SMTP polja iz Podešavanja se čuvaju ali ih worker još ne koristi — obavezno dovezati pre produkcije.
 
 ### 4.12 Prihod i naplata (odluka 20)
 Prihod = isključivo računi `paid`, po `paid_on`. Ponude i predračuni nikad ne ulaze. Nenaplaćeno = zbir računa `unpaid`. `due_on` je informativan (sortiranje, „kasni X dana", „dospeva…"), nikad ne menja status.
@@ -238,7 +246,7 @@ Model: `{ "code": "...", "message": "...", "fields": { ... }?, "warnings": [ ...
 | 404 | `NOT_FOUND` | entitet ne postoji |
 | 409 | `VERSION_CONFLICT` | optimističko zaključavanje — ponuditi osvežavanje |
 | 409 | `DUPLICATE_VIN` / `DUPLICATE_TAX_ID` / `DUPLICATE_EMAIL` | duplikat; odgovor nosi `existingId` za „povuci postojeće" |
-| 409 | `CONFIRMATION_REQUIRED` | meka pravila — `warnings`: `MECHANIC_BUSY`, `MECHANIC_UNAVAILABLE`, `OUTSIDE_WORK_HOURS`; ponoviti sa `confirmed: true` |
+| 409 | `CONFIRMATION_REQUIRED` | meka pravila — `warnings`: `MECHANIC_BUSY`, `MECHANIC_UNAVAILABLE`, `OUTSIDE_WORK_HOURS`, `NO_CUSTOMER_EMAIL`; ponoviti sa `confirmed: true` |
 | 422 | `TRANSITION_NOT_ALLOWED` | tranzicija van §6 (detalj: iz/u/rola) |
 | 422 | `ENTITY_LOCKED` | izmena zaključanog naloga/dokumenta (BR-08, BR-22) |
 | 422 | `LABOR_BILLING_INVALID` | stavka rada: `hour`/`km` bez količine ili jedinične cene, odn. `flat` sa njima (BR-43) |
@@ -262,7 +270,8 @@ Model: `{ "code": "...", "message": "...", "fields": { ... }?, "warnings": [ ...
 | 422 | `APPOINTMENT_STARTED` | brisanje termina koji je počeo (BR-29) |
 | 422 | `CALENDAR_BLOCKED` | termin u blokiran dan (BR-27, tvrda blokada) |
 | 422 | `REASON_REQUIRED` | admin osetljiva akcija bez razloga (BR-34) |
-| 422 | `NO_CUSTOMER_EMAIL` | uključivanje podsetnika za klijenta bez emaila |
+
+> `NO_CUSTOMER_EMAIL` više nije tvrda greška: uključivanje podsetnika za klijenta bez emaila daje **meko upozorenje** (`CONFIRMATION_REQUIRED`, gornji red), pa se podsetnik „naoruža". Vidi pravila podsetnika u §10.
 
 ## 9. API i mapa ekrana
 

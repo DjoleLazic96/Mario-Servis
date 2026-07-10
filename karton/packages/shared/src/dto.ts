@@ -389,7 +389,7 @@ export interface UpdateProformaInput {
 // --- Termini / kalendar ---
 
 export type AppointmentStatusT = 'scheduled' | 'completed' | 'cancelled' | 'no_show';
-export type ReminderSendStatusT = 'scheduled' | 'processing' | 'sent' | 'failed';
+export type ReminderSendStatusT = 'scheduled' | 'processing' | 'sent' | 'failed' | 'skipped';
 
 export interface Appointment {
   id: number;

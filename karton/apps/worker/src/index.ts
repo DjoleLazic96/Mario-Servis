@@ -56,8 +56,17 @@ async function sendReminders(): Promise<void> {
          FROM appointment a JOIN customer c ON c.id=a.customer_id JOIN vehicle v ON v.id=a.vehicle_id CROSS JOIN settings s WHERE a.id=$1`,
         [r.appointment_id]);
       const d = info.rows[0];
+      // Uslovi se proveravaju u trenutku slanja (pravila 4–6). Ako u ovom trenutku
+      // ne važe (termin otkazan/realizovan, podsetnik isključen, ili klijent nema email),
+      // podsetnik se TERMINALNO preskače — ne vraća se u 'scheduled'. Time se sprečava
+      // zakašnjelo slanje ako se email doda posle vremena (pravilo 6) i vrtenje u krug.
       if (!d || d.status !== 'scheduled' || !d.enabled || !d.email) {
-        await pool.query(`UPDATE appointment_reminder SET send_status='scheduled' WHERE id=$1`, [r.id]);
+        const razlog = !d ? 'termin ne postoji'
+          : d.status !== 'scheduled' ? `termin nije zakazan (${d.status})`
+          : !d.enabled ? 'podsetnik isključen'
+          : 'klijent nema email u trenutku slanja';
+        await pool.query(`UPDATE appointment_reminder SET send_status='skipped', last_attempt_at=now(), last_error=$2 WHERE id=$1`, [r.id, razlog]);
+        log(`podsetnik preskočen: termin ${r.appointment_id} — ${razlog}`);
         continue;
       }
       try {

@@ -1304,7 +1304,7 @@ components:
         status: { $ref: '#/components/schemas/AppointmentStatus' }
         workOrderId: { type: integer, nullable: true }
         remindersEnabled: { type: boolean }
-        reminderStatus: { type: string, enum: [scheduled, processing, sent, failed], nullable: true, description: Status slanja — vidljiv na terminu }
+        reminderStatus: { type: string, enum: [scheduled, processing, sent, failed, skipped], nullable: true, description: 'Status slanja — vidljiv na terminu. skipped = svesno preskočen (bez emaila u trenutku slanja)' }
         version: { type: integer }
     AppointmentInput:
       type: object
@@ -1316,7 +1316,7 @@ components:
         vehicleId: { type: integer }
         mechanicId: { type: integer, nullable: true }
         note: { type: string }
-        remindersEnabled: { type: boolean, description: Klijent bez emaila → 422 NO_CUSTOMER_EMAIL }
+        remindersEnabled: { type: boolean, description: 'Klijent bez emaila → meko upozorenje NO_CUSTOMER_EMAIL (409 CONFIRMATION_REQUIRED); podsetnik se naoruža i šalje samo ako email stigne pre vremena slanja' }
         confirmed: { type: boolean, default: false, description: Potvrda mekih upozorenja (BR-27) }
         version: { type: integer }
     CalendarBlock:

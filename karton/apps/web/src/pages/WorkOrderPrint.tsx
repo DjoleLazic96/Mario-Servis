@@ -5,7 +5,7 @@ import type { WorkOrderDetail } from '@karton/shared';
 import { labels } from '@karton/shared';
 import { api } from '../api.ts';
 
-interface Shop { shopName: string; address: string | null; taxId: string | null; phone: string | null }
+interface Shop { shopName: string; address: string | null; taxId: string | null; phone: string | null; logo: string | null }
 
 /** Prijemni list (A4) — jedina standardna štampa naloga (spec §4.4). */
 export function WorkOrderPrint(): React.JSX.Element {
@@ -35,7 +35,9 @@ export function WorkOrderPrint(): React.JSX.Element {
     <div className="pl-sheet">
       <div className="pl-head">
         <div className="pl-brand">
-          <div className="pl-logo">LOGO</div>
+          {shop.logo
+            ? <img className="pl-logo-img" src={shop.logo} alt="" />
+            : <div className="pl-logo">LOGO</div>}
           <div>
             <div className="pl-shop">{shop.shopName}</div>
             <div className="pl-shop-meta">

@@ -85,11 +85,11 @@ export function WorkOrders(): React.JSX.Element {
           <tbody>
             {result?.data.map((w) => (
               <tr key={w.id} className="clickable" onClick={() => navigate(`/nalozi/${w.id}`)}>
-                <td className="mono strong">{w.number}</td>
-                <td><span className="mono">{w.vehicle.plate ?? '—'}</span> {w.vehicle.make} {w.vehicle.model}</td>
-                <td>{w.customer.name}</td>
-                <td className="mono">{w.receivedOn}</td>
-                <td><span className={`badge ${statusClass[w.status]}`}>{labels.workOrderStatus[w.status]}</span></td>
+                <td className="mono strong" data-label="Broj">{w.number}</td>
+                <td data-label="Vozilo"><span className="mono">{w.vehicle.plate ?? '—'}</span> {w.vehicle.make} {w.vehicle.model}</td>
+                <td data-label="Klijent">{w.customer.name}</td>
+                <td className="mono" data-label="Prijem">{w.receivedOn}</td>
+                <td data-label="Status"><span className={`badge ${statusClass[w.status]}`}>{labels.workOrderStatus[w.status]}</span></td>
               </tr>
             ))}
             {!loading && result?.data.length === 0 && <tr><td colSpan={5} className="table-empty">Nema naloga za ovaj filter.</td></tr>}

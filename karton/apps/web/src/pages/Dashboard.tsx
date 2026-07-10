@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { WorkOrderStatus } from '@karton/shared';
+import { labels } from '@karton/shared';
 import { api } from '../api.ts';
 import { money } from '../lib/documentHelpers.ts';
+import { statusClass } from '../lib/workOrderStatus.ts';
 
 interface DashboardData {
   today: { appointments: { id: number; date: string; time: string; customer: string; make: string; model: string }[]; waitingParts: { number: string; plate: string | null }[] };
-  business: { vehiclesInShop: number; openWorkOrders: number; pendingQuotes: number };
+  business: {
+    vehiclesInShop: number; openWorkOrders: number; pendingQuotes: number;
+    inShopList: { id: number; number: string; status: WorkOrderStatus; make: string; model: string; plate: string | null; customer: string }[];
+  };
   money: { monthRevenue: number; unpaidTotal: number; unpaidInvoices: { number: string; customer: string; due_on: string | null; total: number }[] };
 }
 
@@ -40,6 +46,25 @@ export function Dashboard(): React.JSX.Element {
         <button className="stat-card" onClick={() => navigate('/nalozi')}><span className="stat-num">{d.business.openWorkOrders}</span><span className="stat-label">Otvorenih naloga</span></button>
         <button className="stat-card" onClick={() => navigate('/dokumenti')}><span className="stat-num">{d.business.pendingQuotes}</span><span className="stat-label">Ponuda na čekanju</span></button>
       </div>
+
+      <section className="card">
+        <h3 className="card-title">Vozila u servisu</h3>
+        {d.business.inShopList.length === 0 ? <p className="card-empty">Nijedno vozilo nije u servisu.</p> : (
+          <table className="mini-table">
+            <thead><tr><th>Nalog</th><th>Vozilo</th><th>Klijent</th><th>Status</th></tr></thead>
+            <tbody>
+              {d.business.inShopList.map((w) => (
+                <tr key={w.id} className="clickable" onClick={() => navigate(`/nalozi/${w.id}`)}>
+                  <td className="mono">{w.number}</td>
+                  <td><span className="mono">{w.plate ?? '—'}</span> {w.make} {w.model}</td>
+                  <td>{w.customer}</td>
+                  <td><span className={`badge ${statusClass[w.status]}`}>{labels.workOrderStatus[w.status]}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
 
       <h2 className="section-h">Novac</h2>
       <div className="card-grid">

@@ -6,10 +6,17 @@ import type {
   CustomerRef,
   OwnershipRecord,
   RegistrationRecord,
+  VehicleStats,
+  DocumentChain,
+  WorkOrder,
+  WorkOrderDetail,
+  Paginated,
 } from '@karton/shared';
 import { api, ApiRequestError } from '../api.ts';
 import { Modal } from '../components/Modal.tsx';
 import { VehicleForm } from '../components/VehicleForm.tsx';
+import { WorkOrderHistory } from '../components/WorkOrderHistory.tsx';
+import { DocumentChainBar } from '../components/DocumentChain.tsx';
 import { OwnerPicker } from '../components/OwnerPicker.tsx';
 
 type Dialog = 'edit' | 'owner' | 'plate' | null;
@@ -180,8 +187,15 @@ export function VehicleDetail(): React.JSX.Element {
       </div>
 
       <section className="card">
+        <h2 className="card-title">Statistika vozila</h2>
+        <VehicleStatsPanel vehicleId={vehicle.id} />
+      </section>
+
+      <LatestOrderChain vehicleId={vehicle.id} />
+
+      <section className="card">
         <h2 className="card-title">Istorija servisa</h2>
-        <p className="card-empty">Radni nalozi ovog vozila — uskoro.</p>
+        <WorkOrderHistory scope={{ vehicleId: vehicle.id }} showVehicle={false} />
       </section>
 
       {dialog === 'edit' && (
@@ -219,5 +233,45 @@ export function VehicleDetail(): React.JSX.Element {
         </Modal>
       )}
     </div>
+  );
+}
+
+/** Broj naloga, ukupno naplaćeno (samo plaćeni računi, BR-31) i poslednja poseta. */
+function VehicleStatsPanel({ vehicleId }: { vehicleId: number }): React.JSX.Element {
+  const [stats, setStats] = useState<VehicleStats | null>(null);
+  useEffect(() => {
+    void (async () => { setStats(await api.get<VehicleStats>(`/vehicles/${vehicleId}/stats`)); })();
+  }, [vehicleId]);
+
+  if (!stats) return <p className="card-empty">Učitavanje…</p>;
+  return (
+    <div className="stat-row">
+      <div className="stat"><span className="stat-num">{stats.orders}</span><span className="stat-label">radnih naloga</span></div>
+      <div className="stat"><span className="stat-num mono">{stats.totalSpent.toLocaleString('sr-RS')}</span><span className="stat-label">RSD naplaćeno</span></div>
+      <div className="stat"><span className="stat-num mono">{stats.lastVisit ?? '—'}</span><span className="stat-label">poslednja poseta</span></div>
+    </div>
+  );
+}
+
+/** Dvoredna traka za NAJNOVIJI nalog vozila (spec §3.5) — brz skok na ponudu/predračun/račun. */
+function LatestOrderChain({ vehicleId }: { vehicleId: number }): React.JSX.Element | null {
+  const [chain, setChain] = useState<DocumentChain | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const list = await api.get<Paginated<WorkOrder>>(`/work-orders?vehicleId=${vehicleId}&pageSize=1&sort=received:desc`);
+      const latest = list.data[0];
+      if (!latest) return;
+      const detail = await api.get<WorkOrderDetail>(`/work-orders/${latest.id}`);
+      setChain(detail.chain);
+    })();
+  }, [vehicleId]);
+
+  if (!chain) return null;
+  return (
+    <section className="card">
+      <h2 className="card-title">Poslednji nalog</h2>
+      <DocumentChainBar chain={chain} currentId={-1} />
+    </section>
   );
 }

@@ -6,6 +6,8 @@ import { Modal } from '../components/Modal.tsx';
 import { MechanicForm } from '../components/MechanicForm.tsx';
 import { ServiceForm } from '../components/ServiceForm.tsx';
 import { UnavailabilityManager } from '../components/UnavailabilityManager.tsx';
+import { SortableTh } from '../components/SortableTh.tsx';
+import { sortRows } from '../lib/sortRows.ts';
 
 type Tab = 'mechanics' | 'services';
 
@@ -27,6 +29,7 @@ export function Pricelist(): React.JSX.Element {
 
 function MechanicsTab(): React.JSX.Element {
   const [list, setList] = useState<Mechanic[]>([]);
+  const [sort, setSort] = useState<string | undefined>();
   const [dialog, setDialog] = useState<{ mode: 'new' } | { mode: 'edit'; mechanic: Mechanic } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,9 +57,15 @@ function MechanicsTab(): React.JSX.Element {
       <div className="row-end"><button className="btn-primary" onClick={() => { setError(null); setDialog({ mode: 'new' }); }}>+ Novi majstor</button></div>
       <div className="table-wrap">
         <table className="data-table">
-          <thead><tr><th>Ime</th><th>Specijalnost</th><th>Zaposlen</th><th className="ta-r">Cena/h</th><th>Status</th></tr></thead>
+          <thead><tr>
+            <SortableTh field="fullName" label="Ime" sort={sort} onSort={setSort} />
+            <SortableTh field="specialty" label="Specijalnost" sort={sort} onSort={setSort} />
+            <SortableTh field="hiredOn" label="Zaposlen" sort={sort} onSort={setSort} />
+            <SortableTh field="hourlyRate" label="Cena/h" sort={sort} onSort={setSort} right />
+            <SortableTh field="status" label="Status" sort={sort} onSort={setSort} />
+          </tr></thead>
           <tbody>
-            {list.map((m) => (
+            {sortRows(list, sort, (m, f) => m[f as keyof Mechanic]).map((m) => (
               <tr key={m.id} className="clickable" onClick={() => { setError(null); setDialog({ mode: 'edit', mechanic: m }); }}>
                 <td className="strong">{m.fullName}</td>
                 <td>{labels.specialty[m.specialty]}</td>
@@ -83,6 +92,7 @@ function MechanicsTab(): React.JSX.Element {
 
 function ServicesTab(): React.JSX.Element {
   const [list, setList] = useState<Service[]>([]);
+  const [sort, setSort] = useState<string | undefined>();
   const [dialog, setDialog] = useState<{ mode: 'new' } | { mode: 'edit'; service: Service } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,9 +120,14 @@ function ServicesTab(): React.JSX.Element {
       <div className="row-end"><button className="btn-primary" onClick={() => { setError(null); setDialog({ mode: 'new' }); }}>+ Nova usluga</button></div>
       <div className="table-wrap">
         <table className="data-table">
-          <thead><tr><th>Naziv</th><th>Obračun</th><th className="ta-r">Cena</th><th>Status</th></tr></thead>
+          <thead><tr>
+            <SortableTh field="name" label="Naziv" sort={sort} onSort={setSort} />
+            <SortableTh field="billingUnit" label="Obračun" sort={sort} onSort={setSort} />
+            <SortableTh field="defaultPrice" label="Cena" sort={sort} onSort={setSort} right />
+            <SortableTh field="status" label="Status" sort={sort} onSort={setSort} />
+          </tr></thead>
           <tbody>
-            {list.map((s) => (
+            {sortRows(list, sort, (r, f) => r[f as keyof Service]).map((s) => (
               <tr key={s.id} className="clickable" onClick={() => { setError(null); setDialog({ mode: 'edit', service: s }); }}>
                 <td className="strong">{s.name}</td>
                 <td>{labels.laborBillingUnit[s.billingUnit]}</td>

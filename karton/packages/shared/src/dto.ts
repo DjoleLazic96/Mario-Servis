@@ -233,6 +233,24 @@ export interface WorkOrderDetail extends WorkOrder {
   partItems: PartItem[];
   externalItems: ExternalItem[];
   totals: WorkOrderTotals;
+  chain: DocumentChain;
+}
+
+/** Statistika vozila (spec §3.5). */
+export interface VehicleStats {
+  orders: number;
+  totalSpent: number;
+  lastVisit: string | null;
+}
+
+export interface BackupRun {
+  id: number;
+  startedAt: string;
+  finishedAt: string | null;
+  status: 'success' | 'failed';
+  destination: string | null;
+  sizeBytes: number | null;
+  error: string | null;
 }
 
 export interface WorkOrderInput {

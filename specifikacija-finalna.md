@@ -238,7 +238,7 @@ Model: `{ "code": "...", "message": "...", "fields": { ... }?, "warnings": [ ...
 | 404 | `NOT_FOUND` | entitet ne postoji |
 | 409 | `VERSION_CONFLICT` | optimističko zaključavanje — ponuditi osvežavanje |
 | 409 | `DUPLICATE_VIN` / `DUPLICATE_TAX_ID` / `DUPLICATE_EMAIL` | duplikat; odgovor nosi `existingId` za „povuci postojeće" |
-| 409 | `CONFIRMATION_REQUIRED` | meka pravila — `warnings`: `MECHANIC_BUSY`, `OUTSIDE_WORK_HOURS`; ponoviti sa `confirmed: true` |
+| 409 | `CONFIRMATION_REQUIRED` | meka pravila — `warnings`: `MECHANIC_BUSY`, `MECHANIC_UNAVAILABLE`, `OUTSIDE_WORK_HOURS`; ponoviti sa `confirmed: true` |
 | 422 | `TRANSITION_NOT_ALLOWED` | tranzicija van §6 (detalj: iz/u/rola) |
 | 422 | `ENTITY_LOCKED` | izmena zaključanog naloga/dokumenta (BR-08, BR-22) |
 | 422 | `LABOR_BILLING_INVALID` | stavka rada: `hour`/`km` bez količine ili jedinične cene, odn. `flat` sa njima (BR-43) |
@@ -248,6 +248,10 @@ Model: `{ "code": "...", "message": "...", "fields": { ... }?, "warnings": [ ...
 | 422 | `QUOTE_EXPIRED` | pokušaj prihvatanja istekle ponude |
 | 422 | `ACTIVE_PROFORMA_EXISTS` | drugi `valid` predračun po nalogu — izdavanje ili kopiranje (BR-15, BR-39) |
 | 422 | `PROFORMA_NOT_VALID` | konverzija `used`/`expired` predračuna (BR-17) |
+| 422 | `INVOICE_NOT_PAID` | admin ispravka plaćanja nad računom koji nije `paid` |
+| 422 | `BACKUP_UNUSABLE` | vraćanje iz backupa koji nije uspešno završen |
+| 500 | `BACKUP_FAILED` | `pg_dump` nije uspeo (detalj u `backup_run.error`) |
+| 500 | `RESTORE_FAILED` | `psql` nije uspeo; baza ostaje netaknuta (vraćanje je u transakciji) |
 | 422 | `WORK_ORDER_CANCELLED` | predračun iz otkazanog naloga (BR-14) |
 | 422 | `ACTIVE_INVOICE_EXISTS` | nalog već ima `unpaid`/`paid` račun — novo fakturisanje ili novi predračun blokirani (BR-18, BR-40) |
 | 422 | `INVOICE_NOT_UNPAID` | naplata/ispravka računa koji nije `unpaid` |

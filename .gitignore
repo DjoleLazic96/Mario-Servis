@@ -13,3 +13,7 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
+
+# Backup dumpovi — sadrže sve podatke klijenata i hešove lozinki. Nikad u git.
+backups/
+*.sql.gz

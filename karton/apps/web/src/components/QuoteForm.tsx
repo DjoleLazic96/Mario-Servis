@@ -12,6 +12,9 @@ export function QuoteForm({ onCreated }: { onCreated: (id: number) => void }): R
   const [customer, setCustomer] = useState<CustomerRef | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [rows, setRows] = useState<Row[]>([{ itemType: 'labor', name: '', amount: '' }]);
+  const [validUntil, setValidUntil] = useState('');
+  const [amountEur, setAmountEur] = useState('');
+  const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,6 +35,9 @@ export function QuoteForm({ onCreated }: { onCreated: (id: number) => void }): R
     try {
       const doc = await api.post<Document>('/documents', {
         type: 'quote', customerId: customer.id, vehicleId: vehicle.id, items,
+        validUntil: validUntil || undefined,
+        amountEur: amountEur ? Number(amountEur) : null,
+        note: note.trim() || null,
       });
       onCreated(doc.id);
     } catch (err) {
@@ -62,6 +68,16 @@ export function QuoteForm({ onCreated }: { onCreated: (id: number) => void }): R
       </div>
 
       <div className="amount-preview">Ukupno: <strong>{money(total)} RSD</strong></div>
+
+      <div className="form-row">
+        <label className="field"><span>Rok važenja <small className="hint">(podrazumevano iz podešavanja)</small></span>
+          <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} /></label>
+        <label className="field"><span>Iznos u EUR <small className="hint">(informativno)</small></span>
+          <input type="number" step="0.01" min={0} value={amountEur} onChange={(e) => setAmountEur(e.target.value)} /></label>
+      </div>
+      <label className="field"><span>Napomena</span>
+        <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></label>
+
       {error && <div className="login-error">{error}</div>}
       <div className="form-actions">
         <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Kreiranje…' : 'Kreiraj ponudu'}</button>

@@ -6,7 +6,7 @@ import { Modal } from '../components/Modal.tsx';
 import { VehicleForm } from '../components/VehicleForm.tsx';
 import { SortableTh } from '../components/SortableTh.tsx';
 
-type Tab = 'active' | 'archived';
+type Tab = 'active' | 'inService' | 'archived';
 
 export function Vehicles(): React.JSX.Element {
   const navigate = useNavigate();
@@ -22,7 +22,9 @@ export function Vehicles(): React.JSX.Element {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ status: tab, page: String(page) });
+    // „U servisu" je poseban filter nad aktivnim vozilima, ne status arhiviranja
+    const params = new URLSearchParams({ status: tab === 'inService' ? 'active' : tab, page: String(page) });
+    if (tab === 'inService') params.set('inShop', 'true');
     if (sort) params.set('sort', sort);
     if (q.trim()) params.set('q', q.trim());
     try {
@@ -77,6 +79,9 @@ export function Vehicles(): React.JSX.Element {
           <button className={`tab ${tab === 'active' ? 'active' : ''}`} onClick={() => { setTab('active'); setPage(1); }}>
             Aktivna
           </button>
+          <button className={`tab ${tab === 'inService' ? 'active' : ''}`} onClick={() => { setTab('inService'); setPage(1); }}>
+            U servisu
+          </button>
           <button className={`tab ${tab === 'archived' ? 'active' : ''}`} onClick={() => { setTab('archived'); setPage(1); }}>
             Arhivirana
           </button>
@@ -103,14 +108,14 @@ export function Vehicles(): React.JSX.Element {
           <tbody>
             {result?.data.map((v) => (
               <tr key={v.id} className="clickable" onClick={() => navigate(`/vozila/${v.id}`)}>
-                <td className="mono strong">{v.currentPlate ?? '—'}</td>
-                <td>
+                <td className="mono strong" data-label="Tablica">{v.currentPlate ?? '—'}</td>
+                <td data-label="Vozilo">
                   {v.make} {v.model}
                   {v.year ? <span className="muted"> · {v.year}</span> : null}
                 </td>
-                <td>{v.fuel ?? '—'}</td>
-                <td>{v.currentOwner?.name ?? '—'}</td>
-                <td className="mono muted">{v.vin}</td>
+                <td data-label="Gorivo">{v.fuel ?? '—'}</td>
+                <td data-label="Vlasnik">{v.currentOwner?.name ?? '—'}</td>
+                <td className="mono muted" data-label="VIN">{v.vin}</td>
               </tr>
             ))}
             {!loading && result?.data.length === 0 && (

@@ -149,6 +149,18 @@ async function computeChain(exec: PoolClient | typeof pool, doc: Document): Prom
   return { quote, workOrder, proforma, invoice };
 }
 
+/** Dvoredna traka za dati nalog (koristi je i ekran naloga i ekran vozila). */
+export async function chainForWorkOrder(exec: PoolClient | typeof pool, woId: number): Promise<DocumentChain> {
+  const w = await exec.query<{ number: string; status: string; source_quote_id: number | null }>(
+    `SELECT number, status, source_quote_id FROM work_order WHERE id=$1`, [woId]);
+  if (!w.rows[0]) return { quote: null, workOrder: null, proforma: null, invoice: null };
+  const quote = w.rows[0].source_quote_id
+    ? await docRef(exec, `SELECT id, number, status FROM document WHERE id=$1`, [w.rows[0].source_quote_id]) : null;
+  const proforma = await docRef(exec, `SELECT id, number, status FROM document WHERE type='proforma' AND work_order_id=$1 ORDER BY (status='valid') DESC, id DESC LIMIT 1`, [woId]);
+  const invoice = await docRef(exec, `SELECT id, number, status FROM document WHERE type='invoice' AND work_order_id=$1 ORDER BY (status IN ('unpaid','paid')) DESC, id DESC LIMIT 1`, [woId]);
+  return { quote, workOrder: { id: woId, number: w.rows[0].number, status: w.rows[0].status }, proforma, invoice };
+}
+
 export async function loadDocument(id: number, client?: PoolClient): Promise<DocumentDetail | null> {
   const exec = client ?? pool;
   const head = await exec.query(`${DOC_SELECT} WHERE d.id=$1`, [id]);

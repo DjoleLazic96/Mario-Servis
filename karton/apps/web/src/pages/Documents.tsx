@@ -77,13 +77,13 @@ export function Documents(): React.JSX.Element {
           <tbody>
             {result?.data.map((d) => (
               <tr key={d.id} className="clickable" onClick={() => navigate(`/dokumenti/${d.id}`)}>
-                <td className="mono strong">{d.number}</td>
-                <td>{docTypeLabel[d.type]}</td>
-                <td>{d.customer.name}</td>
-                <td><span className="mono">{d.vehicle.plate ?? '—'}</span> {d.vehicle.make} {d.vehicle.model}</td>
-                <td className="mono">{d.issuedOn}</td>
-                <td className="ta-r mono">{money(d.totalAmount)}</td>
-                <td><span className={`badge ${docStatusClass[d.status]}`}>{docStatusLabel(d.type, d.status)}</span></td>
+                <td className="mono strong" data-label="Broj">{d.number}</td>
+                <td data-label="Tip">{docTypeLabel[d.type]}</td>
+                <td data-label="Klijent">{d.customer.name}</td>
+                <td data-label="Vozilo"><span className="mono">{d.vehicle.plate ?? '—'}</span> {d.vehicle.make} {d.vehicle.model}</td>
+                <td className="mono" data-label="Datum">{d.issuedOn}</td>
+                <td className="ta-r mono" data-label="Iznos">{money(d.totalAmount)}</td>
+                <td data-label="Status"><span className={`badge ${docStatusClass[d.status]}`}>{docStatusLabel(d.type, d.status)}</span></td>
               </tr>
             ))}
             {!loading && result?.data.length === 0 && <tr><td colSpan={7} className="table-empty">Nema dokumenata.</td></tr>}

@@ -704,10 +704,58 @@ paths:
       tags: [settings]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
       responses: { '200': { description: OK }, '403': { $ref: '#/components/responses/Forbidden' }, '409': { $ref: '#/components/responses/Conflict' } }
-  /settings/logo:
+  /vehicles/{id}/stats:
+    get:
+      tags: [vehicles]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: Statistika vozila — broj naloga, ukupno naplaćeno (samo plaćeni računi, BR-31), poslednja poseta
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orders: { type: integer }
+                  totalSpent: { type: number }
+                  lastVisit: { type: string, format: date, nullable: true }
+
+  /documents/{id}/payment:
     post:
+      tags: [documents]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: 'ADMIN: ispravka datuma/načina plaćanja na plaćenom računu (razlog obavezan → audit invoice.payment_changed)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paidOn, paymentMethod, reason, version]
+              properties:
+                paidOn: { type: string, format: date }
+                paymentMethod: { type: string }
+                reason: { type: string, minLength: 1 }
+                version: { type: integer }
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'INVOICE_NOT_PAID — račun nije plaćen' }
+
+  /settings/logo:
+    put:
       tags: [settings]
-      summary: 'ADMIN: upload logotipa (multipart)'
+      summary: 'ADMIN: postavi logotip (data URI, do 400 KB; PNG/JPEG/SVG/WebP)'
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [dataUrl], properties: { dataUrl: { type: string, example: 'data:image/png;base64,iVBORw0KGgo...' } } } } }
+      responses: { '200': { description: Podešavanja sa novim logotipom }, '400': { $ref: '#/components/responses/Validation' }, '403': { description: Nije administrator } }
+    delete:
+      tags: [settings]
+      summary: 'ADMIN: ukloni logotip'
+      responses: { '200': { description: Podešavanja bez logotipa } }
       requestBody:
         required: true
         content:
@@ -739,23 +787,46 @@ paths:
   /backup/runs:
     get:
       tags: [settings]
-      summary: 'ADMIN: evidencija backup izvršavanja'
+      summary: 'ADMIN: evidencija backup izvršavanja (poslednjih 50)'
       responses: { '200': { description: OK } }
+  /backup/run:
+    post:
+      tags: [settings]
+      summary: 'ADMIN: napravi backup odmah (worker ga inače pravi jednom dnevno)'
+      responses:
+        '201': { description: Backup napravljen }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { description: 'BACKUP_FAILED — detalj se upisuje i u backup_run.error' }
   /backup/restore:
     post:
       tags: [settings]
-      summary: 'ADMIN: vraćanje iz backupa — eksplicitna potvrda'
+      summary: 'ADMIN: vraćanje iz backupa — RAZORNO'
+      description: |
+        Prepisuje celu bazu. Potvrda je ukucana fraza, a razlog je obavezan i ide u audit.
+
+        Garancije:
+        - Vraćanje je sve-ili-ništa (`psql --single-transaction`): ako dump pukne, baza ostaje netaknuta.
+        - Tabele `session` i `backup_run` se ne vraćaju iz dumpa — sve sesije se gase
+          (i pozivaočeva), a evidencija backupa preživljava vraćanje.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [backupRunId, confirmed]
+              required: [runId, confirm, reason]
               properties:
-                backupRunId: { type: integer }
-                confirmed: { type: boolean }
-      responses: { '202': { description: Pokrenuto }, '403': { $ref: '#/components/responses/Forbidden' } }
+                runId: { type: integer }
+                confirm: { type: string, enum: ['VRATI IZ BACKUPA'] }
+                reason: { type: string, minLength: 1 }
+      responses:
+        '200':
+          description: 'Vraćeno; svi korisnici su odjavljeni'
+          content: { application/json: { schema: { type: object, properties: { restored: { type: boolean }, file: { type: string }, loggedOut: { type: boolean } } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: 'NOT_FOUND — backup ne postoji' }
+        '422': { description: 'BACKUP_UNUSABLE — backup nije uspešno završen' }
+        '500': { description: 'RESTORE_FAILED — baza je netaknuta' }
 
 components:
   securitySchemes:

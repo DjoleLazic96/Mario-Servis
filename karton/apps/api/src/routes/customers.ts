@@ -7,6 +7,7 @@ import { sendError } from '../http.ts';
 import { requireAuth } from '../auth-guards.ts';
 import { writeAudit } from '../audit.ts';
 import { parseListParams, offset, orderBy, normalizeSearch } from '../query.ts';
+import { defaultPageSize } from '../settings-cache.ts';
 
 // --- validacija ---
 const createSchema = z
@@ -88,7 +89,7 @@ export async function customerRoutes(app: FastifyInstance): Promise<void> {
 
   // GET /customers — lista (filter type/status, pretraga, sort, paginacija)
   app.get('/customers', async (request) => {
-    const p = parseListParams(request.query as Record<string, unknown>);
+    const p = parseListParams(request.query as Record<string, unknown>, await defaultPageSize());
     const query = request.query as Record<string, string | undefined>;
 
     const conds: string[] = [];

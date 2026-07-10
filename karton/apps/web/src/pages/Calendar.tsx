@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Appointment, Mechanic, CalendarBlock } from '@karton/shared';
+import type { Appointment, Mechanic, CalendarBlock, WorkOrder, Paginated } from '@karton/shared';
 import { labels } from '@karton/shared';
 import { api, ApiRequestError } from '../api.ts';
 import { Modal } from '../components/Modal.tsx';
@@ -24,7 +24,7 @@ export function Calendar(): React.JSX.Element {
   const [mechanics, setMechanics] = useState<Mechanic[]>([]);
   const [mechFilter, setMechFilter] = useState('');
   const [hours, setHours] = useState({ from: 7, to: 20 });
-  const [dialog, setDialog] = useState<'new' | 'block' | null>(null);
+  const [dialog, setDialog] = useState<'new' | 'block' | 'edit' | 'complete' | null>(null);
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('09:00');
   const [selected, setSelected] = useState<Appointment | null>(null);
@@ -52,9 +52,11 @@ export function Calendar(): React.JSX.Element {
   const gridStart = hours.from * 60;
   const blockOn = (day: string): CalendarBlock | undefined => blocks.find((b) => day >= b.fromDate && day <= b.toDate);
 
-  async function changeStatus(a: Appointment, status: string): Promise<void> {
-    try { await api.post(`/appointments/${a.id}/status`, { status, version: a.version }); setSelected(null); await load(); }
-    catch (e) { alert(e instanceof ApiRequestError ? e.body.message : 'Greška.'); }
+  async function changeStatus(a: Appointment, status: string, workOrderId?: number | null): Promise<void> {
+    try {
+      await api.post(`/appointments/${a.id}/status`, { status, version: a.version, ...(workOrderId ? { workOrderId } : {}) });
+      setSelected(null); setDialog(null); await load();
+    } catch (e) { alert(e instanceof ApiRequestError ? e.body.message : 'Greška.'); }
   }
   async function del(a: Appointment): Promise<void> {
     try { await api.del(`/appointments/${a.id}`); setSelected(null); await load(); }
@@ -152,6 +154,17 @@ export function Calendar(): React.JSX.Element {
         </Modal>
       )}
       {dialog === 'block' && <BlockModal onClose={() => setDialog(null)} onDone={() => { setDialog(null); void load(); }} blocks={blocks} />}
+      {dialog === 'edit' && selected && (
+        <Modal title={`Izmena termina — ${selected.customer.name}`} onClose={() => setDialog(null)} width={520}>
+          <AppointmentForm mechanics={mechanics} defaultDate={selected.date} initial={selected}
+            onCreated={() => { setDialog(null); setSelected(null); void load(); }} />
+        </Modal>
+      )}
+      {dialog === 'complete' && selected && (
+        <Modal title="Termin je realizovan" onClose={() => setDialog(null)} width={520}>
+          <CompleteModal appt={selected} onDone={(woId) => changeStatus(selected, 'completed', woId)} />
+        </Modal>
+      )}
       {selected && (
         <Modal title={`Termin — ${selected.customer.name}`} onClose={() => setSelected(null)}>
           <div className="form">
@@ -164,7 +177,8 @@ export function Calendar(): React.JSX.Element {
             </dl>
             <div className="btn-group" style={{ flexWrap: 'wrap' }}>
               {selected.status === 'scheduled' && <>
-                <button className="btn-secondary btn-sm" onClick={() => changeStatus(selected, 'completed')}>Realizovano</button>
+                <button className="btn-secondary btn-sm" onClick={() => setDialog('complete')}>Realizovano</button>
+                <button className="btn-secondary btn-sm" onClick={() => setDialog('edit')}>Izmeni</button>
                 <button className="btn-secondary btn-sm" onClick={() => changeStatus(selected, 'no_show')}>Nije se pojavio</button>
                 <button className="btn-secondary btn-sm" onClick={() => changeStatus(selected, 'cancelled')}>Otkaži</button>
                 <button className="btn-secondary btn-sm" onClick={() => del(selected)}>Obriši</button>
@@ -195,5 +209,37 @@ function BlockModal({ onClose, onDone, blocks }: { onClose: () => void; onDone: 
         {blocks.length > 0 && <ul className="contact-list">{blocks.map((b) => <li key={b.id}><span className="mono">{b.fromDate}{b.toDate !== b.fromDate ? `–${b.toDate}` : ''}</span> {b.reason} <button className="btn-link danger" onClick={() => remove(b.id)}>ukloni</button></li>)}</ul>}
       </div>
     </Modal>
+  );
+}
+
+/**
+ * Kad se termin realizuje, može odmah da se veže za radni nalog istog vozila.
+ * Veza nije obavezna — ali kad postoji, termin se više ne može vratiti na „zakazan" (BR-28).
+ */
+function CompleteModal({ appt, onDone }: { appt: Appointment; onDone: (workOrderId: number | null) => void }): React.JSX.Element {
+  const [orders, setOrders] = useState<WorkOrder[] | null>(null);
+  const [picked, setPicked] = useState<string>('');
+
+  useEffect(() => {
+    void (async () => {
+      const res = await api.get<Paginated<WorkOrder>>(`/work-orders?vehicleId=${appt.vehicle.id}&pageSize=20`);
+      setOrders(res.data);
+    })();
+  }, [appt.vehicle.id]);
+
+  return (
+    <div className="form">
+      <p className="hint">Vezivanje za nalog je opciono, ali se posle ne može poništiti bez administratora.</p>
+      <label className="field"><span>Radni nalog ovog vozila</span>
+        <select value={picked} onChange={(e) => setPicked(e.target.value)}>
+          <option value="">— bez naloga —</option>
+          {orders?.map((w) => <option key={w.id} value={w.id}>{w.number} · {w.receivedOn}</option>)}
+        </select>
+      </label>
+      {orders?.length === 0 && <p className="hint">Ovo vozilo nema nijedan radni nalog.</p>}
+      <div className="form-actions">
+        <button className="btn-primary" onClick={() => onDone(picked ? Number(picked) : null)}>Označi kao realizovano</button>
+      </div>
+    </div>
   );
 }

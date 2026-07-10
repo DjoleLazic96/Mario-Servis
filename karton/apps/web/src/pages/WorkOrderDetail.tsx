@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type {
-  WorkOrderDetail as WOD, WorkOrderStatus, FieldVisitOutcome,
+  WorkOrderDetail as WOD, WorkOrderStatus, FieldVisitOutcome, WorkOrderInput, Document,
   LaborItem, LaborItemInput, PartItem, PartItemInput, ExternalItem, ExternalItemInput,
 } from '@karton/shared';
 import { labels } from '@karton/shared';
@@ -9,6 +9,9 @@ import { api, ApiRequestError } from '../api.ts';
 import { useAuth } from '../auth.tsx';
 import { Modal } from '../components/Modal.tsx';
 import { LaborItemForm, PartItemForm, ExternalItemForm } from '../components/workOrderItems.tsx';
+import { WorkOrderEditForm } from '../components/WorkOrderEditForm.tsx';
+import { DocumentChainBar } from '../components/DocumentChain.tsx';
+import { LinkQuoteDialog } from '../components/LinkQuoteDialog.tsx';
 import { allowedTransitions, isEditable, statusClass } from '../lib/workOrderStatus.ts';
 
 const money = (n: number): string => n.toLocaleString('sr-RS');
@@ -19,6 +22,8 @@ type Dialog =
   | { kind: 'part'; item?: PartItem }
   | { kind: 'external'; item?: ExternalItem }
   | { kind: 'status' }
+  | { kind: 'edit' }
+  | { kind: 'linkQuote' }
   | null;
 
 export function WorkOrderDetail(): React.JSX.Element {
@@ -30,6 +35,7 @@ export function WorkOrderDetail(): React.JSX.Element {
   const [notFound, setNotFound] = useState(false);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,6 +55,35 @@ export function WorkOrderDetail(): React.JSX.Element {
   }
   async function removeItem(type: string, itemId: number): Promise<void> {
     setWo(await api.del<WOD>(`/work-orders/${id}/${type}/${itemId}`));
+  }
+
+  async function saveHeader(input: WorkOrderInput & { reason?: string | null }): Promise<void> {
+    setSaving(true); setEditError(null);
+    try {
+      setWo(await api.patch<WOD>(`/work-orders/${id}`, input));
+      setDialog(null);
+    } catch (e) {
+      setEditError(e instanceof ApiRequestError ? e.body.message : 'Greška pri čuvanju.');
+    } finally { setSaving(false); }
+  }
+
+  async function linkQuote(quote: Document): Promise<void> {
+    if (!wo) return;
+    setSaving(true);
+    try {
+      setWo(await api.post<WOD>(`/work-orders/${id}/link-quote`, { quoteId: quote.id, version: wo.version }));
+      setDialog(null);
+    } catch (e) {
+      alert(e instanceof ApiRequestError ? e.body.message : 'Greška pri vezivanju ponude.');
+    } finally { setSaving(false); }
+  }
+
+  async function unlinkQuote(): Promise<void> {
+    if (!wo || !confirm('Skinuti ponudu sa ovog naloga?')) return;
+    setSaving(true);
+    try { setWo(await api.post<WOD>(`/work-orders/${id}/unlink-quote`, { version: wo.version })); }
+    catch (e) { alert(e instanceof ApiRequestError ? e.body.message : 'Greška.'); }
+    finally { setSaving(false); }
   }
 
   async function issueProforma(): Promise<void> {
@@ -86,6 +121,7 @@ export function WorkOrderDetail(): React.JSX.Element {
           </p>
         </div>
         <div className="btn-group">
+          {editable && <button className="btn-secondary" onClick={() => { setEditError(null); setDialog({ kind: 'edit' }); }}>Izmeni nalog</button>}
           <button className="btn-secondary" onClick={() => window.open(`/nalozi/${id}/stampa`, '_blank')}>Štampaj prijemni list</button>
           {wo.status !== 'cancelled' && (
             <button className="btn-secondary" onClick={issueProforma} disabled={saving}>Izdaj predračun</button>
@@ -93,6 +129,16 @@ export function WorkOrderDetail(): React.JSX.Element {
           <button className="btn-secondary" onClick={() => setDialog({ kind: 'status' })}>Promeni status</button>
         </div>
       </header>
+
+      <DocumentChainBar chain={wo.chain} currentId={-1} />
+
+      {editable && (
+        <div className="inline-actions">
+          {wo.sourceQuoteId
+            ? <button className="btn-link" onClick={unlinkQuote} disabled={saving}>Skini ponudu sa naloga</button>
+            : <button className="btn-link" onClick={() => setDialog({ kind: 'linkQuote' })}>Veži postojeću ponudu</button>}
+        </div>
+      )}
 
       <div className="card-grid">
         <section className="card">
@@ -206,6 +252,18 @@ export function WorkOrderDetail(): React.JSX.Element {
             onSubmit={(b: ExternalItemInput) => saveItem(dialog.item ? `${extBase}/${dialog.item.id}` : extBase, dialog.item ? 'patch' : 'post', b)} />
         </Modal>
       )}
+      {dialog?.kind === 'edit' && (
+        <Modal title={`Izmena naloga ${wo.number}`} onClose={() => setDialog(null)} width={620}>
+          <WorkOrderEditForm wo={wo} submitting={saving} error={editError} onSubmit={saveHeader} />
+        </Modal>
+      )}
+
+      {dialog?.kind === 'linkQuote' && (
+        <Modal title="Veži ponudu za nalog" onClose={() => setDialog(null)} width={560}>
+          <LinkQuoteDialog vehicleId={wo.vehicle.id} onPick={linkQuote} busy={saving} />
+        </Modal>
+      )}
+
       {dialog?.kind === 'status' && (
         <StatusModal wo={wo} isAdmin={user?.role === 'admin'} onClose={() => setDialog(null)} onDone={(u) => { setWo(u); setDialog(null); }} />
       )}

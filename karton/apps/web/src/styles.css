@@ -282,6 +282,72 @@ button {
     align-items: center;
     margin-left: auto;
   }
+
+  /* Tabele -> kartice: svaki red postaje kartica, a data-label ćelije daje naslov polja.
+     Odnosi se samo na tabele čije su ćelije označene; ostale i dalje skroluju vodoravno. */
+  .data-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .data-table,
+  .data-table tbody,
+  .data-table tr,
+  .data-table td {
+    display: block;
+    width: auto;
+  }
+  .data-table tr {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    padding: 4px 2px;
+  }
+  .data-table tr:hover {
+    background: var(--surface);
+  }
+  .data-table td {
+    border: none;
+    padding: 7px 12px;
+    text-align: left !important;
+  }
+  .data-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 2px;
+  }
+  /* ćelija bez data-label (npr. kolona sa dugmadima) nema naslov, ali zadržava razmak */
+  .data-table td:empty {
+    display: none;
+  }
+  .data-table .table-empty {
+    text-align: center !important;
+  }
+  .table-wrap {
+    overflow-x: visible;
+    border: none;
+    background: transparent;
+  }
+
+  .report-filter {
+    flex-wrap: wrap;
+  }
+  .chain-bar {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .form-2col,
+  .form-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* --- Page header row + buttons --- */
@@ -338,6 +404,7 @@ button {
 /* --- Forms --- */
 .form { display: flex; flex-direction: column; gap: 14px; }
 .form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end; }
 .form-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
 .radio-row { display: flex; gap: 20px; font-size: 13.5px; }
 .radio-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
@@ -484,6 +551,7 @@ textarea:focus { border-color: var(--accent); }
 .pl-head { display: flex; gap: 18px; align-items: flex-end; padding-bottom: 12px; border-bottom: 2px solid #1c2127; }
 .pl-brand { display: flex; gap: 12px; align-items: center; }
 .pl-logo { width: 46px; height: 46px; border: 1.5px dashed #8b939b; border-radius: 6px; display: grid; place-items: center; font-size: 9px; letter-spacing: .12em; color: #8b939b; flex: none; }
+.pl-logo-img { width: 46px; height: 46px; object-fit: contain; flex: none; }
 .pl-shop { font-size: 15px; font-weight: 700; }
 .pl-shop-meta { font-size: 9.5px; color: #4a525c; margin-top: 1px; }
 .pl-id { text-align: right; margin-left: auto; }
@@ -592,3 +660,75 @@ textarea:focus { border-color: var(--accent); }
 .page > section.card + section.card { margin-top: 16px; }
 .page > .card:not(:first-child) { margin-top: 16px; }
 .section-h + .card-grid { margin-top: 0; }
+
+/* --- Logo u podešavanjima --- */
+.logo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.logo-preview {
+  width: 120px;
+  height: 60px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 4px;
+}
+.logo-preview.empty {
+  display: grid;
+  place-items: center;
+  color: var(--ink-faint);
+  font-size: 12px;
+  border-style: dashed;
+}
+
+/* --- Statistika vozila --- */
+.stat-row {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+.stat-row .stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat-row .stat-num {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.stat-row .stat-label {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* --- Sitne akcije ispod trake dokumenata --- */
+.inline-actions {
+  margin: 10px 0 0;
+}
+
+.hint.danger {
+  color: var(--danger);
+}
+.truncate {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react';
-import type { CustomerRef, Vehicle, Mechanic } from '@karton/shared';
+import { useState, useEffect, type FormEvent } from 'react';
+import type { CustomerRef, Vehicle, Mechanic, Appointment } from '@karton/shared';
 import { api, ApiRequestError } from '../api.ts';
 import { OwnerPicker } from './OwnerPicker.tsx';
 import { VehiclePicker } from './VehiclePicker.tsx';
@@ -8,29 +8,46 @@ import { TimeInput } from './TimeInput.tsx';
 const WARN_LABEL: Record<string, string> = {
   MECHANIC_BUSY: 'Majstor je zauzet u to vreme.',
   OUTSIDE_WORK_HOURS: 'Termin je van radnog vremena.',
+  MECHANIC_UNAVAILABLE: 'Majstor je tog dana odsutan (godišnji ili bolovanje).',
 };
 
-export function AppointmentForm({ mechanics, defaultDate, defaultTime = '09:00', onCreated }: { mechanics: Mechanic[]; defaultDate: string; defaultTime?: string; onCreated: () => void }): React.JSX.Element {
-  const [customer, setCustomer] = useState<CustomerRef | null>(null);
+/** Ista forma zakazuje i menja termin — pravila (BR-27) su identična, razlikuje se samo glagol. */
+export function AppointmentForm({ mechanics, defaultDate, defaultTime = '09:00', initial, onCreated }: {
+  mechanics: Mechanic[];
+  defaultDate: string;
+  defaultTime?: string;
+  initial?: Appointment;
+  onCreated: () => void;
+}): React.JSX.Element {
+  const editing = initial !== undefined;
+  const [customer, setCustomer] = useState<CustomerRef | null>(initial ? initial.customer : null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
-  const [date, setDate] = useState(defaultDate);
-  const [time, setTime] = useState(defaultTime);
-  const [duration, setDuration] = useState('60');
-  const [mechanicId, setMechanicId] = useState('');
-  const [note, setNote] = useState('');
-  const [reminders, setReminders] = useState(true);
+  const [date, setDate] = useState(initial?.date ?? defaultDate);
+  const [time, setTime] = useState(initial?.time ?? defaultTime);
+  const [duration, setDuration] = useState(String(initial?.durationMin ?? 60));
+  const [mechanicId, setMechanicId] = useState(initial?.mechanic ? String(initial.mechanic.id) : '');
+  const [note, setNote] = useState(initial?.note ?? '');
+  const [reminders, setReminders] = useState(initial?.remindersEnabled ?? true);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Termin nosi samo `VehicleRef`; za VehiclePicker treba pun `Vehicle`, pa ga dovlačimo.
+  useEffect(() => {
+    if (!initial) return;
+    void (async () => { setVehicle(await api.get<Vehicle>(`/vehicles/${initial.vehicle.id}`)); })();
+  }, [initial]);
+
   async function doSubmit(confirmed: boolean): Promise<void> {
     if (!customer || !vehicle) { setError('Izaberite klijenta i vozilo.'); return; }
     setSaving(true); setError(null);
+    const body = {
+      date, time, durationMin: Number(duration), customerId: customer.id, vehicleId: vehicle.id,
+      mechanicId: mechanicId ? Number(mechanicId) : null, note: note.trim() || null, remindersEnabled: reminders, confirmed,
+    };
     try {
-      await api.post('/appointments', {
-        date, time, durationMin: Number(duration), customerId: customer.id, vehicleId: vehicle.id,
-        mechanicId: mechanicId ? Number(mechanicId) : null, note: note.trim() || null, remindersEnabled: reminders, confirmed,
-      });
+      if (editing) await api.patch(`/appointments/${initial.id}`, { ...body, version: initial.version });
+      else await api.post('/appointments', body);
       onCreated();
     } catch (err) {
       if (err instanceof ApiRequestError && err.body.code === 'CONFIRMATION_REQUIRED') {
@@ -60,11 +77,17 @@ export function AppointmentForm({ mechanics, defaultDate, defaultTime = '09:00',
       {warnings.length > 0 && (
         <div className="warn-box">
           {warnings.map((w) => <div key={w}>⚠ {WARN_LABEL[w] ?? w}</div>)}
-          <button type="button" className="btn-primary btn-sm" onClick={() => void doSubmit(true)} disabled={saving}>Ipak zakaži</button>
+          <button type="button" className="btn-primary btn-sm" onClick={() => void doSubmit(true)} disabled={saving}>
+            {editing ? 'Ipak sačuvaj' : 'Ipak zakaži'}
+          </button>
         </div>
       )}
       {error && <div className="login-error">{error}</div>}
-      {warnings.length === 0 && <div className="form-actions"><button type="submit" className="btn-primary" disabled={saving}>Zakaži termin</button></div>}
+      {warnings.length === 0 && (
+        <div className="form-actions">
+          <button type="submit" className="btn-primary" disabled={saving}>{editing ? 'Sačuvaj izmene' : 'Zakaži termin'}</button>
+        </div>
+      )}
     </form>
   );
 }

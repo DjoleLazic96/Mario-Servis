@@ -1,0 +1,148 @@
+import { useState, type FormEvent } from 'react';
+import type { WorkOrderDetail, WorkOrderInput, FieldVisitOutcome } from '@karton/shared';
+import { TimeInput } from './TimeInput.tsx';
+
+/**
+ * Izmena zaglavlja otvorenog naloga. Ovde majstor upisuje „Utvrđeno stanje" (findings) —
+ * ono se, za razliku od „Zahtevanih radova", popunjava tek pošto se vozilo pregleda (spec §4.4).
+ * Ručna ispravka datuma završetka traži razlog i ide u audit (BR-11).
+ */
+export function WorkOrderEditForm({
+  wo, submitting, error, onSubmit,
+}: {
+  wo: WorkOrderDetail;
+  submitting: boolean;
+  error?: string | null;
+  onSubmit: (input: WorkOrderInput & { reason?: string | null }) => void;
+}): React.JSX.Element {
+  const [receivedOn, setReceivedOn] = useState(wo.receivedOn);
+  const [receivedTime, setReceivedTime] = useState(wo.receivedTime ?? '');
+  const [completedOn, setCompletedOn] = useState(wo.completedOn ?? '');
+  const [completedTime, setCompletedTime] = useState(wo.completedTime ?? '');
+  const [odometerKm, setOdometerKm] = useState(wo.odometerKm === null ? '' : String(wo.odometerKm));
+  const [requestedWork, setRequestedWork] = useState(wo.requestedWork ?? '');
+  const [findings, setFindings] = useState(wo.findings ?? '');
+  const [note, setNote] = useState(wo.note ?? '');
+  const [reason, setReason] = useState('');
+
+  const [fieldVisit, setFieldVisit] = useState(wo.fieldVisit);
+  const [fvDate, setFvDate] = useState(wo.fieldVisitDate ?? '');
+  const [fvTime, setFvTime] = useState(wo.fieldVisitTime ?? '');
+  const [fvLocation, setFvLocation] = useState(wo.fieldVisitLocation ?? '');
+  const [fvKm, setFvKm] = useState(wo.fieldVisitKm === null ? '' : String(wo.fieldVisitKm));
+  const [drivable, setDrivable] = useState<'yes' | 'no' | ''>(wo.vehicleDrivable === null ? '' : wo.vehicleDrivable ? 'yes' : 'no');
+  const [outcome, setOutcome] = useState<FieldVisitOutcome | ''>(wo.fieldVisitOutcome ?? '');
+
+  const completedChanged = (completedOn || null) !== (wo.completedOn ?? null);
+
+  function submit(e: FormEvent): void {
+    e.preventDefault();
+    onSubmit({
+      vehicleId: wo.vehicle.id,
+      receivedOn,
+      receivedTime: receivedTime || null,
+      completedOn: completedOn || null,
+      completedTime: completedTime || null,
+      odometerKm: odometerKm ? Number(odometerKm) : null,
+      requestedWork: requestedWork.trim() || null,
+      findings: findings.trim() || null,
+      note: note.trim() || null,
+      reason: completedChanged && reason.trim() ? reason.trim() : null,
+      fieldVisit,
+      ...(fieldVisit ? {
+        fieldVisitDate: fvDate || null,
+        fieldVisitTime: fvTime || null,
+        fieldVisitLocation: fvLocation.trim() || null,
+        fieldVisitKm: fvKm ? Number(fvKm) : null,
+        vehicleDrivable: drivable === '' ? null : drivable === 'yes',
+        fieldVisitOutcome: outcome || null,
+      } : {}),
+      version: wo.version,
+    });
+  }
+
+  return (
+    <form className="form" onSubmit={submit}>
+      <div className="form-row">
+        <label>Datum prijema
+          <input type="date" value={receivedOn} onChange={(e) => setReceivedOn(e.target.value)} required />
+        </label>
+        <label>Vreme prijema
+          <TimeInput value={receivedTime} onChange={setReceivedTime} />
+        </label>
+      </div>
+
+      <div className="form-row">
+        <label>Datum završetka
+          <input type="date" value={completedOn} onChange={(e) => setCompletedOn(e.target.value)} />
+        </label>
+        <label>Vreme završetka
+          <TimeInput value={completedTime} onChange={setCompletedTime} />
+        </label>
+      </div>
+
+      {completedChanged && (
+        <label>Razlog izmene datuma završetka
+          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Upisuje se u istoriju izmena" />
+          <small className="hint">Datum završetka se postavlja automatski; ručna ispravka se beleži.</small>
+        </label>
+      )}
+
+      <label>Kilometraža (km)
+        <input type="number" min={0} value={odometerKm} onChange={(e) => setOdometerKm(e.target.value)} />
+      </label>
+
+      <label>Zahtevani radovi <small className="hint">— šta klijent traži (upisuje se pri prijemu)</small>
+        <textarea rows={3} value={requestedWork} onChange={(e) => setRequestedWork(e.target.value)} />
+      </label>
+
+      <label>Utvrđeno stanje <small className="hint">— nalaz majstora posle pregleda</small>
+        <textarea rows={3} value={findings} onChange={(e) => setFindings(e.target.value)} placeholder="Šta je zaista utvrđeno na vozilu…" />
+      </label>
+
+      <label>Napomena
+        <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+      </label>
+
+      <fieldset className="fieldset">
+        <legend>
+          <label className="check">
+            <input type="checkbox" checked={fieldVisit} onChange={(e) => setFieldVisit(e.target.checked)} />
+            Izlazak na teren
+          </label>
+        </legend>
+        {fieldVisit && (
+          <>
+            <div className="form-row">
+              <label>Datum izlaska<input type="date" value={fvDate} onChange={(e) => setFvDate(e.target.value)} /></label>
+              <label>Vreme izlaska<TimeInput value={fvTime} onChange={setFvTime} /></label>
+            </div>
+            <label>Lokacija<input value={fvLocation} onChange={(e) => setFvLocation(e.target.value)} /></label>
+            <div className="form-row">
+              <label>Pređeno km<input type="number" min={0} value={fvKm} onChange={(e) => setFvKm(e.target.value)} /></label>
+              <label>Vozilo u voznom stanju
+                <select value={drivable} onChange={(e) => setDrivable(e.target.value as 'yes' | 'no' | '')}>
+                  <option value="">—</option><option value="yes">Da</option><option value="no">Ne</option>
+                </select>
+              </label>
+            </div>
+            <label>Ishod izlaska
+              <select value={outcome} onChange={(e) => setOutcome(e.target.value as FieldVisitOutcome | '')}>
+                <option value="">—</option>
+                <option value="solved_on_site">Rešeno na licu mesta</option>
+                <option value="arrives_driving">Vozilo dolazi u servis (vozno)</option>
+                <option value="arrives_towed">Vozilo dolazi na šlepu</option>
+                <option value="customer_declined">Klijent odustao</option>
+              </select>
+            </label>
+          </>
+        )}
+      </fieldset>
+
+      {error && <p className="form-error">{error}</p>}
+      <div className="form-actions">
+        <button type="submit" className="btn-primary" disabled={submitting}>{submitting ? 'Čuvam…' : 'Sačuvaj'}</button>
+      </div>
+    </form>
+  );
+}

@@ -1,41 +1,72 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, useRef, type FormEvent } from 'react';
+import type { BackupRun } from '@karton/shared';
 import { api, ApiRequestError } from '../api.ts';
 import { Modal } from '../components/Modal.tsx';
 import { TimeInput } from '../components/TimeInput.tsx';
+import { SortableTh } from '../components/SortableTh.tsx';
+import { sortRows } from '../lib/sortRows.ts';
 
 interface SettingsData {
-  shopName: string; address: string | null; taxId: string | null; phone: string | null;
+  shopName: string; address: string | null; taxId: string | null; phone: string | null; logo: string | null;
   smtpHost: string | null; smtpPort: number | null; smtpUsername: string | null; senderEmail: string | null;
+  hasSmtpPassword: boolean;
   workHoursFrom: string; workHoursTo: string; defaultValidityDays: number; reminderSendTime: string; pageSize: number; version: number;
 }
 interface User { id: number; name: string; email: string; role: 'admin' | 'user'; status: 'active' | 'disabled' }
 
 export function Settings(): React.JSX.Element {
-  const [tab, setTab] = useState<'servis' | 'korisnici'>('servis');
+  const [tab, setTab] = useState<'servis' | 'korisnici' | 'backup'>('servis');
   return (
     <div className="page">
       <header className="page-head"><h1>Podešavanja</h1></header>
       <div className="tabs" style={{ marginBottom: 16, width: 'fit-content' }}>
         <button className={`tab ${tab === 'servis' ? 'active' : ''}`} onClick={() => setTab('servis')}>Servis</button>
         <button className={`tab ${tab === 'korisnici' ? 'active' : ''}`} onClick={() => setTab('korisnici')}>Korisnici</button>
+        <button className={`tab ${tab === 'backup' ? 'active' : ''}`} onClick={() => setTab('backup')}>Backup</button>
       </div>
-      {tab === 'servis' ? <ServiceSettings /> : <Users />}
+      {tab === 'servis' ? <ServiceSettings /> : tab === 'korisnici' ? <Users /> : <Backup />}
     </div>
   );
 }
+
+const MAX_LOGO_BYTES = 400 * 1024;
 
 function ServiceSettings(): React.JSX.Element {
   const [s, setS] = useState<SettingsData | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [smtpPassword, setSmtpPassword] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => { void api.get<SettingsData>('/settings').then(setS); }, []);
   if (!s) return <p className="card-empty">Učitavanje…</p>;
   const set = (patch: Partial<SettingsData>): void => setS({ ...s, ...patch });
 
   async function save(e: FormEvent): Promise<void> {
     e.preventDefault(); setSaving(true); setMsg(null);
-    try { setS(await api.patch<SettingsData>('/settings', s)); setMsg('Sačuvano.'); }
+    // prazno polje lozinke znači „ne menjaj" — backend radi coalesce
+    const body = { ...s, smtpPassword: smtpPassword || undefined };
+    try { setS(await api.patch<SettingsData>('/settings', body)); setSmtpPassword(''); setMsg('Sačuvano.'); }
     catch (err) { setMsg(err instanceof ApiRequestError ? err.body.message : 'Greška.'); }
+    finally { setSaving(false); }
+  }
+
+  async function uploadLogo(file: File): Promise<void> {
+    if (file.size > MAX_LOGO_BYTES) { setMsg('Logo je veći od 400 KB.'); return; }
+    const dataUrl = await new Promise<string>((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result));
+      r.onerror = () => rej(new Error('Čitanje fajla nije uspelo.'));
+      r.readAsDataURL(file);
+    });
+    setSaving(true); setMsg(null);
+    try { setS(await api.put<SettingsData>('/settings/logo', { dataUrl })); setMsg('Sačuvano.'); }
+    catch (err) { setMsg(err instanceof ApiRequestError ? err.body.message : 'Greška.'); }
+    finally { setSaving(false); if (fileRef.current) fileRef.current.value = ''; }
+  }
+
+  async function removeLogo(): Promise<void> {
+    setSaving(true);
+    try { setS(await api.del<SettingsData>('/settings/logo')); }
     finally { setSaving(false); }
   }
   return (
@@ -48,6 +79,19 @@ function ServiceSettings(): React.JSX.Element {
           <label className="field"><span>PIB</span><input value={s.taxId ?? ''} onChange={(e) => set({ taxId: e.target.value })} /></label>
         </div>
         <label className="field"><span>Telefon</span><input value={s.phone ?? ''} onChange={(e) => set({ phone: e.target.value })} /></label>
+
+        <div className="field">
+          <span>Logo <small className="hint">(PNG/JPEG/SVG, do 400 KB — štampa se na prijemnom listu)</small></span>
+          <div className="logo-row">
+            {s.logo ? <img className="logo-preview" src={s.logo} alt="Logo servisa" /> : <div className="logo-preview empty">bez logoa</div>}
+            <div className="btn-group">
+              <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadLogo(f); }} />
+              <button type="button" className="btn-secondary btn-sm" onClick={() => fileRef.current?.click()} disabled={saving}>Otpremi logo</button>
+              {s.logo && <button type="button" className="btn-link danger" onClick={removeLogo} disabled={saving}>Ukloni</button>}
+            </div>
+          </div>
+        </div>
 
         <h3 className="card-title" style={{ marginTop: 8 }}>Radno vreme i rokovi</h3>
         <div className="form-2col">
@@ -66,6 +110,13 @@ function ServiceSettings(): React.JSX.Element {
           <label className="field"><span>Port</span><input type="number" value={s.smtpPort ?? ''} onChange={(e) => set({ smtpPort: Number(e.target.value) })} /></label>
         </div>
         <label className="field"><span>Email pošiljaoca</span><input value={s.senderEmail ?? ''} onChange={(e) => set({ senderEmail: e.target.value })} /></label>
+        <div className="form-2col">
+          <label className="field"><span>SMTP korisnik</span><input value={s.smtpUsername ?? ''} onChange={(e) => set({ smtpUsername: e.target.value })} autoComplete="off" /></label>
+          <label className="field"><span>SMTP lozinka</span>
+            <input type="password" value={smtpPassword} onChange={(e) => setSmtpPassword(e.target.value)} autoComplete="new-password"
+              placeholder={s.hasSmtpPassword ? 'sačuvana — ostavi prazno' : 'nije postavljena'} />
+          </label>
+        </div>
 
         {msg && <div className={msg === 'Sačuvano.' ? 'ok-box' : 'login-error'}>{msg}</div>}
         <div className="form-actions"><button className="btn-primary" disabled={saving}>{saving ? 'Čuvanje…' : 'Sačuvaj'}</button></div>
@@ -76,6 +127,7 @@ function ServiceSettings(): React.JSX.Element {
 
 function Users(): React.JSX.Element {
   const [list, setList] = useState<User[]>([]);
+  const [sort, setSort] = useState<string | undefined>();
   const [dialog, setDialog] = useState<{ mode: 'new' } | { mode: 'edit'; user: User } | null>(null);
   const load = (): void => { void api.get<User[]>('/users').then(setList); };
   useEffect(load, []);
@@ -84,8 +136,13 @@ function Users(): React.JSX.Element {
       <div className="row-end"><button className="btn-primary" onClick={() => setDialog({ mode: 'new' })}>+ Novi korisnik</button></div>
       <div className="table-wrap">
         <table className="data-table">
-          <thead><tr><th>Ime</th><th>Email</th><th>Rola</th><th>Status</th></tr></thead>
-          <tbody>{list.map((u) => (
+          <thead><tr>
+            <SortableTh field="name" label="Ime" sort={sort} onSort={setSort} />
+            <SortableTh field="email" label="Email" sort={sort} onSort={setSort} />
+            <SortableTh field="role" label="Rola" sort={sort} onSort={setSort} />
+            <SortableTh field="status" label="Status" sort={sort} onSort={setSort} />
+          </tr></thead>
+          <tbody>{sortRows(list, sort, (u, f) => u[f as keyof User]).map((u) => (
             <tr key={u.id} className="clickable" onClick={() => setDialog({ mode: 'edit', user: u })}>
               <td className="strong">{u.name}</td><td>{u.email}</td><td>{u.role === 'admin' ? 'Admin' : 'Korisnik'}</td>
               <td>{u.status === 'active' ? 'Aktivan' : <span className="muted">Deaktiviran</span>}</td>
@@ -125,6 +182,112 @@ function UserModal({ dialog, onClose, onDone }: { dialog: { mode: 'new' } | { mo
         </div>
         {err && <div className="login-error">{err}</div>}
         <div className="form-actions"><button className="btn-primary">Sačuvaj</button></div>
+      </form>
+    </Modal>
+  );
+}
+
+const fmtSize = (b: number | null): string => (b === null ? '—' : `${(b / 1024 / 1024).toFixed(1)} MB`);
+const fmtTime = (iso: string | null): string =>
+  iso === null ? '—' : new Date(iso).toLocaleString('sr-RS', { timeZone: 'Europe/Belgrade' });
+
+/**
+ * Backup radi worker jednom dnevno; ovde se vidi evidencija i može da se pokrene ručno.
+ * Vraćanje iz backupa prepisuje CELU bazu — zato traži ukucanu potvrdu i razlog.
+ */
+function Backup(): React.JSX.Element {
+  const [runs, setRuns] = useState<BackupRun[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState<BackupRun | null>(null);
+
+  async function load(): Promise<void> { setRuns(await api.get<BackupRun[]>('/backup/runs')); }
+  useEffect(() => { void load(); }, []);
+
+  async function runNow(): Promise<void> {
+    setBusy(true); setMsg(null);
+    try { await api.post('/backup/run', {}); setMsg('Backup napravljen.'); await load(); }
+    catch (e) { setMsg(e instanceof ApiRequestError ? e.body.message : 'Backup nije uspeo.'); await load(); }
+    finally { setBusy(false); }
+  }
+
+  if (!runs) return <p className="card-empty">Učitavanje…</p>;
+
+  return (
+    <section className="card">
+      <div className="row" style={{ alignItems: 'center' }}>
+        <h3 className="card-title">Evidencija backupa</h3>
+        <button className="btn-primary btn-sm" onClick={runNow} disabled={busy}>{busy ? 'Radim…' : 'Napravi backup sada'}</button>
+      </div>
+      <p className="hint">Automatski backup se pravi jednom dnevno dok je aplikacija pokrenuta.</p>
+      {msg && <div className={msg === 'Backup napravljen.' ? 'ok-box' : 'login-error'}>{msg}</div>}
+
+      {runs.length === 0 ? <p className="card-empty">Još nema nijednog backupa.</p> : (
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead><tr><th>Početak</th><th>Kraj</th><th>Status</th><th>Veličina</th><th>Fajl</th><th></th></tr></thead>
+            <tbody>
+              {runs.map((r) => (
+                <tr key={r.id}>
+                  <td className="mono" data-label="Početak">{fmtTime(r.startedAt)}</td>
+                  <td className="mono" data-label="Kraj">{fmtTime(r.finishedAt)}</td>
+                  <td data-label="Status">
+                    <span className={`badge ${r.status === 'success' ? 'st-done' : 'st-cancel'}`}>{r.status === 'success' ? 'uspešan' : 'neuspešan'}</span>
+                    {r.error && <div className="hint danger">{r.error}</div>}
+                  </td>
+                  <td className="mono" data-label="Veličina">{fmtSize(r.sizeBytes)}</td>
+                  <td className="mono truncate" data-label="Fajl">{r.destination ?? '—'}</td>
+                  <td className="ta-r">
+                    {r.status === 'success' && <button className="btn-link danger" onClick={() => setRestoring(r)}>Vrati iz backupa</button>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {restoring && <RestoreModal run={restoring} onClose={() => setRestoring(null)} />}
+    </section>
+  );
+}
+
+const RESTORE_PHRASE = 'VRATI IZ BACKUPA';
+
+function RestoreModal({ run, onClose }: { run: BackupRun; onClose: () => void }): React.JSX.Element {
+  const [confirm, setConfirm] = useState('');
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit(e: FormEvent): Promise<void> {
+    e.preventDefault(); setBusy(true); setErr(null);
+    try {
+      await api.post('/backup/restore', { runId: run.id, confirm, reason });
+      // vraćanje gasi sve sesije; punim reloadom skidamo i stanje u memoriji
+      window.location.href = '/';
+    } catch (e2) {
+      setErr(e2 instanceof ApiRequestError ? e2.body.message : 'Vraćanje nije uspelo.');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal title="Vrati iz backupa" onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <div className="warn-box">
+          <strong>Ovo prepisuje celu bazu.</strong> Svi podaci uneti posle {fmtTime(run.startedAt)} biće trajno izgubljeni.
+          Svi korisnici, uključujući vas, biće odjavljeni.
+        </div>
+        <label className="field"><span>Razlog (obavezno)</span><input value={reason} onChange={(e) => setReason(e.target.value)} required /></label>
+        <label className="field"><span>Ukucaj <code>{RESTORE_PHRASE}</code> da potvrdiš</span>
+          <input value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" /></label>
+        {err && <div className="login-error">{err}</div>}
+        <div className="form-actions">
+          <button type="submit" className="btn-danger" disabled={busy || confirm !== RESTORE_PHRASE || !reason.trim()}>
+            {busy ? 'Vraćam…' : 'Vrati iz backupa'}
+          </button>
+        </div>
       </form>
     </Modal>
   );

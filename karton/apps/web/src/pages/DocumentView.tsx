@@ -13,7 +13,7 @@ const RUBRICS: { key: DocumentItem['itemType']; title: string }[] = [
   { key: 'external', title: 'Eksterni servis' },
 ];
 
-type Dialog = 'convert' | 'markPaid' | 'unmarkPaid' | null;
+type Dialog = 'convert' | 'markPaid' | 'unmarkPaid' | 'edit' | 'fixPayment' | null;
 
 export function DocumentView(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -33,6 +33,16 @@ export function DocumentView(): React.JSX.Element {
     finally { setLoading(false); }
   }, [id]);
   useEffect(() => { void load(); }, [load]);
+
+  async function patchDoc(body: unknown): Promise<void> {
+    setBusy(true); setErr(null);
+    try {
+      setDoc(await api.patch<DocumentDetail>(`/documents/${id}`, body));
+      setDialog(null);
+    } catch (e) {
+      setErr(e instanceof ApiRequestError ? e.body.message : 'Greška.');
+    } finally { setBusy(false); }
+  }
 
   async function action(path: string, body?: unknown, onOk?: (d: DocumentDetail) => void): Promise<void> {
     setBusy(true); setErr(null);
@@ -88,6 +98,12 @@ export function DocumentView(): React.JSX.Element {
         {doc.type === 'invoice' && doc.status === 'paid' && user?.role === 'admin' && (
           <button className="btn-secondary" onClick={() => setDialog('unmarkPaid')}>Vrati na neplaćeno</button>
         )}
+        {((doc.type === 'quote' && doc.status === 'pending') || (doc.type === 'proforma' && doc.status === 'valid')) && (
+          <button className="btn-secondary" onClick={() => { setErr(null); setDialog('edit'); }}>Izmeni</button>
+        )}
+        {doc.type === 'invoice' && doc.status === 'paid' && user?.role === 'admin' && (
+          <button className="btn-secondary" onClick={() => { setErr(null); setDialog('fixPayment'); }}>Ispravi plaćanje</button>
+        )}
         {(doc.type === 'quote' || doc.type === 'proforma') && (
           <button className="btn-secondary" onClick={() => action(`/documents/${id}/copy`, {}, (d) => navigate(`/dokumenti/${d.id}`))}>Kopiraj</button>
         )}
@@ -141,7 +157,65 @@ export function DocumentView(): React.JSX.Element {
         onSubmit={(paidOn, method) => action(`/documents/${id}/mark-paid`, { paidOn, paymentMethod: method, version: v })} />}
       {dialog === 'unmarkPaid' && <ReasonModal title="Vrati na neplaćeno" onClose={() => setDialog(null)} busy={busy} error={err}
         onSubmit={(reason) => action(`/documents/${id}/unmark-paid`, { reason, version: v })} />}
+      {dialog === 'edit' && <EditDocModal doc={doc} onClose={() => setDialog(null)} busy={busy} error={err}
+        onSubmit={(body) => patchDoc({ ...body, version: v })} />}
+      {dialog === 'fixPayment' && <FixPaymentModal doc={doc} onClose={() => setDialog(null)} busy={busy} error={err}
+        onSubmit={(paidOn, method, reason) => action(`/documents/${id}/payment`, { paidOn, paymentMethod: method, reason, version: v })} />}
     </div>
+  );
+}
+
+/**
+ * Izmena ponude (dok je na čekanju) i predračuna (dok važi) — BR-16 dopušta samo
+ * rok važenja, informativni EUR iznos i napomenu. Stavke predračuna su snapshot i ne diraju se.
+ */
+function EditDocModal({ doc, onClose, onSubmit, busy, error }: {
+  doc: DocumentDetail; onClose: () => void;
+  onSubmit: (body: { validUntil?: string; amountEur: number | null; note: string | null }) => void;
+  busy: boolean; error: string | null;
+}): React.JSX.Element {
+  const [validUntil, setValidUntil] = useState(doc.validUntil ?? '');
+  const [amountEur, setAmountEur] = useState(doc.amountEur === null ? '' : String(doc.amountEur));
+  const [note, setNote] = useState(doc.note ?? '');
+  return (
+    <Modal title={`Izmena — ${doc.number}`} onClose={onClose}>
+      <form className="form" onSubmit={(e: FormEvent) => {
+        e.preventDefault();
+        onSubmit({ validUntil: validUntil || undefined, amountEur: amountEur ? Number(amountEur) : null, note: note.trim() || null });
+      }}>
+        <label className="field"><span>Rok važenja</span>
+          <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} autoFocus /></label>
+        <label className="field"><span>Iznos u EUR <small className="hint">(informativno, ne zamenjuje RSD)</small></span>
+          <input type="number" step="0.01" min={0} value={amountEur} onChange={(e) => setAmountEur(e.target.value)} placeholder="npr. 250.00" /></label>
+        <label className="field"><span>Napomena</span>
+          <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} /></label>
+        {error && <div className="login-error">{error}</div>}
+        <div className="form-actions"><button type="submit" className="btn-primary" disabled={busy}>Sačuvaj</button></div>
+      </form>
+    </Modal>
+  );
+}
+
+/** Admin ispravka podataka o plaćanju na već plaćenom računu — razlog ide u istoriju izmena. */
+function FixPaymentModal({ doc, onClose, onSubmit, busy, error }: {
+  doc: DocumentDetail; onClose: () => void;
+  onSubmit: (paidOn: string, method: string, reason: string) => void;
+  busy: boolean; error: string | null;
+}): React.JSX.Element {
+  const [paidOn, setPaidOn] = useState(doc.paidOn ?? '');
+  const [method, setMethod] = useState(doc.paymentMethod ?? 'gotovina');
+  const [reason, setReason] = useState('');
+  return (
+    <Modal title="Ispravi podatke o plaćanju" onClose={onClose}>
+      <form className="form" onSubmit={(e: FormEvent) => { e.preventDefault(); onSubmit(paidOn, method, reason); }}>
+        <label className="field"><span>Datum plaćanja</span><input type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} required autoFocus /></label>
+        <label className="field"><span>Način plaćanja</span>
+          <select value={method} onChange={(e) => setMethod(e.target.value)}><option>gotovina</option><option>kartica</option><option>prenos</option></select></label>
+        <label className="field"><span>Razlog (obavezno)</span><input value={reason} onChange={(e) => setReason(e.target.value)} required /></label>
+        {error && <div className="login-error">{error}</div>}
+        <div className="form-actions"><button type="submit" className="btn-primary" disabled={busy || !reason.trim() || !paidOn}>Sačuvaj</button></div>
+      </form>
+    </Modal>
   );
 }
 

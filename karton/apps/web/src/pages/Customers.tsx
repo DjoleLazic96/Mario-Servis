@@ -127,11 +127,11 @@ export function Customers(): React.JSX.Element {
           <tbody>
             {result?.data.map((c) => (
               <tr key={c.id} className="clickable" onClick={() => navigate(`/klijenti/${c.id}`)}>
-                <td className="strong">{c.name}</td>
-                <td>{c.type === 'company' ? 'Pravno' : 'Fizičko'}</td>
-                <td className="mono">{c.taxId ?? '—'}</td>
-                <td className="mono">{primary(c, 'phone')}</td>
-                <td>{primary(c, 'email')}</td>
+                <td className="strong" data-label="Naziv">{c.name}</td>
+                <td data-label="Tip">{c.type === 'company' ? 'Pravno' : 'Fizičko'}</td>
+                <td className="mono" data-label="PIB">{c.taxId ?? '—'}</td>
+                <td className="mono" data-label="Telefon">{primary(c, 'phone')}</td>
+                <td data-label="Email">{primary(c, 'email')}</td>
               </tr>
             ))}
             {!loading && result?.data.length === 0 && (

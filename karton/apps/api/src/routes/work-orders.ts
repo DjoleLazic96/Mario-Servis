@@ -16,6 +16,8 @@ import { nextNumber } from '../numbering.ts';
 import { todayBelgrade } from '../time.ts';
 import { parseListParams, offset, orderBy, normalizeSearch } from '../query.ts';
 import { workOrderTransition, isWorkOrderEditable } from '../transitions.ts';
+import { chainForWorkOrder } from '../documents-lib.ts';
+import { defaultPageSize } from '../settings-cache.ts';
 
 // ---------- validacija ----------
 const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -52,6 +54,7 @@ const updateSchema = z.object({
   requestedWork: z.string().trim().nullish(),
   findings: z.string().trim().nullish(),
   note: z.string().trim().nullish(),
+  reason: z.string().trim().nullish(), // uz ručnu ispravku datuma završetka (BR-11)
   version: z.number().int(),
   ...fieldVisitSchema,
 });
@@ -168,9 +171,11 @@ async function loadDetail(id: number, client?: PoolClient): Promise<WorkOrderDet
   const laborTotal = laborItems.reduce((s, i) => s + i.amount, 0);
   const partsTotal = partItems.filter((i) => !i.internalNoCharge).reduce((s, i) => s + i.amount, 0);
   const externalTotal = externalItems.filter((i) => !i.internalNoCharge).reduce((s, i) => s + i.price, 0);
+  const chain = await chainForWorkOrder(exec, id);
 
   return {
     ...wo,
+    chain,
     laborItems,
     partItems,
     externalItems,
@@ -217,7 +222,7 @@ export async function workOrderRoutes(app: FastifyInstance): Promise<void> {
 
   // GET /work-orders
   app.get('/work-orders', async (request) => {
-    const p = parseListParams(request.query as Record<string, unknown>);
+    const p = parseListParams(request.query as Record<string, unknown>, await defaultPageSize());
     const query = request.query as Record<string, string | undefined>;
     const conds: string[] = [];
     const params: unknown[] = [];
@@ -300,27 +305,41 @@ export async function workOrderRoutes(app: FastifyInstance): Promise<void> {
   app.patch('/work-orders/:id', async (request, reply) => {
     const id = Number((request.params as { id: string }).id);
     const b = updateSchema.parse(request.body);
-    const cur = await pool.query<{ status: WorkOrder['status']; version: number }>(
-      'SELECT status, version FROM work_order WHERE id = $1', [id]);
+    const cur = await pool.query<{ status: WorkOrder['status']; version: number; completed_on: string | null }>(
+      `SELECT status, version, to_char(completed_on,'YYYY-MM-DD') completed_on FROM work_order WHERE id = $1`, [id]);
     if (!cur.rows[0]) return sendError(reply, 404, 'NOT_FOUND', 'Nalog ne postoji.');
     if (cur.rows[0].version !== b.version) return sendError(reply, 409, 'VERSION_CONFLICT', 'Neko je izmenio nalog u međuvremenu.');
     if (!isWorkOrderEditable(cur.rows[0].status)) return sendError(reply, 422, 'ENTITY_LOCKED', 'Nalog je zaključan.');
 
     const fv = b.fieldVisit === true;
-    await pool.query(
-      `UPDATE work_order SET received_on=$1, received_time=$2, completed_on=$3, completed_time=$4,
-        odometer_km=$5, requested_work=$6, findings=$7, note=$8,
-        field_visit=$9, field_visit_date=$10, field_visit_time=$11, field_visit_location=$12,
-        field_visit_km=$13, vehicle_drivable=$14, field_visit_outcome=$15,
-        version = version + 1, updated_at = now() WHERE id = $16`,
-      [
-        b.receivedOn ?? todayBelgrade(), b.receivedTime ?? null, b.completedOn ?? null, b.completedTime ?? null,
-        b.odometerKm ?? null, b.requestedWork ?? null, b.findings ?? null, b.note ?? null,
-        fv, fv ? b.fieldVisitDate ?? null : null, fv ? b.fieldVisitTime ?? null : null,
-        fv ? b.fieldVisitLocation ?? null : null, fv ? b.fieldVisitKm ?? null : null,
-        fv ? b.vehicleDrivable ?? null : null, fv ? b.fieldVisitOutcome ?? null : null, id,
-      ],
-    );
+    const oldCompleted = cur.rows[0].completed_on;
+    const newCompleted = b.completedOn ?? null;
+    // BR-11: automatski datum završetka sme da se ručno ispravi — obeleži i upiši u audit.
+    const completedChanged = oldCompleted !== newCompleted;
+
+    await tx(async (client) => {
+      await client.query(
+        `UPDATE work_order SET received_on=$1, received_time=$2, completed_on=$3, completed_time=$4,
+          odometer_km=$5, requested_work=$6, findings=$7, note=$8,
+          field_visit=$9, field_visit_date=$10, field_visit_time=$11, field_visit_location=$12,
+          field_visit_km=$13, vehicle_drivable=$14, field_visit_outcome=$15,
+          completed_on_manual = completed_on_manual OR $16,
+          version = version + 1, updated_at = now() WHERE id = $17`,
+        [
+          b.receivedOn ?? todayBelgrade(), b.receivedTime ?? null, newCompleted, b.completedTime ?? null,
+          b.odometerKm ?? null, b.requestedWork ?? null, b.findings ?? null, b.note ?? null,
+          fv, fv ? b.fieldVisitDate ?? null : null, fv ? b.fieldVisitTime ?? null : null,
+          fv ? b.fieldVisitLocation ?? null : null, fv ? b.fieldVisitKm ?? null : null,
+          fv ? b.vehicleDrivable ?? null : null, fv ? b.fieldVisitOutcome ?? null : null,
+          completedChanged, id,
+        ],
+      );
+      if (completedChanged) {
+        await writeAudit({ userId: request.currentUser!.id, entityType: 'work_order', entityId: id,
+          action: 'work_order.completed_on_changed', oldValue: { completedOn: oldCompleted },
+          newValue: { completedOn: newCompleted }, reason: b.reason ?? null }, client);
+      }
+    });
     return (await loadDetail(id))!;
   });
 
@@ -355,6 +374,41 @@ export async function workOrderRoutes(app: FastifyInstance): Promise<void> {
           oldValue: { status: cur.rows[0]!.status }, newValue: { status: b.status }, reason: b.reason }, client);
       }
     });
+    return (await loadDetail(id))!;
+  });
+
+  // POST /work-orders/:id/link-quote — samo prihvaćena ponuda (BR-11); jedna ponuda može hraniti više naloga (1:N)
+  app.post('/work-orders/:id/link-quote', async (request, reply) => {
+    const id = Number((request.params as { id: string }).id);
+    const b = z.object({ quoteId: z.number().int().positive(), version: z.number().int() }).parse(request.body);
+    const cur = await pool.query<{ status: WorkOrder['status']; version: number }>('SELECT status, version FROM work_order WHERE id=$1', [id]);
+    if (!cur.rows[0]) return sendError(reply, 404, 'NOT_FOUND', 'Nalog ne postoji.');
+    if (cur.rows[0].version !== b.version) return sendError(reply, 409, 'VERSION_CONFLICT', 'Neko je izmenio nalog u međuvremenu.');
+    if (!isWorkOrderEditable(cur.rows[0].status)) return sendError(reply, 422, 'ENTITY_LOCKED', 'Nalog je zaključan.');
+
+    const q = await pool.query<{ type: string; status: string; vehicle_id: number }>(
+      'SELECT type, status, vehicle_id FROM document WHERE id=$1', [b.quoteId]);
+    if (!q.rows[0]) return sendError(reply, 404, 'NOT_FOUND', 'Ponuda ne postoji.');
+    if (q.rows[0].type !== 'quote' || q.rows[0].status !== 'accepted') {
+      return sendError(reply, 422, 'QUOTE_NOT_ACCEPTED', 'Nalog se može vezati samo za prihvaćenu ponudu.');
+    }
+    const wov = await pool.query<{ vehicle_id: number }>('SELECT vehicle_id FROM work_order WHERE id=$1', [id]);
+    if (wov.rows[0]!.vehicle_id !== q.rows[0].vehicle_id) {
+      return sendError(reply, 422, 'VALIDATION_FAILED', 'Ponuda je za drugo vozilo.');
+    }
+    await pool.query('UPDATE work_order SET source_quote_id=$1, version=version+1, updated_at=now() WHERE id=$2', [b.quoteId, id]);
+    return (await loadDetail(id))!;
+  });
+
+  // POST /work-orders/:id/unlink-quote — ne dira druge naloge iste ponude
+  app.post('/work-orders/:id/unlink-quote', async (request, reply) => {
+    const id = Number((request.params as { id: string }).id);
+    const b = z.object({ version: z.number().int() }).parse(request.body);
+    const cur = await pool.query<{ status: WorkOrder['status']; version: number }>('SELECT status, version FROM work_order WHERE id=$1', [id]);
+    if (!cur.rows[0]) return sendError(reply, 404, 'NOT_FOUND', 'Nalog ne postoji.');
+    if (cur.rows[0].version !== b.version) return sendError(reply, 409, 'VERSION_CONFLICT', 'Neko je izmenio nalog u međuvremenu.');
+    if (!isWorkOrderEditable(cur.rows[0].status)) return sendError(reply, 422, 'ENTITY_LOCKED', 'Nalog je zaključan.');
+    await pool.query('UPDATE work_order SET source_quote_id=NULL, version=version+1, updated_at=now() WHERE id=$1', [id]);
     return (await loadDetail(id))!;
   });
 

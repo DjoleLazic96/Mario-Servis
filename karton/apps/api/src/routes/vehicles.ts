@@ -8,6 +8,7 @@ import { requireAuth } from '../auth-guards.ts';
 import { writeAudit } from '../audit.ts';
 import { parseListParams, offset, orderBy, normalizeSearch } from '../query.ts';
 import { todayBelgrade } from '../time.ts';
+import { defaultPageSize } from '../settings-cache.ts';
 
 const createSchema = z.object({
   vin: z.string().trim().min(1),
@@ -98,7 +99,7 @@ export async function vehicleRoutes(app: FastifyInstance): Promise<void> {
 
   // GET /vehicles — pretraga pogađa i staru tablicu (BR-03)
   app.get('/vehicles', async (request) => {
-    const p = parseListParams(request.query as Record<string, unknown>);
+    const p = parseListParams(request.query as Record<string, unknown>, await defaultPageSize());
     const query = request.query as Record<string, string | undefined>;
     const conds: string[] = [];
     const params: unknown[] = [];
@@ -113,6 +114,11 @@ export async function vehicleRoutes(app: FastifyInstance): Promise<void> {
         `EXISTS (SELECT 1 FROM ownership_history oh WHERE oh.vehicle_id = v.id
                  AND oh.valid_to IS NULL AND oh.customer_id = $${params.length})`,
       );
+    }
+    // „U servisu" (OpenAPI: inShop) = postoji nalog koji nije završen ni otkazan
+    if (query['inShop'] === 'true') {
+      conds.push(`EXISTS (SELECT 1 FROM work_order wo WHERE wo.vehicle_id = v.id
+                          AND wo.status IN ('open','in_progress','waiting_parts'))`);
     }
     if (p.q) {
       params.push(normalizeSearch(p.q));
@@ -292,4 +298,18 @@ export async function vehicleRoutes(app: FastifyInstance): Promise<void> {
       return getVehicle(id);
     };
   }
+
+  // GET /vehicles/:id/stats — statistika vozila (spec §3.5)
+  app.get('/vehicles/:id/stats', async (request) => {
+    const id = Number((request.params as { id: string }).id);
+    const { rows } = await pool.query<{ orders: string; total_spent: string; last_visit: string | null }>(
+      `SELECT
+         (SELECT count(*) FROM work_order WHERE vehicle_id=$1) AS orders,
+         (SELECT coalesce(sum(di.amount),0) FROM document d JOIN document_item di ON di.document_id=d.id
+            WHERE d.vehicle_id=$1 AND d.type='invoice' AND d.status='paid') AS total_spent,
+         (SELECT to_char(max(received_on),'YYYY-MM-DD') FROM work_order WHERE vehicle_id=$1) AS last_visit`,
+      [id]);
+    const r = rows[0]!;
+    return { orders: Number(r.orders), totalSpent: Number(r.total_spent), lastVisit: r.last_visit };
+  });
 }

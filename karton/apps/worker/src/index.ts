@@ -1,6 +1,8 @@
 process.env.TZ = 'UTC';
 import pg from 'pg';
 import nodemailer from 'nodemailer';
+import { resolve } from 'node:path';
+import { runBackupWithEvidence } from '@karton/shared/backup';
 
 /**
  * Worker (odvojen proces, teh. preporuka §5): zakazani poslovi.
@@ -95,14 +97,39 @@ function belgradeToday(): string {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Belgrade' });
 }
 
+/**
+ * Dnevni backup (spec §4.14): pokreće se jednom dnevno u BACKUP_HOUR po beogradskom vremenu.
+ * Ishod — i uspeh i neuspeh — upisuje se u `backup_run`, pa je vidljiv u Podešavanjima.
+ */
+const BACKUP_HOUR = Number(process.env.BACKUP_HOUR ?? 2);
+const backupOpts = {
+  databaseUrl: process.env.DATABASE_URL!,
+  // isti direktorijum kao API (oba se sidre na koren monorepoa, ne na svoj cwd)
+  backupDir: resolve(import.meta.dirname, '../../..', process.env.BACKUP_DIR ?? './backups'),
+  dockerContainer: process.env.DB_CONTAINER ?? 'karton-db',
+};
+
+async function dailyBackup(): Promise<void> {
+  const now = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Belgrade' });
+  const [today, clock] = now.split(' ') as [string, string];
+  if (Number(clock.slice(0, 2)) !== BACKUP_HOUR) return;
+
+  // idempotentno: ako danas već postoji uspešan backup, preskoči
+  const done = await pool.query(
+    `SELECT 1 FROM backup_run WHERE status='success'
+       AND (started_at AT TIME ZONE 'Europe/Belgrade')::date = $1::date`, [today]);
+  if ((done.rowCount ?? 0) > 0) return;
+
+  const res = await runBackupWithEvidence(pool, backupOpts, today.replace(/-/g, ''));
+  log(res.ok ? `backup uspešan (#${res.id})` : `backup NEUSPEŠAN: ${res.error}`);
+}
+
 async function tick(): Promise<void> {
   await expireDocuments().catch((e) => log(`expire greška: ${e}`));
   await sendReminders().catch((e) => log(`reminders greška: ${e}`));
+  await dailyBackup().catch((e) => log(`backup greška: ${e}`));
 }
 
-log('Worker pokrenut. Poslovi: istek dokumenata, email podsetnici (retry).');
+log(`Worker pokrenut. Poslovi: istek dokumenata, email podsetnici (retry), dnevni backup u ${String(BACKUP_HOUR).padStart(2, '0')}:00.`);
 void tick();
 setInterval(() => void tick(), 60_000); // svakih 60s
-
-// Backup: napomena — pg_dump se u produkciji vezuje na cron/systemd timer (teh. preporuka §5);
-// evidencija u backup_run tabeli. U lokalnom razvoju se ne pokreće automatski.

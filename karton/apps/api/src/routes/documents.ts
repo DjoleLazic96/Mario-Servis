@@ -7,6 +7,7 @@ import { writeAudit } from '../audit.ts';
 import { nextNumber } from '../numbering.ts';
 import { todayBelgrade } from '../time.ts';
 import { parseListParams, offset, orderBy, normalizeSearch } from '../query.ts';
+import { defaultPageSize } from '../settings-cache.ts';
 import {
   buildSnapshot, insertItems, copyItems, loadDocument, defaultValidUntil,
   type SnapshotItem,
@@ -55,7 +56,7 @@ export async function documentRoutes(app: FastifyInstance): Promise<void> {
 
   // GET /documents
   app.get('/documents', async (request) => {
-    const p = parseListParams(request.query as Record<string, unknown>);
+    const p = parseListParams(request.query as Record<string, unknown>, await defaultPageSize());
     const q = request.query as Record<string, string | undefined>;
     const conds: string[] = [];
     const params: unknown[] = [];
@@ -63,6 +64,7 @@ export async function documentRoutes(app: FastifyInstance): Promise<void> {
     if (q['status']) { params.push(q['status']); conds.push(`d.status = $${params.length}::document_status`); }
     if (q['workOrderId']) { params.push(Number(q['workOrderId'])); conds.push(`d.work_order_id = $${params.length}`); }
     if (q['customerId']) { params.push(Number(q['customerId'])); conds.push(`d.customer_id = $${params.length}`); }
+    if (q['vehicleId']) { params.push(Number(q['vehicleId'])); conds.push(`d.vehicle_id = $${params.length}`); }
     if (q['unpaid'] === 'true') conds.push(`d.type='invoice' AND d.status='unpaid'`);
     if (p.q) {
       params.push(normalizeSearch(p.q)); const norm = `$${params.length}`;
@@ -112,6 +114,11 @@ export async function documentRoutes(app: FastifyInstance): Promise<void> {
 
   // POST /documents — ponuda ili predračun (račun se ne kreira direktno)
   app.post('/documents', async (request, reply) => {
+    // Bez ove provere Zod bi `type: 'invoice'` odbio kao VALIDATION_FAILED, pa dokumentovana
+    // šifra iz spec §8 nikad ne bi stigla do klijenta (BR-17: račun nastaje samo konverzijom).
+    if ((request.body as { type?: unknown } | undefined)?.type === 'invoice') {
+      return sendError(reply, 422, 'INVOICE_DIRECT_CREATE_FORBIDDEN', 'Račun nastaje isključivo pretvaranjem predračuna.');
+    }
     const body = createSchema.parse(request.body);
 
     if (body.type === 'quote') {
@@ -296,6 +303,25 @@ export async function documentRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(201).send(proforma);
   });
 
+  // POST /documents/:id/payment — ADMIN: ispravka datuma/načina plaćanja na plaćenom računu (razlog obavezan)
+  app.post('/documents/:id/payment', async (request, reply) => {
+    if (request.currentUser!.role !== 'admin') return sendError(reply, 403, 'FORBIDDEN', 'Ovu izmenu može samo administrator.');
+    const id = Number((request.params as { id: string }).id);
+    const b = z.object({ paidOn: DATE, paymentMethod: z.string().trim().min(1), reason: z.string().trim().min(1), version: z.number().int() }).parse(request.body);
+    const cur = await pool.query<{ type: string; status: string; version: number; paid_on: string | null; payment_method: string | null }>(
+      `SELECT type, status, version, to_char(paid_on,'YYYY-MM-DD') paid_on, payment_method FROM document WHERE id=$1`, [id]);
+    if (!cur.rows[0]) return sendError(reply, 404, 'NOT_FOUND', 'Dokument ne postoji.');
+    if (cur.rows[0].version !== b.version) return sendError(reply, 409, 'VERSION_CONFLICT', 'Neko je izmenio dokument u međuvremenu.');
+    if (cur.rows[0].type !== 'invoice' || cur.rows[0].status !== 'paid') return sendError(reply, 422, 'INVOICE_NOT_PAID', 'Ispravka je moguća samo na plaćenom računu.');
+    await tx(async (client) => {
+      await client.query(`UPDATE document SET paid_on=$1, payment_method=$2, version=version+1, updated_at=now() WHERE id=$3`, [b.paidOn, b.paymentMethod, id]);
+      await writeAudit({ userId: request.currentUser!.id, entityType: 'document', entityId: id, action: 'invoice.payment_changed',
+        oldValue: { paidOn: cur.rows[0]!.paid_on, paymentMethod: cur.rows[0]!.payment_method },
+        newValue: { paidOn: b.paidOn, paymentMethod: b.paymentMethod }, reason: b.reason }, client);
+    });
+    return (await loadDocument(id))!;
+  });
+
   // POST /documents/:id/copy  (samo ponuda i predračun) — BR-23/39/40
   app.post('/documents/:id/copy', async (request, reply) => {
     const id = Number((request.params as { id: string }).id);
@@ -319,6 +345,8 @@ export async function documentRoutes(app: FastifyInstance): Promise<void> {
         [number, src.type, src.work_order_id, src.customer_id, src.vehicle_id, todayBelgrade(), validUntil, status, id, request.currentUser!.id]);
       const newId = ins.rows[0]!.id;
       await copyItems(client, id, newId);
+      await writeAudit({ userId: request.currentUser!.id, entityType: 'document', entityId: newId,
+        action: 'document.copied', oldValue: { sourceId: id }, newValue: { id: newId, number } }, client);
       return (await loadDocument(newId, client))!;
     });
     return reply.code(201).send(copy);

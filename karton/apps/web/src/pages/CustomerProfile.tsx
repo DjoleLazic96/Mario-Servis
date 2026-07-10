@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { Customer, CustomerInput } from '@karton/shared';
+import type { Customer, CustomerInput, Vehicle, Paginated } from '@karton/shared';
 import { api, ApiRequestError } from '../api.ts';
 import { Modal } from '../components/Modal.tsx';
 import { CustomerForm } from '../components/CustomerForm.tsx';
+import { WorkOrderHistory } from '../components/WorkOrderHistory.tsx';
 
 export function CustomerProfile(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -131,8 +132,13 @@ export function CustomerProfile(): React.JSX.Element {
       </div>
 
       <section className="card">
-        <h2 className="card-title">Vozila i istorija naloga</h2>
-        <p className="card-empty">Prikaz vozila i istorije naloga — uskoro.</p>
+        <h2 className="card-title">Vozila klijenta</h2>
+        <CustomerVehicles customerId={customer.id} />
+      </section>
+
+      <section className="card">
+        <h2 className="card-title">Istorija radnih naloga</h2>
+        <WorkOrderHistory scope={{ customerId: customer.id }} />
       </section>
 
       {showEdit && (
@@ -140,6 +146,38 @@ export function CustomerProfile(): React.JSX.Element {
           <CustomerForm initial={customer} withContacts={false} submitting={saving} error={formError} onSubmit={saveEdit} />
         </Modal>
       )}
+    </div>
+  );
+}
+
+/** Vozila kojima je klijent trenutni vlasnik. */
+function CustomerVehicles({ customerId }: { customerId: number }): React.JSX.Element {
+  const navigate = useNavigate();
+  const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const res = await api.get<Paginated<Vehicle>>(`/vehicles?customerId=${customerId}&pageSize=50`);
+      setVehicles(res.data);
+    })();
+  }, [customerId]);
+
+  if (!vehicles) return <p className="card-empty">Učitavanje…</p>;
+  if (vehicles.length === 0) return <p className="card-empty">Klijent nema vozila.</p>;
+  return (
+    <div className="table-wrap">
+      <table className="data-table">
+        <thead><tr><th>Tablica</th><th>Vozilo</th><th>VIN</th><th>Godište</th></tr></thead>
+        <tbody>
+          {vehicles.map((v) => (
+            <tr key={v.id} className="clickable" onClick={() => navigate(`/vozila/${v.id}`)}>
+              <td className="mono strong" data-label="Tablica">{v.currentPlate ?? '—'}</td>
+              <td data-label="Vozilo">{v.make} {v.model}</td>
+              <td className="mono" data-label="VIN">{v.vin}</td>
+              <td className="mono" data-label="Godište">{v.year ?? '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

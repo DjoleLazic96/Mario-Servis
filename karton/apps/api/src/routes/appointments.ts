@@ -77,7 +77,7 @@ function offsetDay(iso: string, days: number): string {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 // Meka/tvrda pravila (BR-27): blokada = tvrda; preklapanje/van radnog vremena = upozorenje
-async function checkConstraints(b: z.infer<typeof apptSchema>): Promise<{ block: boolean; warnings: string[] }> {
+async function checkConstraints(b: z.infer<typeof apptSchema>, excludeId?: number): Promise<{ block: boolean; warnings: string[] }> {
   const warnings: string[] = [];
   const blocked = await pool.query(`SELECT 1 FROM calendar_block WHERE $1::date BETWEEN from_date AND to_date`, [b.date]);
   if ((blocked.rowCount ?? 0) > 0) return { block: true, warnings: ['CALENDAR_BLOCKED'] };
@@ -87,11 +87,16 @@ async function checkConstraints(b: z.infer<typeof apptSchema>): Promise<{ block:
 
   if (b.mechanicId) {
     const busy = await pool.query(
-      `SELECT 1 FROM appointment WHERE mechanic_id=$1 AND date=$2 AND status='scheduled'
+      `SELECT 1 FROM appointment WHERE mechanic_id=$1 AND date=$2 AND status='scheduled' AND id <> coalesce($5, 0)
        AND (time, time + (duration_min || ' minutes')::interval) OVERLAPS
            ($3::time, $3::time + ($4 || ' minutes')::interval)`,
-      [b.mechanicId, b.date, b.time, b.durationMin]);
+      [b.mechanicId, b.date, b.time, b.durationMin, excludeId ?? null]);
     if ((busy.rowCount ?? 0) > 0) warnings.push('MECHANIC_BUSY');
+
+    const away = await pool.query(
+      `SELECT 1 FROM mechanic_unavailability WHERE mechanic_id=$1 AND $2::date BETWEEN from_date AND to_date`,
+      [b.mechanicId, b.date]);
+    if ((away.rowCount ?? 0) > 0) warnings.push('MECHANIC_UNAVAILABLE');
   }
   return { block: false, warnings };
 }
@@ -138,7 +143,7 @@ export async function appointmentRoutes(app: FastifyInstance): Promise<void> {
     const cur = await pool.query<{ version: number }>('SELECT version FROM appointment WHERE id=$1', [id]);
     if (!cur.rows[0]) return sendError(reply, 404, 'NOT_FOUND', 'Termin ne postoji.');
     if (cur.rows[0].version !== b.version) return sendError(reply, 409, 'VERSION_CONFLICT', 'Termin je izmenjen u međuvremenu.');
-    const chk = await checkConstraints(b);
+    const chk = await checkConstraints(b, id);
     if (chk.block) return sendError(reply, 422, 'CALENDAR_BLOCKED', 'Taj dan je blokiran.');
     if (chk.warnings.length && !b.confirmed) return sendError(reply, 409, 'CONFIRMATION_REQUIRED', 'Postoje upozorenja — potvrdite.', { warnings: chk.warnings });
     const updated = await tx(async (client) => {
@@ -158,18 +163,30 @@ export async function appointmentRoutes(app: FastifyInstance): Promise<void> {
     const cur = await pool.query<{ status: string; version: number; work_order_id: number | null }>('SELECT status, version, work_order_id FROM appointment WHERE id=$1', [id]);
     if (!cur.rows[0]) return sendError(reply, 404, 'NOT_FOUND', 'Termin ne postoji.');
     if (cur.rows[0].version !== b.version) return sendError(reply, 409, 'VERSION_CONFLICT', 'Termin je izmenjen u međuvremenu.');
-    // completed → scheduled samo ako nije vezan za nalog (BR-28)
-    if (cur.rows[0].status === 'completed' && b.status === 'scheduled' && cur.rows[0].work_order_id) {
+    // completed → scheduled samo ako nije vezan za nalog (BR-28); admin sme uz razlog
+    const isAdmin = request.currentUser!.role === 'admin';
+    const revertLinked = cur.rows[0].status === 'completed' && b.status === 'scheduled' && cur.rows[0].work_order_id !== null;
+    if (revertLinked && !isAdmin) {
       return sendError(reply, 422, 'APPOINTMENT_LINKED', 'Termin je vezan za nalog — vraćanje statusa nije moguće.');
     }
+    if (revertLinked && !b.reason) {
+      return sendError(reply, 422, 'REASON_REQUIRED', 'Razlog je obavezan za ovu korekciju.');
+    }
     await tx(async (client) => {
-      await client.query(`UPDATE appointment SET status=$1, work_order_id=coalesce($2, work_order_id), version=version+1, updated_at=now() WHERE id=$3`,
-        [b.status, b.workOrderId ?? null, id]);
+      await client.query(
+        `UPDATE appointment SET status=$1, work_order_id = CASE WHEN $4 THEN NULL ELSE coalesce($2, work_order_id) END,
+          version=version+1, updated_at=now() WHERE id=$3`,
+        [b.status, b.workOrderId ?? null, id, revertLinked]);
       // termin van statusa 'scheduled' ne šalje podsetnik (BR-30)
       if (b.status !== 'scheduled') {
         await client.query(`DELETE FROM appointment_reminder WHERE appointment_id=$1 AND send_status IN ('scheduled','failed')`, [id]);
       } else {
         await syncReminder(client, id);
+      }
+      if (revertLinked) {
+        await writeAudit({ userId: request.currentUser!.id, entityType: 'appointment', entityId: id, action: 'appointment.corrected',
+          oldValue: { status: cur.rows[0]!.status, workOrderId: cur.rows[0]!.work_order_id },
+          newValue: { status: b.status, workOrderId: null }, reason: b.reason }, client);
       }
     });
     return loadAppt(id);
@@ -203,5 +220,4 @@ export async function appointmentRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(204).send();
   });
 
-  void writeAudit; // (rezervisano za buduće admin korekcije termina)
 }

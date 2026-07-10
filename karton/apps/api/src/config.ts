@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { z } from 'zod';
 
 /**
@@ -13,6 +14,9 @@ const schema = z.object({
   SMTP_HOST: z.string().default('localhost'),
   SMTP_PORT: z.coerce.number().int().positive().default(1025),
   SENDER_EMAIL: z.string().default('servis@localhost'),
+  BACKUP_DIR: z.string().default('./backups'),
+  // fallback kad pg_dump nije na PATH-u (lokalni razvoj: baza je u kontejneru)
+  DB_CONTAINER: z.string().default('karton-db'),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -29,4 +33,7 @@ export const config = {
   isProduction: parsed.data.NODE_ENV === 'production',
   /** Secure kolačić samo u produkciji — ne radi na http://localhost (pravilo 3). */
   cookieSecure: parsed.data.NODE_ENV === 'production',
+  // sidrimo na koren monorepoa: API i worker imaju različit cwd, a moraju da dele isti direktorijum
+  backupDir: resolve(import.meta.dirname, '../../..', parsed.data.BACKUP_DIR),
+  dbContainer: parsed.data.DB_CONTAINER,
 };

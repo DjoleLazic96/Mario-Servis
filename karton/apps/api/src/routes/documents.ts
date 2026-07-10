@@ -70,7 +70,10 @@ export async function documentRoutes(app: FastifyInstance): Promise<void> {
       conds.push(`(lower(d.number) LIKE '%'||${low}||'%' OR regexp_replace(lower(c.name),'\\s','','g') LIKE '%'||${norm}||'%')`);
     }
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const order = orderBy(p.sort, { number: 'd.number', issued: 'd.issued_on' }, 'd.issued_on DESC, d.id DESC');
+    const order = orderBy(p.sort, {
+      number: 'd.number', issued: 'd.issued_on', type: 'd.type', status: 'd.status',
+      customer: 'c.name', total: 'total_amount',
+    }, 'd.issued_on DESC, d.id DESC');
     params.push(p.pageSize); const limit = `$${params.length}`;
     params.push(offset(p)); const off = `$${params.length}`;
     const { rows } = await pool.query(

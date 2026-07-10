@@ -207,7 +207,10 @@ async function ensureEditable(id: number, reply: FastifyReply): Promise<boolean>
   return true;
 }
 
-const SORTABLE = { number: 'wo.number', received: 'wo.received_on', status: 'wo.status' };
+const SORTABLE = {
+  number: 'wo.number', received: 'wo.received_on', status: 'wo.status', customer: 'c.name',
+  plate: `(SELECT rh.plate FROM registration_history rh WHERE rh.vehicle_id = v.id AND rh.valid_to IS NULL LIMIT 1)`,
+};
 
 export async function workOrderRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requireAuth);

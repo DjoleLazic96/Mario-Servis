@@ -4,6 +4,7 @@ import type { Vehicle, VehicleInput, Paginated } from '@karton/shared';
 import { api, ApiRequestError } from '../api.ts';
 import { Modal } from '../components/Modal.tsx';
 import { VehicleForm } from '../components/VehicleForm.tsx';
+import { SortableTh } from '../components/SortableTh.tsx';
 
 type Tab = 'active' | 'archived';
 
@@ -12,6 +13,7 @@ export function Vehicles(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('active');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<string | undefined>();
   const [result, setResult] = useState<Paginated<Vehicle> | null>(null);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
@@ -21,13 +23,14 @@ export function Vehicles(): React.JSX.Element {
   const load = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({ status: tab, page: String(page) });
+    if (sort) params.set('sort', sort);
     if (q.trim()) params.set('q', q.trim());
     try {
       setResult(await api.get<Paginated<Vehicle>>(`/vehicles?${params.toString()}`));
     } finally {
       setLoading(false);
     }
-  }, [tab, page, q]);
+  }, [tab, page, q, sort]);
 
   useEffect(() => {
     const t = setTimeout(load, q ? 250 : 0);
@@ -51,6 +54,8 @@ export function Vehicles(): React.JSX.Element {
       setSaving(false);
     }
   }
+
+  const doSort = (next: string): void => { setSort(next); setPage(1); };
 
   const meta = result?.meta;
   const totalPages = meta ? Math.max(1, Math.ceil(meta.total / meta.pageSize)) : 1;
@@ -88,11 +93,11 @@ export function Vehicles(): React.JSX.Element {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Tablica</th>
-              <th>Vozilo</th>
+              <SortableTh field="plate" label="Tablica" sort={sort} onSort={doSort} />
+              <SortableTh field="make" label="Vozilo" sort={sort} onSort={doSort} />
               <th>Gorivo</th>
-              <th>Vlasnik</th>
-              <th>VIN</th>
+              <SortableTh field="owner" label="Vlasnik" sort={sort} onSort={doSort} />
+              <SortableTh field="vin" label="VIN" sort={sort} onSort={doSort} />
             </tr>
           </thead>
           <tbody>

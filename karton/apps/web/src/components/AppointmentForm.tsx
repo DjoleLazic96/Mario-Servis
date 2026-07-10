@@ -3,17 +3,18 @@ import type { CustomerRef, Vehicle, Mechanic } from '@karton/shared';
 import { api, ApiRequestError } from '../api.ts';
 import { OwnerPicker } from './OwnerPicker.tsx';
 import { VehiclePicker } from './VehiclePicker.tsx';
+import { TimeInput } from './TimeInput.tsx';
 
 const WARN_LABEL: Record<string, string> = {
   MECHANIC_BUSY: 'Majstor je zauzet u to vreme.',
   OUTSIDE_WORK_HOURS: 'Termin je van radnog vremena.',
 };
 
-export function AppointmentForm({ mechanics, defaultDate, onCreated }: { mechanics: Mechanic[]; defaultDate: string; onCreated: () => void }): React.JSX.Element {
+export function AppointmentForm({ mechanics, defaultDate, defaultTime = '09:00', onCreated }: { mechanics: Mechanic[]; defaultDate: string; defaultTime?: string; onCreated: () => void }): React.JSX.Element {
   const [customer, setCustomer] = useState<CustomerRef | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [date, setDate] = useState(defaultDate);
-  const [time, setTime] = useState('09:00');
+  const [time, setTime] = useState(defaultTime);
   const [duration, setDuration] = useState('60');
   const [mechanicId, setMechanicId] = useState('');
   const [note, setNote] = useState('');
@@ -44,7 +45,7 @@ export function AppointmentForm({ mechanics, defaultDate, onCreated }: { mechani
       <div className="field"><span>Vozilo</span><VehiclePicker value={vehicle} onChange={setVehicle} /></div>
       <div className="form-2col">
         <label className="field"><span>Datum</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} required /></label>
-        <label className="field"><span>Vreme</span><input type="time" value={time} onChange={(e) => setTime(e.target.value)} required /></label>
+        <label className="field"><span>Vreme</span><TimeInput value={time} onChange={setTime} required /></label>
       </div>
       <div className="form-2col">
         <label className="field"><span>Trajanje (min)</span><input type="number" min={15} step={15} value={duration} onChange={(e) => setDuration(e.target.value)} /></label>

@@ -4,6 +4,7 @@ import type { Customer, CustomerInput, Paginated } from '@karton/shared';
 import { api, ApiRequestError } from '../api.ts';
 import { Modal } from '../components/Modal.tsx';
 import { CustomerForm } from '../components/CustomerForm.tsx';
+import { SortableTh } from '../components/SortableTh.tsx';
 
 type Tab = 'all' | 'individual' | 'company' | 'archived';
 const TABS: { key: Tab; label: string }[] = [
@@ -29,6 +30,7 @@ export function Customers(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('all');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<string | undefined>();
   const [result, setResult] = useState<Paginated<Customer> | null>(null);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
@@ -39,13 +41,14 @@ export function Customers(): React.JSX.Element {
     setLoading(true);
     const params = new URLSearchParams(tabParams(tab));
     params.set('page', String(page));
+    if (sort) params.set('sort', sort);
     if (q.trim()) params.set('q', q.trim());
     try {
       setResult(await api.get<Paginated<Customer>>(`/customers?${params.toString()}`));
     } finally {
       setLoading(false);
     }
-  }, [tab, page, q]);
+  }, [tab, page, q, sort]);
 
   // debounce pretrage
   useEffect(() => {
@@ -72,6 +75,8 @@ export function Customers(): React.JSX.Element {
       setSaving(false);
     }
   }
+
+  const doSort = (next: string): void => { setSort(next); setPage(1); };
 
   const meta = result?.meta;
   const totalPages = meta ? Math.max(1, Math.ceil(meta.total / meta.pageSize)) : 1;
@@ -112,9 +117,9 @@ export function Customers(): React.JSX.Element {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Naziv</th>
-              <th>Tip</th>
-              <th>PIB / JMBG</th>
+              <SortableTh field="name" label="Naziv" sort={sort} onSort={doSort} />
+              <SortableTh field="type" label="Tip" sort={sort} onSort={doSort} />
+              <SortableTh field="taxId" label="PIB / JMBG" sort={sort} onSort={doSort} />
               <th>Telefon</th>
               <th>Email</th>
             </tr>

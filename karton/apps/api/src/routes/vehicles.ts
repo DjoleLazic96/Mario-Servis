@@ -87,7 +87,11 @@ async function getVehicle(id: number, client?: PoolClient): Promise<Vehicle | nu
   return rows[0] ? toVehicle(rows[0]) : null;
 }
 
-const SORTABLE = { vin: 'v.vin', make: 'v.make', model: 'v.model', year: 'v.year', status: 'v.status' };
+const SORTABLE = {
+  vin: 'v.vin', make: 'v.make', model: 'v.model', year: 'v.year', status: 'v.status',
+  plate: `(SELECT rh.plate FROM registration_history rh WHERE rh.vehicle_id = v.id AND rh.valid_to IS NULL LIMIT 1)`,
+  owner: 'co.name',
+};
 
 export async function vehicleRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requireAuth);

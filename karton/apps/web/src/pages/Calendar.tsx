@@ -6,25 +6,31 @@ import { api, ApiRequestError } from '../api.ts';
 import { Modal } from '../components/Modal.tsx';
 import { AppointmentForm } from '../components/AppointmentForm.tsx';
 
-const DAYS = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'];
+const DAYS = ['Ponedeljak', 'Utorak', 'Sreda', 'Četvrtak', 'Petak', 'Subota', 'Nedelja'];
+const DAYS_SHORT = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'];
+const HOUR_H = 46; // visina jednog sata u px
 const statusClass: Record<string, string> = { scheduled: 'st-open', completed: 'st-done', cancelled: 'st-cancel', no_show: 'st-wait' };
 
-function mondayOf(d: Date): Date { const x = new Date(d); const day = (x.getDay() + 6) % 7; x.setDate(x.getDate() - day); x.setHours(0, 0, 0, 0); return x; }
-function iso(d: Date): string { return d.toLocaleDateString('sv-SE'); }
-function addDays(d: Date, n: number): Date { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+const mondayOf = (d: Date): Date => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); x.setHours(0, 0, 0, 0); return x; };
+const iso = (d: Date): string => d.toLocaleDateString('sv-SE');
+const addDays = (d: Date, n: number): Date => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const toMin = (t: string): number => { const [h, m] = t.split(':').map(Number); return (h ?? 0) * 60 + (m ?? 0); };
 
 export function Calendar(): React.JSX.Element {
   const navigate = useNavigate();
-  const [weekStart, setWeekStart] = useState(() => mondayOf(new Date('2026-07-10')));
+  const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
   const [appts, setAppts] = useState<Appointment[]>([]);
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [mechanics, setMechanics] = useState<Mechanic[]>([]);
   const [mechFilter, setMechFilter] = useState('');
+  const [hours, setHours] = useState({ from: 7, to: 20 });
   const [dialog, setDialog] = useState<'new' | 'block' | null>(null);
   const [newDate, setNewDate] = useState('');
+  const [newTime, setNewTime] = useState('09:00');
   const [selected, setSelected] = useState<Appointment | null>(null);
 
   const from = iso(weekStart), to = iso(addDays(weekStart, 6));
+
   const load = useCallback(async () => {
     const p = new URLSearchParams({ from, to });
     if (mechFilter) p.set('mechanicId', mechFilter);
@@ -32,13 +38,23 @@ export function Calendar(): React.JSX.Element {
     setAppts(a); setBlocks(b);
   }, [from, to, mechFilter]);
   useEffect(() => { void load(); }, [load]);
-  useEffect(() => { void api.get<Mechanic[]>('/mechanics?status=active').then(setMechanics); }, []);
 
-  function isBlocked(day: string): CalendarBlock | undefined { return blocks.find((b) => day >= b.fromDate && day <= b.toDate); }
+  useEffect(() => {
+    void api.get<Mechanic[]>('/mechanics?status=active').then(setMechanics);
+    void api.get<{ workHoursFrom: string; workHoursTo: string }>('/settings').then((s) => {
+      const f = Math.max(0, Math.floor(toMin(s.workHoursFrom) / 60) - 1);
+      const t = Math.min(24, Math.ceil(toMin(s.workHoursTo) / 60) + 1);
+      setHours({ from: f, to: Math.max(f + 4, t) });
+    });
+  }, []);
+
+  const rows = hours.to - hours.from;
+  const gridStart = hours.from * 60;
+  const blockOn = (day: string): CalendarBlock | undefined => blocks.find((b) => day >= b.fromDate && day <= b.toDate);
 
   async function changeStatus(a: Appointment, status: string): Promise<void> {
-    await api.post(`/appointments/${a.id}/status`, { status, version: a.version });
-    setSelected(null); await load();
+    try { await api.post(`/appointments/${a.id}/status`, { status, version: a.version }); setSelected(null); await load(); }
+    catch (e) { alert(e instanceof ApiRequestError ? e.body.message : 'Greška.'); }
   }
   async function del(a: Appointment): Promise<void> {
     try { await api.del(`/appointments/${a.id}`); setSelected(null); await load(); }
@@ -54,51 +70,85 @@ export function Calendar(): React.JSX.Element {
             <option value="">Svi majstori</option>{mechanics.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
           </select>
           <button className="btn-secondary" onClick={() => setDialog('block')}>Blokada dana</button>
-          <button className="btn-primary" onClick={() => { setNewDate(from); setDialog('new'); }}>+ Novi termin</button>
+          <button className="btn-primary" onClick={() => { setNewDate(from); setNewTime('09:00'); setDialog('new'); }}>+ Novi termin</button>
         </div>
       </header>
 
       <div className="week-nav">
         <button className="btn-secondary btn-sm" onClick={() => setWeekStart(addDays(weekStart, -7))}>‹ Prethodna</button>
-        <button className="btn-secondary btn-sm" onClick={() => setWeekStart(mondayOf(new Date('2026-07-10')))}>Ova nedelja</button>
+        <button className="btn-secondary btn-sm" onClick={() => setWeekStart(mondayOf(new Date()))}>Ova nedelja</button>
         <button className="btn-secondary btn-sm" onClick={() => setWeekStart(addDays(weekStart, 7))}>Sledeća ›</button>
       </div>
 
-      <div className="week-grid">
-        {DAYS.map((dn, i) => {
-          const day = iso(addDays(weekStart, i));
-          const blk = isBlocked(day);
-          const dayAppts = appts.filter((a) => a.date === day);
-          return (
-            <div className={`day-col ${blk ? 'blocked' : ''}`} key={day}>
-              <div className="day-head">{dn} <span className="mono">{day.slice(8)}.{day.slice(5, 7)}</span></div>
-              {blk && <div className="day-block">Blokirano{blk.reason ? `: ${blk.reason}` : ''}</div>}
-              <div className="day-body">
-                {dayAppts.map((a) => (
-                  <button key={a.id} className={`appt ${statusClass[a.status]}`} onClick={() => setSelected(a)}>
-                    <span className="appt-time mono">{a.time}</span>
-                    <span className="appt-who">{a.customer.name}</span>
-                    <span className="appt-veh">{a.vehicle.make} {a.vehicle.model}</span>
-                    {a.mechanic && <span className="appt-mech">{a.mechanic.fullName}</span>}
-                    {a.remindersEnabled && <span className="appt-rem" title={`podsetnik: ${a.reminderStatus ?? '—'}`}>✉</span>}
-                  </button>
-                ))}
-                {!blk && <button className="day-add" onClick={() => { setNewDate(day); setDialog('new'); }}>+</button>}
+      <div className="cal">
+        {/* zaglavlje sa danima */}
+        <div className="cal-head">
+          <div className="cal-gutter" />
+          {DAYS_SHORT.map((dn, i) => {
+            const day = iso(addDays(weekStart, i));
+            const blk = blockOn(day);
+            const today = day === iso(new Date());
+            return (
+              <div className={`cal-day-head ${today ? 'today' : ''}`} key={day} title={DAYS[i]}>
+                <span>{dn}</span> <span className="mono">{day.slice(8)}.{day.slice(5, 7)}.</span>
+                {blk && <span className="cal-blocked-tag">blokirano</span>}
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+
+        {/* mreža sa satima */}
+        <div className="cal-body" style={{ height: rows * HOUR_H }}>
+          <div className="cal-gutter">
+            {Array.from({ length: rows }, (_, i) => (
+              <div className="cal-hour" style={{ height: HOUR_H }} key={i}>
+                <span className="mono">{String(hours.from + i).padStart(2, '0')}:00</span>
+              </div>
+            ))}
+          </div>
+
+          {DAYS_SHORT.map((_, i) => {
+            const day = iso(addDays(weekStart, i));
+            const blk = blockOn(day);
+            const dayAppts = appts.filter((a) => a.date === day);
+            return (
+              <div className={`cal-day ${blk ? 'blocked' : ''}`} key={day}
+                style={{ backgroundSize: `100% ${HOUR_H}px` }}
+                onClick={(e) => {
+                  if (blk || (e.target as HTMLElement).closest('.cal-appt')) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const h = hours.from + Math.floor((e.clientY - rect.top) / HOUR_H);
+                  setNewDate(day); setNewTime(`${String(h).padStart(2, '0')}:00`); setDialog('new');
+                }}>
+                {dayAppts.map((a) => {
+                  const top = ((toMin(a.time) - gridStart) / 60) * HOUR_H;
+                  const h = Math.max(24, (a.durationMin / 60) * HOUR_H - 2);
+                  return (
+                    <button key={a.id} className={`cal-appt ${statusClass[a.status]}`} style={{ top, height: h }}
+                      onClick={(e) => { e.stopPropagation(); setSelected(a); }}>
+                      <span className="cal-appt-time mono">{a.time}</span>
+                      <span className="cal-appt-who">{a.customer.name}</span>
+                      <span className="cal-appt-veh">{a.vehicle.make} {a.vehicle.model}</span>
+                      {a.remindersEnabled && <span className="cal-appt-rem" title={`podsetnik: ${a.reminderStatus ?? '—'}`}>✉</span>}
+                    </button>
+                  );
+                })}
+                {blk && <div className="cal-block-note">{blk.reason ?? 'Blokirano'}</div>}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="legend">
         {(['scheduled', 'completed', 'cancelled', 'no_show'] as const).map((s) => (
-          <span key={s} className="legend-item"><span className={`badge ${statusClass[s]}`}>{labels.appointmentStatus[s]}</span></span>
+          <span key={s} className={`badge ${statusClass[s]}`}>{labels.appointmentStatus[s]}</span>
         ))}
       </div>
 
       {dialog === 'new' && (
         <Modal title="Novi termin" onClose={() => setDialog(null)} width={520}>
-          <AppointmentForm mechanics={mechanics} defaultDate={newDate} onCreated={() => { setDialog(null); void load(); }} />
+          <AppointmentForm mechanics={mechanics} defaultDate={newDate} defaultTime={newTime} onCreated={() => { setDialog(null); void load(); }} />
         </Modal>
       )}
       {dialog === 'block' && <BlockModal onClose={() => setDialog(null)} onDone={() => { setDialog(null); void load(); }} blocks={blocks} />}
@@ -106,7 +156,7 @@ export function Calendar(): React.JSX.Element {
         <Modal title={`Termin — ${selected.customer.name}`} onClose={() => setSelected(null)}>
           <div className="form">
             <dl className="kv">
-              <dt>Kada</dt><dd className="mono">{selected.date} {selected.time} ({selected.durationMin}min)</dd>
+              <dt>Kada</dt><dd className="mono">{selected.date} {selected.time} ({selected.durationMin} min)</dd>
               <dt>Vozilo</dt><dd>{selected.vehicle.make} {selected.vehicle.model} <span className="mono">{selected.vehicle.plate ?? ''}</span></dd>
               <dt>Majstor</dt><dd>{selected.mechanic?.fullName ?? '—'}</dd>
               <dt>Status</dt><dd><span className={`badge ${statusClass[selected.status]}`}>{labels.appointmentStatus[selected.status]}</span></dd>
@@ -126,6 +176,7 @@ export function Calendar(): React.JSX.Element {
       )}
     </div>
   );
+
 }
 
 function BlockModal({ onClose, onDone, blocks }: { onClose: () => void; onDone: () => void; blocks: CalendarBlock[] }): React.JSX.Element {

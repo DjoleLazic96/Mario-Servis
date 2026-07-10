@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import type { Vehicle, WorkOrderInput, FieldVisitOutcome } from '@karton/shared';
 import { VehiclePicker } from './VehiclePicker.tsx';
+import { TimeInput } from './TimeInput.tsx';
 
 /** Forma za otvaranje naloga: vozilo (klijent se izvodi iz vlasnika), prijem, izlazak na teren. */
 export function WorkOrderForm({
@@ -70,7 +71,7 @@ export function WorkOrderForm({
         <label className="field"><span>Datum prijema</span>
           <input type="date" value={receivedOn} onChange={(e) => setReceivedOn(e.target.value)} /></label>
         <label className="field"><span>Vreme prijema</span>
-          <input type="time" value={receivedTime} onChange={(e) => setReceivedTime(e.target.value)} /></label>
+          <TimeInput value={receivedTime} onChange={setReceivedTime} /></label>
       </div>
 
       <label className="field"><span>Kilometraža na prijemu</span>
@@ -94,7 +95,7 @@ export function WorkOrderForm({
             <label className="field"><span>Datum izlaska</span>
               <input type="date" value={fvDate} onChange={(e) => setFvDate(e.target.value)} /></label>
             <label className="field"><span>Vreme izlaska</span>
-              <input type="time" value={fvTime} onChange={(e) => setFvTime(e.target.value)} /></label>
+              <TimeInput value={fvTime} onChange={setFvTime} /></label>
           </div>
           <label className="field"><span>Lokacija</span>
             <input value={fvLocation} onChange={(e) => setFvLocation(e.target.value)} /></label>

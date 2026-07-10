@@ -49,10 +49,37 @@ public class CitacServer {
     try (OutputStream os = ex.getResponseBody()) { os.write(b); }
   }
 
-  /** Lista čitača; ako nijedan nije priključen PC/SC baca izuzetak — prevodimo ga u jasnu poruku. */
+  /**
+   * SunPCSC kešira PC/SC kontekst. Ako je JVM startovana bez priključenog čitača,
+   * `list()` trajno baca SCARD_E_NO_READERS_AVAILABLE i kad se čitač kasnije priključi.
+   * Zato pri neuspehu resetujemo kontekst refleksijom i probamo ponovo.
+   * Zahteva: --add-opens java.smartcardio/sun.security.smartcardio=ALL-UNNAMED
+   */
+  static void resetPcscContext() throws Exception {
+    Class<?> termCls = Class.forName("sun.security.smartcardio.PCSCTerminals");
+    java.lang.reflect.Field ctx = termCls.getDeclaredField("contextId");
+    ctx.setAccessible(true);
+    Class<?> pcsc = Class.forName("sun.security.smartcardio.PCSC");
+    java.lang.reflect.Method establish = pcsc.getDeclaredMethod("SCardEstablishContext", int.class);
+    establish.setAccessible(true);
+    java.lang.reflect.Field scope = pcsc.getDeclaredField("SCARD_SCOPE_USER");
+    scope.setAccessible(true);
+    long newCtx = (Long) establish.invoke(null, scope.getInt(null));
+    ctx.setLong(null, newCtx);
+  }
+
+  /** Lista čitača; pri neuspehu jednom resetuje PC/SC kontekst i pokuša ponovo. */
   static List<CardTerminal> terminals() throws Exception {
-    try { return TerminalFactory.getDefault().terminals().list(); }
-    catch (CardException e) { throw new Exception("Nema priključenog čitača."); }
+    try {
+      List<CardTerminal> l = TerminalFactory.getDefault().terminals().list();
+      if (!l.isEmpty()) return l;
+    } catch (Exception ignore) { /* pada niže na reset */ }
+    try {
+      resetPcscContext();
+      List<CardTerminal> l = TerminalFactory.getDefault().terminals().list();
+      if (!l.isEmpty()) return l;
+    } catch (Exception ignore) { /* i dalje ništa */ }
+    throw new Exception("Nema priključenog čitača.");
   }
 
   static String statusJson() throws Exception {

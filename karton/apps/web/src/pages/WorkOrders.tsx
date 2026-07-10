@@ -6,6 +6,7 @@ import { api, ApiRequestError } from '../api.ts';
 import { Modal } from '../components/Modal.tsx';
 import { WorkOrderForm } from '../components/WorkOrderForm.tsx';
 import { statusClass } from '../lib/workOrderStatus.ts';
+import { SortableTh } from '../components/SortableTh.tsx';
 
 const TABS: { key: WorkOrderStatus | 'all'; label: string }[] = [
   { key: 'all', label: 'Svi' },
@@ -21,6 +22,7 @@ export function WorkOrders(): React.JSX.Element {
   const [tab, setTab] = useState<WorkOrderStatus | 'all'>('all');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<string | undefined>();
   const [result, setResult] = useState<Paginated<WorkOrder> | null>(null);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
@@ -30,11 +32,12 @@ export function WorkOrders(): React.JSX.Element {
   const load = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page) });
+    if (sort) params.set('sort', sort);
     if (tab !== 'all') params.set('status', tab);
     if (q.trim()) params.set('q', q.trim());
     try { setResult(await api.get<Paginated<WorkOrder>>(`/work-orders?${params.toString()}`)); }
     finally { setLoading(false); }
-  }, [tab, page, q]);
+  }, [tab, page, q, sort]);
 
   useEffect(() => { const t = setTimeout(load, q ? 250 : 0); return () => clearTimeout(t); }, [load, q]);
 
@@ -48,6 +51,8 @@ export function WorkOrders(): React.JSX.Element {
       setFormError(err instanceof ApiRequestError ? err.body.message : 'Greška pri otvaranju naloga.');
     } finally { setSaving(false); }
   }
+
+  const doSort = (next: string): void => { setSort(next); setPage(1); };
 
   const meta = result?.meta;
   const totalPages = meta ? Math.max(1, Math.ceil(meta.total / meta.pageSize)) : 1;
@@ -70,7 +75,13 @@ export function WorkOrders(): React.JSX.Element {
 
       <div className="table-wrap">
         <table className="data-table">
-          <thead><tr><th>Broj</th><th>Vozilo</th><th>Klijent</th><th>Prijem</th><th>Status</th></tr></thead>
+          <thead><tr>
+            <SortableTh field="number" label="Broj" sort={sort} onSort={doSort} />
+            <SortableTh field="plate" label="Vozilo" sort={sort} onSort={doSort} />
+            <SortableTh field="customer" label="Klijent" sort={sort} onSort={doSort} />
+            <SortableTh field="received" label="Prijem" sort={sort} onSort={doSort} />
+            <SortableTh field="status" label="Status" sort={sort} onSort={doSort} />
+          </tr></thead>
           <tbody>
             {result?.data.map((w) => (
               <tr key={w.id} className="clickable" onClick={() => navigate(`/nalozi/${w.id}`)}>

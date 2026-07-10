@@ -65,7 +65,8 @@ echo [4/5] Pokrecem API, worker, web i citac saobracajne...
 start "Karton API"    /min cmd /k pnpm dev:api
 start "Karton Worker" /min cmd /k pnpm dev:worker
 start "Karton Web"    /min cmd /k pnpm dev:web
-start "Karton Citac"  /D "%~dp0citac-saobracajne\src" /min cmd /k java -Dfile.encoding=UTF-8 CitacServer.java
+REM --add-opens: dozvoljava reset PC/SC konteksta ako se citac prikljuci posle starta
+start "Karton Citac"  /D "%~dp0citac-saobracajne\src" /min cmd /k java -Dfile.encoding=UTF-8 --add-opens java.smartcardio/sun.security.smartcardio=ALL-UNNAMED CitacServer.java
 
 REM ---------- 5) Otvori aplikaciju ----------
 echo [5/5] Cekam da se aplikacija podigne...

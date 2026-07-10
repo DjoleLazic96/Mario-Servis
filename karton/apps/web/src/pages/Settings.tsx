@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiRequestError } from '../api.ts';
 import { Modal } from '../components/Modal.tsx';
+import { TimeInput } from '../components/TimeInput.tsx';
 
 interface SettingsData {
   shopName: string; address: string | null; taxId: string | null; phone: string | null;
@@ -50,12 +51,12 @@ function ServiceSettings(): React.JSX.Element {
 
         <h3 className="card-title" style={{ marginTop: 8 }}>Radno vreme i rokovi</h3>
         <div className="form-2col">
-          <label className="field"><span>Radno vreme od</span><input type="time" value={s.workHoursFrom} onChange={(e) => set({ workHoursFrom: e.target.value })} /></label>
-          <label className="field"><span>do</span><input type="time" value={s.workHoursTo} onChange={(e) => set({ workHoursTo: e.target.value })} /></label>
+          <label className="field"><span>Radno vreme od</span><TimeInput value={s.workHoursFrom} onChange={(v) => set({ workHoursFrom: v })} /></label>
+          <label className="field"><span>do</span><TimeInput value={s.workHoursTo} onChange={(v) => set({ workHoursTo: v })} /></label>
         </div>
         <div className="form-2col">
           <label className="field"><span>Rok važenja (dana)</span><input type="number" min={1} value={s.defaultValidityDays} onChange={(e) => set({ defaultValidityDays: Number(e.target.value) })} /></label>
-          <label className="field"><span>Vreme podsetnika</span><input type="time" value={s.reminderSendTime} onChange={(e) => set({ reminderSendTime: e.target.value })} /></label>
+          <label className="field"><span>Vreme podsetnika</span><TimeInput value={s.reminderSendTime} onChange={(v) => set({ reminderSendTime: v })} /></label>
         </div>
         <label className="field"><span>Redova po strani</span><input type="number" min={5} value={s.pageSize} onChange={(e) => set({ pageSize: Number(e.target.value) })} /></label>
 

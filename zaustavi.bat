@@ -12,6 +12,8 @@ taskkill /FI "WINDOWTITLE eq Karton API*"    /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Karton Worker*" /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Karton Web*"    /T /F >nul 2>&1
 taskkill /FI "WINDOWTITLE eq Karton Citac*"  /T /F >nul 2>&1
+REM Rezerva: ugasi i citac pokrenut rucno (java proces sa CitacServer)
+powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='java.exe'\" | Where-Object { $_.CommandLine -like '*CitacServer*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }" >nul 2>&1
 echo   - Servisi zaustavljeni
 
 REM Zaustavi bazu i Mailpit (podaci ostaju sacuvani)

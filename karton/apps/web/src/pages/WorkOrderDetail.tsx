@@ -215,7 +215,7 @@ export function WorkOrderDetail(): React.JSX.Element {
 
 function ItemSection({ title, addLabel, onAdd, children }: { title: string; addLabel: string; onAdd?: () => void; children: React.ReactNode }): React.JSX.Element {
   return (
-    <section className="card" style={{ marginTop: 16 }}>
+    <section className="card">
       <div className="card-title-row">
         <h2 className="card-title">{title}</h2>
         {onAdd && <button className="btn-link" onClick={onAdd}>{addLabel}</button>}

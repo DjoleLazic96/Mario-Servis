@@ -5,6 +5,7 @@ import { api } from '../api.ts';
 import { Modal } from '../components/Modal.tsx';
 import { QuoteForm } from '../components/QuoteForm.tsx';
 import { docTypeLabel, docStatusLabel, docStatusClass, money } from '../lib/documentHelpers.ts';
+import { SortableTh } from '../components/SortableTh.tsx';
 
 type Tab = 'all' | 'quote' | 'proforma' | 'invoice' | 'unpaid';
 const TABS: { key: Tab; label: string }[] = [
@@ -26,6 +27,7 @@ export function Documents(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('all');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<string | undefined>();
   const [result, setResult] = useState<Paginated<Document> | null>(null);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
@@ -34,12 +36,15 @@ export function Documents(): React.JSX.Element {
     setLoading(true);
     const p = new URLSearchParams(params(tab));
     p.set('page', String(page));
+    if (sort) p.set('sort', sort);
     if (q.trim()) p.set('q', q.trim());
     try { setResult(await api.get<Paginated<Document>>(`/documents?${p.toString()}`)); }
     finally { setLoading(false); }
-  }, [tab, page, q]);
+  }, [tab, page, q, sort]);
 
   useEffect(() => { const t = setTimeout(load, q ? 250 : 0); return () => clearTimeout(t); }, [load, q]);
+
+  const doSort = (next: string): void => { setSort(next); setPage(1); };
 
   const meta = result?.meta;
   const totalPages = meta ? Math.max(1, Math.ceil(meta.total / meta.pageSize)) : 1;
@@ -60,7 +65,15 @@ export function Documents(): React.JSX.Element {
 
       <div className="table-wrap">
         <table className="data-table">
-          <thead><tr><th>Broj</th><th>Tip</th><th>Klijent</th><th>Vozilo</th><th>Datum</th><th className="ta-r">Iznos</th><th>Status</th></tr></thead>
+          <thead><tr>
+            <SortableTh field="number" label="Broj" sort={sort} onSort={doSort} />
+            <SortableTh field="type" label="Tip" sort={sort} onSort={doSort} />
+            <SortableTh field="customer" label="Klijent" sort={sort} onSort={doSort} />
+            <th>Vozilo</th>
+            <SortableTh field="issued" label="Datum" sort={sort} onSort={doSort} />
+            <SortableTh field="total" label="Iznos" sort={sort} onSort={doSort} right />
+            <SortableTh field="status" label="Status" sort={sort} onSort={doSort} />
+          </tr></thead>
           <tbody>
             {result?.data.map((d) => (
               <tr key={d.id} className="clickable" onClick={() => navigate(`/dokumenti/${d.id}`)}>

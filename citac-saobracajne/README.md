@@ -14,9 +14,9 @@ saobraćajnu dozvolu preko PC/SC čitača i vraća podatke web aplikaciji
 ## Pokretanje (razvoj)
 Potreban JDK 21+ (nosi `javax.smartcardio`). Iz `src/`:
 ```
-java -Dfile.encoding=UTF-8 CitacServer.java
+java -Dfile.encoding=UTF-8 --add-opens java.smartcardio/sun.security.smartcardio=ALL-UNNAMED CitacServer.java
 # za produkciju sa dozvoljenim domenom:
-java -Dfile.encoding=UTF-8 CitacServer.java https://servis.example.rs
+java -Dfile.encoding=UTF-8 --add-opens java.smartcardio/sun.security.smartcardio=ALL-UNNAMED CitacServer.java https://servis.example.rs
 ```
 
 ## Pakovanje u Windows instaler (bez zasebnog JRE)
@@ -25,6 +25,11 @@ javac -d out src/CitacServer.java
 jpackage --type msi --name "Karton citac" --input out --main-jar ... 
 ```
 (Detaljno pakovanje se radi pri isporuci; za sada je dovoljno pokretanje kroz `java`.)
+
+## Zašto --add-opens
+SunPCSC kešira PC/SC kontekst. Ako se čitač priključi *posle* pokretanja helpera,
+`terminals().list()` trajno pada. Helper tada refleksijom resetuje kontekst i probа ponovo —
+za to je potreban `--add-opens java.smartcardio/sun.security.smartcardio=ALL-UNNAMED`.
 
 ## Status
 Testirano na živoj kartici (Škoda Kodiaq, MTCOS kartica) — čita VIN, marku,

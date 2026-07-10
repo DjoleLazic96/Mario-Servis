@@ -2,17 +2,21 @@
 
 Modularni monolit. Specifikacija je u nadređenom folderu (`specifikacija-finalna.md`, `baza-shema.sql`, `er-dijagram.mermaid`, `openapi.yaml`, `tehnicka-preporuka.md`).
 
+Primopredaja i produkciona checklista: **`../PRIMOPREDAJA.md`**.
+
 ## Stack
-Node.js 24+ · TypeScript · Fastify 5 · React 19 (uskoro) · PostgreSQL 18 · pnpm workspaces.
+Node.js 24+ · TypeScript · Fastify 5 · React 19 + Vite (PWA) · PostgreSQL 18 · pnpm workspaces.
 
 ## Struktura
 ```
 apps/
-  api/        Fastify API (config, pg, migracije, seed, rute)
-  worker/     scheduler + email podsetnici (uskoro)
-  web/        React SPA + PWA (uskoro)
+  api/        Fastify API (config, pg, migracije, seed, rute, backup)
+  worker/     scheduler: email podsetnici + auto-istek dokumenata + dnevni backup
+  web/        React 19 SPA + PWA
 packages/
-  shared/     centralni statusi, tipovi, katalog grešaka (deli se front/back)
+  shared/     centralni statusi, tipovi, katalog grešaka, backup modul (deli se front/back)
+tests/
+  acceptance.py   acceptance/smoke test (45 provera) — vidi tests/README.md
 ```
 
 ## Pokretanje — najlakše

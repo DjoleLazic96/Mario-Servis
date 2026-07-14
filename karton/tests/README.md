@@ -50,6 +50,19 @@ galerija na kartonu vozila grupisana po posetama.
 python tests/photos.py
 ```
 
+## `reminders.py` — kada se šalju podsetnici (3 provere)
+
+Regresija za bug od 15.07.2026: vreme podsetnika iz Podešavanja je **beogradsko zidno
+vreme**, ali se upisivalo kroz `::timestamptz` uz UTC sesiju baze — pa je 09:00 postajalo
+11:00 po Beogradu (podsetnici su kasnili 2h leti, 1h zimi). Test pravi termin i tvrdi da je
+podsetnik zakazan **dan pre termina, u vreme iz Podešavanja, po Europe/Belgrade**.
+
+```bash
+python tests/reminders.py
+```
+
+Nije destruktivan — svoj termin/klijenta/vozilo pravi i briše sam.
+
 ## Statička provera
 
 ```bash

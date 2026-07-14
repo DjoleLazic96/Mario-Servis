@@ -66,11 +66,13 @@ async function syncReminder(client: PoolClient, apptId: number): Promise<void> {
   if (!row || !row.enabled || row.status !== 'scheduled') return;
   const s = await client.query<{ t: string }>(`SELECT to_char(reminder_send_time,'HH24:MI') t FROM settings WHERE id=1`);
   const sendTime = s.rows[0]?.t ?? '09:00';
-  // dan pre termina u sendTime
+  // Dan pre termina, u vreme iz podešavanja — a to vreme je BEOGRADSKO (zidno vreme servisa).
   const sendAt = `${offsetDay(row.date, -1)} ${sendTime}:00`;
   await client.query(
+    // `$2::timestamptz` bi ovo protumačio po zoni sesije (UTC) → 09:00 bi postalo 11:00 u Beogradu.
+    // `AT TIME ZONE 'Europe/Belgrade'` pretvara zidno beogradsko vreme u ispravan trenutak (spec §5).
     `INSERT INTO appointment_reminder (appointment_id, offset_min, scheduled_send_at, send_status)
-     VALUES ($1, 1440, $2::timestamptz, 'scheduled')`, [apptId, sendAt]);
+     VALUES ($1, 1440, ($2::timestamp AT TIME ZONE 'Europe/Belgrade'), 'scheduled')`, [apptId, sendAt]);
 }
 function offsetDay(iso: string, days: number): string {
   const [y, m, d] = iso.split('-').map(Number);

@@ -29,7 +29,7 @@ async function seed(): Promise<void> {
     await pool.query(
       `INSERT INTO settings (id, shop_name, work_hours_from, work_hours_to, default_validity_days, reminder_send_time, page_size)
        VALUES (1, $1, '08:00', '18:00', 15, '09:00', 20)`,
-      ['Autoservis (demo)'],
+      ['AUTO SERVIS S23'],
     );
     console.log('✓ Podešavanja (singleton) kreirana.');
   } else {

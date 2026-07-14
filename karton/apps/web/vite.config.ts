@@ -13,13 +13,14 @@ export default defineConfig({
         short_name: 'Karton',
         description: 'Evidencija klijenata, vozila, radnih naloga i fakturisanja.',
         lang: 'sr',
-        theme_color: '#182027',
-        background_color: '#ECEFEC',
+        theme_color: '#2a2e33',
+        background_color: '#f2f0e8',
         display: 'standalone',
         start_url: '/',
         icons: [
           // Placeholder — konačne PNG ikonice dolaze sa Mariovim logom.
-          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
+          { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
     }),

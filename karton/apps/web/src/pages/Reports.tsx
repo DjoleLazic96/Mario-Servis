@@ -1,15 +1,22 @@
 import { useEffect, useState } from 'react';
+import { DateInput } from '../components/DateInput.tsx';
 import type { Mechanic } from '@karton/shared';
 import { api } from '../api.ts';
 import { money, formatDate } from '../lib/documentHelpers.ts';
 
 type Tab = 'revenue' | 'orders' | 'mechanic' | 'vehicle';
 
-/** Isti upit kao prikazani izveštaj, samo `format=xlsx` — browser skida fajl. */
+/** Izvozi TAJ izveštaj (sa trenutnim filterima) u Excel — za razliku od dugmeta gore desno,
+ *  koje izvozi celu bazu. Isti upit, samo `format=xlsx`. */
 function XlsxLink({ path, params }: { path: string; params: URLSearchParams }): React.JSX.Element {
   const p = new URLSearchParams(params);
   p.set('format', 'xlsx');
-  return <a className="btn-secondary btn-sm" href={`/api/v1${path}?${p}`} download>Excel</a>;
+  return (
+    <a className="btn-secondary btn-sm btn-export" href={`/api/v1${path}?${p}`} download
+      title="Izvozi ovaj izveštaj (sa trenutnim filterima) u Excel">
+      ⭳ Izvezi ovaj izveštaj
+    </a>
+  );
 }
 
 export function Reports(): React.JSX.Element {
@@ -18,7 +25,7 @@ export function Reports(): React.JSX.Element {
     <div className="page">
       <header className="page-head row">
         <div><h1>Izveštaji</h1></div>
-        <a className="btn-primary" href="/api/v1/export/all.xlsx" download>Izvezi sve u Excel</a>
+        <a className="btn-primary btn-export" href="/api/v1/export/all.xlsx" download title="Izvozi CELU bazu (svi nalozi, ponude, računi) u jedan Excel fajl">⭳ Izvezi celu bazu</a>
       </header>
       <div className="tabs" style={{ marginBottom: 16, width: 'fit-content' }}>
         <button className={`tab ${tab === 'revenue' ? 'active' : ''}`} onClick={() => setTab('revenue')}>Prihod</button>
@@ -45,8 +52,8 @@ function Revenue(): React.JSX.Element {
   return (
     <div className="card">
       <div className="report-filter">
-        <label className="field"><span>Od</span><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
-        <label className="field"><span>Do</span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></label>
+        <label className="field"><span>Od</span><DateInput value={from} onChange={setFrom} /></label>
+        <label className="field"><span>Do</span><DateInput value={to} onChange={setTo} /></label>
         <XlsxLink path="/reports/revenue" params={params} />
       </div>
       {data && <>
@@ -97,8 +104,8 @@ function ByMechanic(): React.JSX.Element {
     <div className="card">
       <div className="report-filter">
         <select className="search" value={id} onChange={(e) => setId(e.target.value)}>{mechanics.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}</select>
-        <label className="field"><span>Od</span><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
-        <label className="field"><span>Do</span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></label>
+        <label className="field"><span>Od</span><DateInput value={from} onChange={setFrom} /></label>
+        <label className="field"><span>Do</span><DateInput value={to} onChange={setTo} /></label>
         {id && <XlsxLink path={`/reports/mechanics/${id}`} params={params} />}
       </div>
       {data && <div className="report-stats">

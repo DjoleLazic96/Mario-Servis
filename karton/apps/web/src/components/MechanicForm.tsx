@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { DateInput } from './DateInput.tsx';
 import type { Mechanic, MechanicInput, MechanicSpecialty } from '@karton/shared';
 import { labels } from '@karton/shared';
 
@@ -53,7 +54,7 @@ export function MechanicForm({
       <div className="form-2col">
         <label className="field">
           <span>Datum zaposlenja</span>
-          <input type="date" value={hiredOn} onChange={(e) => setHiredOn(e.target.value)} />
+          <DateInput value={hiredOn} onChange={setHiredOn} />
         </label>
         <label className="field">
           <span>Status</span>

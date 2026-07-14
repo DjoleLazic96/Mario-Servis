@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, type FormEvent } from 'react';
+import { DateInput } from '../components/DateInput.tsx';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { DocumentDetail, DocumentItem } from '@karton/shared';
 import { api, ApiRequestError } from '../api.ts';
@@ -184,7 +185,7 @@ function EditDocModal({ doc, onClose, onSubmit, busy, error }: {
         onSubmit({ validUntil: validUntil || undefined, amountEur: amountEur ? Number(amountEur) : null, note: note.trim() || null });
       }}>
         <label className="field"><span>Rok važenja</span>
-          <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} autoFocus /></label>
+          <DateInput value={validUntil} onChange={setValidUntil} autoFocus /></label>
         <label className="field"><span>Iznos u EUR <small className="hint">(informativno, ne zamenjuje RSD)</small></span>
           <input type="number" step="0.01" min={0} value={amountEur} onChange={(e) => setAmountEur(e.target.value)} placeholder="npr. 250.00" /></label>
         <label className="field"><span>Napomena</span>
@@ -208,7 +209,7 @@ function FixPaymentModal({ doc, onClose, onSubmit, busy, error }: {
   return (
     <Modal title="Ispravi podatke o plaćanju" onClose={onClose}>
       <form className="form" onSubmit={(e: FormEvent) => { e.preventDefault(); onSubmit(paidOn, method, reason); }}>
-        <label className="field"><span>Datum plaćanja</span><input type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} required autoFocus /></label>
+        <label className="field"><span>Datum plaćanja</span><DateInput value={paidOn} onChange={setPaidOn} required autoFocus /></label>
         <label className="field"><span>Način plaćanja</span>
           <select value={method} onChange={(e) => setMethod(e.target.value)}><option>gotovina</option><option>kartica</option><option>prenos</option></select></label>
         <label className="field"><span>Razlog (obavezno)</span><input value={reason} onChange={(e) => setReason(e.target.value)} required /></label>
@@ -224,7 +225,7 @@ function ConvertModal({ onClose, onSubmit, busy, error }: { onClose: () => void;
   return (
     <Modal title="Pretvori u račun" onClose={onClose}>
       <form className="form" onSubmit={(e: FormEvent) => { e.preventDefault(); onSubmit(dueOn); }}>
-        <label className="field"><span>Datum dospeća</span><input type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} required autoFocus /></label>
+        <label className="field"><span>Datum dospeća</span><DateInput value={dueOn} onChange={setDueOn} required autoFocus /></label>
         {error && <div className="login-error">{error}</div>}
         <div className="form-actions"><button type="submit" className="btn-primary" disabled={busy || !dueOn}>Pretvori u račun</button></div>
       </form>
@@ -238,7 +239,7 @@ function MarkPaidModal({ onClose, onSubmit, busy, error }: { onClose: () => void
   return (
     <Modal title="Naznači plaćeno" onClose={onClose}>
       <form className="form" onSubmit={(e: FormEvent) => { e.preventDefault(); onSubmit(paidOn, method); }}>
-        <label className="field"><span>Datum plaćanja</span><input type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} required autoFocus /></label>
+        <label className="field"><span>Datum plaćanja</span><DateInput value={paidOn} onChange={setPaidOn} required autoFocus /></label>
         <label className="field"><span>Način plaćanja</span>
           <select value={method} onChange={(e) => setMethod(e.target.value)}><option>gotovina</option><option>kartica</option><option>prenos</option></select></label>
         {error && <div className="login-error">{error}</div>}

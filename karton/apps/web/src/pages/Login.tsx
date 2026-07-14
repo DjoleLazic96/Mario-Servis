@@ -33,7 +33,7 @@ export function Login(): React.JSX.Element {
     <div className="login-screen">
       <form className="login-card" onSubmit={onSubmit}>
         <div className="login-brand">
-          <span className="login-logo">K</span>
+          <img className="login-logo" src="/logo.png" alt="AUTO SERVIS S23" />
           <div>
             <div className="login-title">Karton</div>
             <div className="login-sub">Vođenje auto servisa</div>

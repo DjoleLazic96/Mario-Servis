@@ -34,6 +34,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
+  // Istekla/ubijena sesija: javi celoj aplikaciji da vrati korisnika na prijavu.
+  // Bez ovoga ekran ostane zaglavljen na „Učitavanje…" (promise pukne, niko ga ne uhvati).
+  if (res.status === 401 && !path.startsWith('/auth/login')) {
+    window.dispatchEvent(new Event('karton:unauthorized'));
+  }
+
   if (res.status === 204) return undefined as T;
 
   const data = await res.json().catch(() => ({}));

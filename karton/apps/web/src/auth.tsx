@@ -20,6 +20,13 @@ const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }): React.JSX.Element {
   const [user, setUser] = useState<CurrentUser | null>(null);
+
+  // Sesija istekla ili ugašena (npr. posle vraćanja baze iz backupa) → nazad na prijavu.
+  useEffect(() => {
+    const onUnauthorized = (): void => setUser(null);
+    window.addEventListener('karton:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('karton:unauthorized', onUnauthorized);
+  }, []);
   const [loading, setLoading] = useState(true);
 
   // Pri učitavanju: proveri postojeću sesiju (i usput dobij XSRF-TOKEN kolačić).

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { DateInput } from './DateInput.tsx';
 import type { Vehicle, WorkOrderInput, FieldVisitOutcome } from '@karton/shared';
 import { VehiclePicker } from './VehiclePicker.tsx';
 import { TimeInput } from './TimeInput.tsx';
@@ -14,8 +15,15 @@ export function WorkOrderForm({
   onSubmit: (input: WorkOrderInput, vehicleId: number) => void;
 }): React.JSX.Element {
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
-  const [receivedOn, setReceivedOn] = useState('');
-  const [receivedTime, setReceivedTime] = useState('');
+  // Prijem se predlaže na TRENUTAK otvaranja naloga — majstor može da ispravi.
+  const [receivedOn, setReceivedOn] = useState(() => {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  });
+  const [receivedTime, setReceivedTime] = useState(() => {
+    const t = new Date();
+    return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+  });
   const [odometerKm, setOdometerKm] = useState('');
   const [requestedWork, setRequestedWork] = useState('');
   const [note, setNote] = useState('');
@@ -69,7 +77,7 @@ export function WorkOrderForm({
 
       <div className="form-2col">
         <label className="field"><span>Datum prijema</span>
-          <input type="date" value={receivedOn} onChange={(e) => setReceivedOn(e.target.value)} /></label>
+          <DateInput value={receivedOn} onChange={setReceivedOn} /></label>
         <label className="field"><span>Vreme prijema</span>
           <TimeInput value={receivedTime} onChange={setReceivedTime} /></label>
       </div>
@@ -93,7 +101,7 @@ export function WorkOrderForm({
         <div className="fv-box">
           <div className="form-2col">
             <label className="field"><span>Datum izlaska</span>
-              <input type="date" value={fvDate} onChange={(e) => setFvDate(e.target.value)} /></label>
+              <DateInput value={fvDate} onChange={setFvDate} /></label>
             <label className="field"><span>Vreme izlaska</span>
               <TimeInput value={fvTime} onChange={setFvTime} /></label>
           </div>

@@ -31,12 +31,12 @@ export function Dashboard(): React.JSX.Element {
         <section className="card">
           <h3 className="card-title">Termini (danas i sutra)</h3>
           {d.today.appointments.length === 0 ? <p className="card-empty">Nema termina.</p> :
-            <ul className="mini-list">{d.today.appointments.map((a) => <li key={a.id}><span className="mono">{formatDate(a.date)} {a.time}</span> · {a.customer} · {a.make} {a.model}</li>)}</ul>}
+            <ul className="mini-list scroll-list">{d.today.appointments.map((a) => <li key={a.id}><span className="mono">{formatDate(a.date)} {a.time}</span> · {a.customer} · {a.make} {a.model}</li>)}</ul>}
         </section>
         <section className="card">
           <h3 className="card-title">Čeka delove</h3>
           {d.today.waitingParts.length === 0 ? <p className="card-empty">Nema vozila.</p> :
-            <ul className="mini-list">{d.today.waitingParts.map((w) => <li key={w.number}><span className="mono">{w.plate ?? '—'}</span> · {w.number}</li>)}</ul>}
+            <ul className="mini-list scroll-list">{d.today.waitingParts.map((w) => <li key={w.number}><span className="mono">{w.plate ?? '—'}</span> · {w.number}</li>)}</ul>}
         </section>
       </div>
 
@@ -50,6 +50,7 @@ export function Dashboard(): React.JSX.Element {
       <section className="card">
         <h3 className="card-title">Vozila u servisu</h3>
         {d.business.inShopList.length === 0 ? <p className="card-empty">Nijedno vozilo nije u servisu.</p> : (
+          <div className="scroll-table">
           <table className="mini-table">
             <thead><tr><th>Nalog</th><th>Vozilo</th><th>Klijent</th><th>Status</th></tr></thead>
             <tbody>
@@ -63,6 +64,7 @@ export function Dashboard(): React.JSX.Element {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
 
@@ -74,10 +76,12 @@ export function Dashboard(): React.JSX.Element {
       {d.money.unpaidInvoices.length > 0 && (
         <section className="card" style={{ marginTop: 16 }}>
           <h3 className="card-title">Nenaplaćeni računi</h3>
+          <div className="scroll-table">
           <table className="mini-table">
             <thead><tr><th>Broj</th><th>Klijent</th><th>Dospeće</th><th className="ta-r">Iznos</th></tr></thead>
             <tbody>{d.money.unpaidInvoices.map((i) => <tr key={i.number} className="clickable" onClick={() => navigate('/dokumenti')}><td className="mono">{i.number}</td><td>{i.customer}</td><td className="mono">{formatDate(i.due_on)}</td><td className="ta-r mono">{money(i.total)}</td></tr>)}</tbody>
           </table>
+          </div>
         </section>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { DateInput } from './DateInput.tsx';
 import type { Unavailability, UnavailabilityKind } from '@karton/shared';
 import { labels } from '@karton/shared';
 import { api } from '../api.ts';
@@ -48,8 +49,8 @@ export function UnavailabilityManager({ mechanicId }: { mechanicId: number }): R
         ))}
       </ul>
       <form className="unavail-add" onSubmit={add}>
-        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} required />
-        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} required />
+        <DateInput value={from} onChange={setFrom} required />
+        <DateInput value={to} onChange={setTo} required />
         <select value={kind} onChange={(e) => setKind(e.target.value as UnavailabilityKind)}>
           <option value="vacation">Godišnji</option>
           <option value="sick_leave">Bolovanje</option>

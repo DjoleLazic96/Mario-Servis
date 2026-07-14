@@ -1,23 +1,27 @@
-/* Paleta iz mockup ver.3. Fontovi: sistemski za sada (self-host dolazi uz logo). */
+/* Paleta izvučena iz Marijevog logoa — svaka boja ima poreklo u samoj slici:
+   zelena prskotina → glavna boja · grafit tornada → sidebar · krem podloga → pozadina
+   narandžasta drška odvijača → „u radu" · crvena iz usta → greška · plava sa dresa → čekanje
+   Brend zelena je namerno PRODUBLJENA u odnosu na logo (#48A848) da bi beli tekst
+   na dugmadima bio čitljiv; „završeno" je smaragdna, da se ne meša sa brend zelenom. */
 :root {
-  --bg: #f2f4f6;
+  --bg: #f2f0e8;            /* krem — podloga logoa */
   --surface: #ffffff;
-  --ink: #1f2933;
-  --ink-soft: #5a6672;
-  --ink-faint: #98a1ab;
-  --sidebar: #202a37;
-  --sidebar-soft: #2e3a49;
-  --sidebar-ink: #c3cbd4;
-  --sidebar-ink-dim: #7a8695;
-  --accent: #2f6fa8;
-  --accent-deep: #245a8a;
-  --accent-soft: #eaf1f7;
-  --line: #dfe3e7;
-  --line-soft: #eaedf0;
-  --danger: #b0413a;
-  --danger-bg: #f6e6e5;
-  --ok: #3f7a56;
-  --ok-bg: #e8f1ea;
+  --ink: #22262b;           /* grafit */
+  --ink-soft: #6a6f75;
+  --ink-faint: #7d838a;     /* čelik šrafova — potamnjeno radi čitljivosti na suncu */
+  --sidebar: #2a2e33;       /* tornado */
+  --sidebar-soft: #3a3f45;
+  --sidebar-ink: #c6cace;
+  --sidebar-ink-dim: #848a90;
+  --accent: #2f7a36;        /* zelena iz logoa (produbljena) */
+  --accent-deep: #26622c;
+  --accent-soft: #e7f2e7;
+  --line: #e3e0d6;
+  --line-soft: #eeece4;
+  --danger: #b33a34;        /* crvena iz usta */
+  --danger-bg: #f7e6e4;
+  --ok: #2e7d5b;            /* smaragd — „plaćeno/poslato", razlikuje se od brend zelene */
+  --ok-bg: #e5f1eb;
   --radius: 8px;
   --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
@@ -48,7 +52,7 @@ button {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: linear-gradient(160deg, #f2f4f6 0%, #e4e8ec 100%);
+  background: linear-gradient(160deg, #f5f3ec 0%, #e6e3d8 100%);
 }
 .login-card {
   width: 100%;
@@ -64,23 +68,22 @@ button {
 }
 .login-brand {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
   margin-bottom: 4px;
+  text-align: center;
 }
+/* Logo servisa — slika, bez obojene podloge (PNG ima providnu pozadinu) */
 .login-logo,
 .sidebar-logo {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 40px;
   height: 40px;
-  border-radius: 9px;
-  background: var(--accent);
-  color: #fff;
-  font-weight: 700;
-  font-size: 20px;
+  object-fit: contain;
   flex: none;
 }
+.login-logo { width: 110px; height: 110px; margin: 0 auto; }
 .login-title {
   font-size: 20px;
   font-weight: 700;
@@ -108,7 +111,7 @@ button {
 }
 .field input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(47, 111, 168, 0.15);
+  box-shadow: 0 0 0 3px rgba(47, 122, 54, 0.16);
 }
 .login-error {
   background: var(--danger-bg);
@@ -219,11 +222,15 @@ button {
 }
 .page-head h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 .page-sub {
-  margin: 4px 0 0;
+  margin: 5px 0 0;
   color: var(--ink-soft);
+  font-size: 13.5px;
+  font-weight: 600;
 }
 .card-grid {
   display: grid;
@@ -454,14 +461,14 @@ select:focus { border-color: var(--accent); }
 .unavail-add input, .unavail-add select { padding: 8px 10px; font-size: 13px; }
 
 /* --- Statusni badge-evi (neutralna paleta) --- */
-.badge.st-open { background:#eaeff4; color:#43607a; }
-.badge.st-progress { background:#fdf2e3; color:#8a5a1e; }
-.badge.st-wait { background:#f3eef7; color:#6b5a8a; }
-.badge.st-done { background:#e8f1ea; color:#3f7a56; }
-.badge.st-cancel { background:#eef0f2; color:#77808a; }
+.badge.st-open { background:#ebe8de; color:#6a6f75; }      /* čelik/krem */
+.badge.st-progress { background:#f8eedf; color:#a9601c; }  /* narandžasta drška odvijača */
+.badge.st-wait { background:#e6eaf0; color:#4a5a78; }      /* plava sa dresa */
+.badge.st-done { background:#e5f1eb; color:#2e7d5b; }      /* smaragd */
+.badge.st-cancel { background:#eceae3; color:#8a8f94; }
 /* Podsetnik: greška (crveno — tehnički problem) vs preskočen (sivo — poslovno, NIJE greška) */
 .badge.rem-error { background:var(--danger-bg); color:var(--danger); }
-.badge.rem-skip { background:#eef0f2; color:#77808a; }
+.badge.rem-skip { background:#eceae3; color:#8a8f94; }
 
 /* --- Textarea, checkbox inline, field visit box --- */
 textarea { padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px; font-family: inherit; outline: none; resize: vertical; }
@@ -620,20 +627,22 @@ textarea:focus { border-color: var(--accent); }
 /* --- TimeInput (24h) --- */
 .time-input { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px; outline: none;
   font-variant-numeric: tabular-nums; letter-spacing: .02em; }
-.time-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47, 111, 168, 0.15); }
+.time-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47, 122, 54, 0.16); }
 .time-input:invalid { border-color: var(--danger); }
 
 /* --- Kalendar sa vremenskom mrežom --- */
 .week-nav { display: flex; gap: 8px; margin-bottom: 12px; }
 .cal { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.cal-head { display: grid; grid-template-columns: 62px repeat(7, 1fr); border-bottom: 1px solid var(--line); }
-.cal-day-head { padding: 8px 6px; text-align: center; font-size: 11.5px; color: var(--ink-soft); border-left: 1px solid var(--line-soft); }
-.cal-day-head.today { background: var(--accent-soft); color: var(--accent-deep); font-weight: 600; }
+.cal-head { display: grid; grid-template-columns: 62px repeat(7, 1fr); border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 2; background: var(--surface); }
+.cal-day-head { padding: 9px 6px; text-align: center; font-size: 13px; font-weight: 700; color: var(--ink); border-left: 1px solid var(--line-soft); }
+.cal-day-head.today { background: var(--accent-soft); color: var(--accent-deep); font-weight: 800; }
 .cal-blocked-tag { display: block; font-size: 9px; color: var(--danger); margin-top: 2px; }
+.cal-scroll { overflow-y: auto; max-height: calc(100vh - 300px); }
 .cal-body { display: grid; grid-template-columns: 62px repeat(7, 1fr); position: relative; }
 .cal-gutter { border-right: 1px solid var(--line); }
-.cal-hour { position: relative; font-size: 10.5px; color: var(--ink-faint); text-align: right; padding-right: 7px; }
-.cal-hour span { position: relative; top: -6px; }
+.cal-hour { display: flex; align-items: center; justify-content: flex-end; font-size: 13px; font-weight: 700; color: var(--ink-soft); padding-right: 8px; }
+
 .cal-day { position: relative; border-left: 1px solid var(--line-soft); cursor: crosshair;
   background-image: repeating-linear-gradient(to bottom, var(--line-soft) 0 1px, transparent 1px 100%); }
 .cal-day.blocked { background-color: #f0f1f3; cursor: not-allowed; }
@@ -655,8 +664,14 @@ textarea:focus { border-color: var(--accent); }
   display: flex; flex-direction: column; gap: 8px; color: #6b5410; }
 
 /* --- Razmaci: blokovi se ne lepe jedan na drugi --- */
+/* Razmak SAMO između blokova jedan ispod drugog — NIKAD između kartica u istom gridu
+   (tamo margina gura drugu karticu naniže i pravi nejednake kutije). */
+.card-grid > .card + .card { margin-top: 0; }
+.card-grid { align-items: stretch; }
+.card-grid > .card { height: 100%; }
+
 .card-grid + .card,
-.card + .card,
+.page > .card + .card,
 .card-grid + .card-grid,
 .table-wrap + .card,
 .card + .table-wrap,
@@ -800,3 +815,54 @@ textarea:focus { border-color: var(--accent); }
 /* Galerija na kartonu vozila — grupisano po posetama */
 .gallery-visit + .gallery-visit { margin-top: 18px; border-top: 1px solid var(--line-soft); padding-top: 14px; }
 .gallery-visit-head { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+
+/* Izvoz pojedinačnog izveštaja — <a> mora da izgleda kao dugme (bez podvlačenja) */
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+  align-self: flex-end;
+}
+
+/* --- Datum: polje + srpski kalendar --- */
+.date-wrap { position: relative; display: flex; }
+.date-wrap > input { flex: 1; padding-right: 34px; }
+.date-btn {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 26px; height: 26px; border: none; background: transparent;
+  font-size: 14px; line-height: 1; border-radius: 5px; opacity: .75;
+}
+.date-btn:hover { background: var(--line-soft); opacity: 1; }
+.date-pop {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 40;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px; width: 252px;
+  box-shadow: 0 10px 30px rgba(20, 26, 32, 0.16);
+}
+.date-pop-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.date-pop-head span { font-weight: 700; font-size: 13.5px; }
+.date-pop-head button {
+  width: 26px; height: 26px; border: 1px solid var(--line); background: var(--surface);
+  border-radius: 6px; font-size: 15px; line-height: 1; color: var(--ink);
+}
+.date-pop-head button:hover { background: var(--accent-soft); border-color: var(--accent); }
+.date-pop-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.date-dow {
+  text-align: center; font-size: 10.5px; font-weight: 700; color: var(--ink-faint);
+  text-transform: uppercase; padding-bottom: 4px;
+}
+.date-day {
+  height: 30px; border: none; background: transparent; border-radius: 6px;
+  font-size: 12.5px; font-weight: 600; color: var(--ink);
+}
+.date-day:hover { background: var(--accent-soft); }
+.date-day.today { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.date-day.sel { background: var(--accent); color: #fff; }
+.date-pop-foot { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-soft); }
+
+/* --- Početna: duge liste dobijaju svoj skrol, kartica ne raste u nedogled --- */
+.scroll-list { max-height: 220px; overflow-y: auto; }
+.scroll-table { max-height: 260px; overflow-y: auto; }
+.scroll-table thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }

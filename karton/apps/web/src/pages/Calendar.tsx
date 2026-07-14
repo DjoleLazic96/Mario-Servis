@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { DateInput } from '../components/DateInput.tsx';
 import { formatDate } from '../lib/documentHelpers.ts';
 import { useNavigate } from 'react-router-dom';
 import type { Appointment, Mechanic, CalendarBlock, WorkOrder, Paginated } from '@karton/shared';
@@ -71,7 +72,7 @@ export function Calendar(): React.JSX.Element {
   return (
     <div className="page">
       <header className="page-head row">
-        <div><h1>Kalendar</h1><p className="page-sub">{from} — {to}</p></div>
+        <div><h1>Kalendar</h1><p className="page-sub">{formatDate(from)} — {formatDate(to)}</p></div>
         <div className="btn-group">
           <select className="search" value={mechFilter} onChange={(e) => setMechFilter(e.target.value)}>
             <option value="">Svi majstori</option>{mechanics.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
@@ -88,7 +89,8 @@ export function Calendar(): React.JSX.Element {
       </div>
 
       <div className="cal">
-        {/* zaglavlje sa danima */}
+        <div className="cal-scroll">
+        {/* zaglavlje sa danima — unutar skrola i lepljivo, da se kolone poklope sa danima */}
         <div className="cal-head">
           <div className="cal-gutter" />
           {DAYS_SHORT.map((dn, i) => {
@@ -144,6 +146,7 @@ export function Calendar(): React.JSX.Element {
               </div>
             );
           })}
+        </div>
         </div>
       </div>
 
@@ -216,8 +219,8 @@ function BlockModal({ onClose, onDone, blocks }: { onClose: () => void; onDone: 
     <Modal title="Blokada dana" onClose={onClose}>
       <div className="form">
         <div className="form-2col">
-          <label className="field"><span>Od</span><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
-          <label className="field"><span>Do</span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></label>
+          <label className="field"><span>Od</span><DateInput value={from} onChange={setFrom} /></label>
+          <label className="field"><span>Do</span><DateInput value={to} onChange={setTo} /></label>
         </div>
         <label className="field"><span>Razlog</span><input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Praznik, godišnji…" /></label>
         <div className="form-actions"><button className="btn-primary" disabled={!from} onClick={add}>Blokiraj</button></div>

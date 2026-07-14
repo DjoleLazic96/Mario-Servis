@@ -37,7 +37,13 @@ function ServiceSettings(): React.JSX.Element {
   const [saving, setSaving] = useState(false);
   const [smtpPassword, setSmtpPassword] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { void api.get<SettingsData>('/settings').then(setS); }, []);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  useEffect(() => {
+    void api.get<SettingsData>('/settings').then(setS).catch((e) => {
+      setLoadErr(e instanceof ApiRequestError ? e.body.message : 'Podešavanja se ne mogu učitati.');
+    });
+  }, []);
+  if (loadErr) return <div className="login-error" style={{ maxWidth: 420 }}>{loadErr}</div>;
   if (!s) return <p className="card-empty">Učitavanje…</p>;
   const set = (patch: Partial<SettingsData>): void => setS({ ...s, ...patch });
 

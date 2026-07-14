@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { DateInput } from './DateInput.tsx';
 import type { WorkOrderDetail, WorkOrderInput, FieldVisitOutcome } from '@karton/shared';
 import { TimeInput } from './TimeInput.tsx';
 
@@ -65,7 +66,7 @@ export function WorkOrderEditForm({
     <form className="form" onSubmit={submit}>
       <div className="form-row">
         <label>Datum prijema
-          <input type="date" value={receivedOn} onChange={(e) => setReceivedOn(e.target.value)} required />
+          <DateInput value={receivedOn} onChange={setReceivedOn} required />
         </label>
         <label>Vreme prijema
           <TimeInput value={receivedTime} onChange={setReceivedTime} />
@@ -74,7 +75,7 @@ export function WorkOrderEditForm({
 
       <div className="form-row">
         <label>Datum završetka
-          <input type="date" value={completedOn} onChange={(e) => setCompletedOn(e.target.value)} />
+          <DateInput value={completedOn} onChange={setCompletedOn} />
         </label>
         <label>Vreme završetka
           <TimeInput value={completedTime} onChange={setCompletedTime} />
@@ -114,7 +115,7 @@ export function WorkOrderEditForm({
         {fieldVisit && (
           <>
             <div className="form-row">
-              <label>Datum izlaska<input type="date" value={fvDate} onChange={(e) => setFvDate(e.target.value)} /></label>
+              <label>Datum izlaska<DateInput value={fvDate} onChange={setFvDate} /></label>
               <label>Vreme izlaska<TimeInput value={fvTime} onChange={setFvTime} /></label>
             </div>
             <label>Lokacija<input value={fvLocation} onChange={(e) => setFvLocation(e.target.value)} /></label>

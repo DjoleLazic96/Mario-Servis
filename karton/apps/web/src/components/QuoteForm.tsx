@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { DateInput } from './DateInput.tsx';
 import type { Document, CustomerRef, Vehicle, DocumentItemDraft } from '@karton/shared';
 import { api, ApiRequestError } from '../api.ts';
 import { OwnerPicker } from './OwnerPicker.tsx';
@@ -71,7 +72,7 @@ export function QuoteForm({ onCreated }: { onCreated: (id: number) => void }): R
 
       <div className="form-row">
         <label className="field"><span>Rok važenja <small className="hint">(podrazumevano iz podešavanja)</small></span>
-          <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} /></label>
+          <DateInput value={validUntil} onChange={setValidUntil} /></label>
         <label className="field"><span>Iznos u EUR <small className="hint">(informativno)</small></span>
           <input type="number" step="0.01" min={0} value={amountEur} onChange={(e) => setAmountEur(e.target.value)} /></label>
       </div>

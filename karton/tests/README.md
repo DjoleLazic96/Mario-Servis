@@ -39,6 +39,17 @@ python tests/acceptance.py
 
 Izlazni kod je 0 kad sve prođe, 1 ako nešto padne.
 
+## `photos.py` — fotografije sa prijema (15 provera)
+
+Upload, serviranje iza prijave (bez sesije → 401), folder `vozila/<VIN>/<datum>_<RN>/`,
+fajl stvarno na disku, **limit 10**, brisanje dok je nalog otvoren (i fajl nestaje sa diska),
+**zaključavanje posle završetka naloga** (dodavanje i brisanje odbijeni, slike sačuvane),
+galerija na kartonu vozila grupisana po posetama.
+
+```bash
+python tests/photos.py
+```
+
 ## Statička provera
 
 ```bash

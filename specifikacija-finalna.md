@@ -19,7 +19,7 @@ Konsolidacija: specifikacija v3 (.docx) + dopune 7.1–7.11 + konačne odluke 1�
 
 **Prva verzija (v1):** svih 13 ekrana; login + role (admin/korisnik); klijenti, vozila (VIN + istorije vlasništva i tablica), majstori + cenovnik usluga; radni nalozi sa tri vrste stavki, tri načina obračuna rada (sat/km/paušal), izlaskom na teren i opcijom „Interno — ne naplaćuje se"; ceo dokumentni lanac (Ponuda → RN → Predračun → Račun) sa snapshot pravilom, transakcionom numeracijom, konverzijom i ispravkom računa; kalendar sa trajanjem termina, upozorenjima i blokadama; email podsetnici sa retry mehanizmom; automatski isteci; prihod i nenaplaćeno; 4 izveštaja (+ Excel ako ostane potreba); A4 štampa iz browsera; server-side pretraga/filtriranje/sortiranje/paginacija; arhiviranje umesto brisanja; **audit log (upis)**; automatski backup sa evidencijom; mobilni prikaz (tabele → kartice); **PWA** — aplikacija se na telefon instalira preko „Dodaj na početni ekran" (manifest + service worker), bez Play Store/App Store distribucije, sa automatskim ažuriranjem (odluka 9.7.2026); **čitač saobraćajne** — lokalna helper aplikacija na računaru servisa, čita čip preko PC/SC i puni formu vozila (odluka 9.7.2026 — premešten iz faze 2 u v1). Ručni unos uvek radi kao fallback.
 
-**Faza 2:** server-side PDF + automatsko slanje emailom + arhiva PDF-ova; Word izvoz; UI pregled audit loga; fotografije na nalogu; digitalno označavanje oštećenja vozila i digitalna kontrola vozila na nalogu (u v1 samo statičke sekcije na papirnoj štampi — §4.4); upozorenje na dashboardu za ponude koje ističu; SMS podsetnici; magacin/zalihe; praćenje troška i profita.
+**Faza 2:** server-side PDF + automatsko slanje emailom + arhiva PDF-ova; Word izvoz; UI pregled audit loga; digitalno označavanje oštećenja vozila i digitalna kontrola vozila na nalogu (u v1 samo statičke sekcije na papirnoj štampi — §4.4); upozorenje na dashboardu za ponude koje ističu; SMS podsetnici; magacin/zalihe; praćenje troška i profita.
 
 **Van obima trajno (po spec v3):** fiskalizacija (račun je interni dokument), komplikovana prava pristupa po ekranima, tastaturne prečice.
 
@@ -101,6 +101,20 @@ Imena majstora se **nikad** ne prikazuju na ponudi/predračunu/računu. **Satne*
 
 ### 4.10 Termini i kalendar (odluka 18)
 Termin: datum, vreme, trajanje (min), klijent, vozilo, majstor (opciono), napomena, podsetnici on/off. Preklapanje termina majstora i termin van radnog vremena → **upozorenje uz mogućnost potvrde** (`confirmed: true`); blokiran dan → **tvrda blokada**. `completed` → `scheduled` korisnik sme samo ako termin nije vezan za nalog; admin može korigovati status i vezu uz audit i razlog. Kardinalnost: **više termina može biti vezano za isti nalog** (npr. dijagnostika, nastavak radova, predaja vozila); jedan termin pokazuje na najviše jedan nalog. Fizičko brisanje samo budućeg termina. Kalendar: nedeljni prikaz, boje po statusu, filter po majstoru, status slanja podsetnika vidljiv.
+
+### 4.10a Fotografije vozila pri prijemu (odluka 11.7.2026)
+Slikanje **samo pri prijemu** vozila (ne i pri povratu) — dokaz stanja, zaštita od reklamacija. **Max 10** slika po nalogu (tvrdo, backend). Slika se telefonom/tabletom (PWA, kamera se otvara direktno); browser **smanjuje i kompresuje pre slanja** (~1600px, JPEG ~80% → ~250 KB), pa server ne treba native biblioteku za slike.
+
+**Čuvanje:** fajl na disku (`UPLOADS_DIR`), u bazi samo metapodatak (`work_order_photo`). Putanju gradi server:
+`uploads/vozila/<VIN>/<datum>_<RN-broj>/<uuid>.jpg`. **Ključ foldera je VIN** (nepromenljiv, BR-01) — tablica se menja i razbila bi folder istog vozila.
+
+**Zaključavanje:** slike se dodaju/brišu **samo dok je nalog otvoren / u radu / čeka delove**. Kad je nalog **završen ili otkazan → zaključane** (one su dokaz). Admin može ponovo otvoriti nalog uz razlog (postojeći mehanizam). Sve u audit (`photo.added`, `photo.deleted`).
+
+**Bez automatskog brisanja** (odluka 11.7.2026) — slike su dokaz; ručno brisanje pojedinačne slike je moguće dok je nalog otvoren.
+
+**Pristup:** slike su lični podaci klijenta — serviraju se isključivo kroz **prijavljenu** rutu (`GET /photos/:id`), nikad kao javni statički folder. Ako fajl fali na disku, UI pokazuje „slika nedostupna" umesto da pukne.
+
+**Backup:** dnevni backup pokriva **bazu**; slike se štite **odvojenom inkrementalnom sinhronizacijom** (rsync na offsite odredište). Razlog: slike se nikad ne menjaju, pa bi ih bilo besmisleno pakovati u svaki dnevni backup. Prijemni list se **ne menja** (slike ne idu na štampu).
 
 ### 4.11 Email podsetnici (odluka 19)
 **Zakazivanje (naoružavanje):** red podsetnika se kreira čim je podsetnik uključen i termin je `scheduled` — **bez obzira da li klijent u tom trenutku ima email**. Uključivanje podsetnika za klijenta bez emaila daje **meko upozorenje** (`CONFIRMATION_REQUIRED` → `NO_CUSTOMER_EMAIL`), ne tvrdu grešku.
@@ -270,6 +284,8 @@ Model: `{ "code": "...", "message": "...", "fields": { ... }?, "warnings": [ ...
 | 422 | `APPOINTMENT_STARTED` | brisanje termina koji je počeo (BR-29) |
 | 422 | `CALENDAR_BLOCKED` | termin u blokiran dan (BR-27, tvrda blokada) |
 | 422 | `REASON_REQUIRED` | admin osetljiva akcija bez razloga (BR-34) |
+| 422 | `PHOTO_LIMIT_REACHED` | više od 10 slika po prijemu |
+| 404 | `PHOTO_NOT_FOUND` | slika ne postoji ili fajl nije dostupan na disku |
 
 > `NO_CUSTOMER_EMAIL` više nije tvrda greška: uključivanje podsetnika za klijenta bez emaila daje **meko upozorenje** (`CONFIRMATION_REQUIRED`, gornji red), pa se podsetnik „naoruža". Vidi pravila podsetnika u §10.
 

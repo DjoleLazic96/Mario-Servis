@@ -236,6 +236,23 @@ export interface WorkOrderDetail extends WorkOrder {
   chain: DocumentChain;
 }
 
+/** Fotografija vozila snimljena pri prijemu (spec §4.4). Fajl je na disku; ovo je metapodatak. */
+export interface WorkOrderPhoto {
+  id: number;
+  workOrderId: number;
+  sizeBytes: number;
+  createdAt: string;
+  createdBy: string | null; // ime korisnika koji je slikao
+}
+
+/** Galerija na kartonu vozila: jedna grupa = jedna poseta (radni nalog). */
+export interface VehiclePhotoGroup {
+  workOrderId: number;
+  workOrderNumber: string;
+  receivedOn: string;
+  photos: WorkOrderPhoto[];
+}
+
 /** Statistika vozila (spec §3.5). */
 export interface VehicleStats {
   orders: number;

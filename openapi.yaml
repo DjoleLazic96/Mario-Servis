@@ -704,6 +704,51 @@ paths:
       tags: [settings]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
       responses: { '200': { description: OK }, '403': { $ref: '#/components/responses/Forbidden' }, '409': { $ref: '#/components/responses/Conflict' } }
+  /work-orders/{id}/photos:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [work-orders]
+      summary: Slike sa prijema vozila (metapodaci)
+      responses: { '200': { description: OK } }
+    post:
+      tags: [work-orders]
+      summary: 'Dodaj sliku sa prijema (data URI; browser je već smanjio/kompresovao). Max 10 po nalogu.'
+      description: |
+        Slika se dodaje samo dok je nalog otvoren / u radu / čeka delove.
+        Završen ili otkazan nalog → 422 ENTITY_LOCKED (slike su dokaz stanja).
+        Fajl ide na disk (UPLOADS_DIR): `vozila/<VIN>/<datum>_<RN-broj>/<uuid>.jpg`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [dataUrl], properties: { dataUrl: { type: string, example: 'data:image/jpeg;base64,/9j/4AAQ...' } } } } }
+      responses:
+        '201': { description: 'Kreirano — vraća ažuriranu listu slika' }
+        '422': { description: 'PHOTO_LIMIT_REACHED (>10) ili ENTITY_LOCKED (nalog završen)' }
+  /work-orders/{id}/photos/{pid}:
+    delete:
+      tags: [work-orders]
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - { name: pid, in: path, required: true, schema: { type: integer } }
+      summary: Obriši sliku (samo dok je nalog otvoren; briše i fajl sa diska)
+      responses:
+        '200': { description: 'Ažurirana lista slika' }
+        '422': { description: 'ENTITY_LOCKED — nalog završen' }
+  /photos/{id}:
+    get:
+      tags: [work-orders]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: 'Sam fajl slike — ISKLJUČIVO iza prijave (lični podaci klijenta; nikad javni folder)'
+      responses:
+        '200': { description: Slika, content: { image/jpeg: { schema: { type: string, format: binary } } } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { description: 'PHOTO_NOT_FOUND — ne postoji ili fajl nije na disku' }
+  /vehicles/{id}/photos:
+    get:
+      tags: [vehicles]
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      summary: Galerija vozila — slike grupisane po posetama (radnim nalozima)
+      responses: { '200': { description: OK } }
+
   /vehicles/{id}/stats:
     get:
       tags: [vehicles]

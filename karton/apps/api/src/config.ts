@@ -15,6 +15,7 @@ const schema = z.object({
   SMTP_PORT: z.coerce.number().int().positive().default(1025),
   SENDER_EMAIL: z.string().default('servis@localhost'),
   BACKUP_DIR: z.string().default('./backups'),
+  UPLOADS_DIR: z.string().default('./uploads'),
   // fallback kad pg_dump nije na PATH-u (lokalni razvoj: baza je u kontejneru)
   DB_CONTAINER: z.string().default('karton-db'),
 });
@@ -35,5 +36,6 @@ export const config = {
   cookieSecure: parsed.data.NODE_ENV === 'production',
   // sidrimo na koren monorepoa: API i worker imaju različit cwd, a moraju da dele isti direktorijum
   backupDir: resolve(import.meta.dirname, '../../..', parsed.data.BACKUP_DIR),
+  uploadsDir: resolve(import.meta.dirname, '../../..', parsed.data.UPLOADS_DIR),
   dbContainer: parsed.data.DB_CONTAINER,
 };

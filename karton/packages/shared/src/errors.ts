@@ -37,6 +37,8 @@ export const ERROR_CODE = [
   'BACKUP_FAILED',
   'BACKUP_UNUSABLE',
   'RESTORE_FAILED',
+  'PHOTO_LIMIT_REACHED',
+  'PHOTO_NOT_FOUND',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODE)[number];
 

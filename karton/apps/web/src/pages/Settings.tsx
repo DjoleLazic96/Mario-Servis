@@ -220,6 +220,13 @@ function Backup(): React.JSX.Element {
         <button className="btn-primary btn-sm" onClick={runNow} disabled={busy}>{busy ? 'Radim…' : 'Napravi backup sada'}</button>
       </div>
       <p className="hint">Automatski backup se pravi jednom dnevno dok je aplikacija pokrenuta.</p>
+      <div className="warn-box">
+        <strong>Šta backup pokriva:</strong> celu <strong>bazu</strong> (klijenti, vozila, nalozi, dokumenti, termini).
+        <br />
+        <strong>Slike vozila NISU u ovom backupu</strong> — one žive na disku (<code>uploads/</code>) i štite se
+        odvojenom sinhronizacijom na spoljno odredište. Razlog: slike se nikad ne menjaju, pa bi ih bilo besmisleno
+        pakovati u svaki dnevni backup.
+      </div>
       {msg && <div className={msg === 'Backup napravljen.' ? 'ok-box' : 'login-error'}>{msg}</div>}
 
       {runs.length === 0 ? <p className="card-empty">Još nema nijednog backupa.</p> : (

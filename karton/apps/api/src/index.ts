@@ -22,6 +22,7 @@ import { reportRoutes } from './routes/reports.ts';
 import { settingsRoutes } from './routes/settings.ts';
 import { dashboardRoutes } from './routes/dashboard.ts';
 import { backupRoutes } from './routes/backup.ts';
+import { photoRoutes } from './routes/photos.ts';
 
 const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
 
@@ -82,6 +83,7 @@ await app.register(reportRoutes, { prefix: '/api/v1' });
 await app.register(settingsRoutes, { prefix: '/api/v1' });
 await app.register(dashboardRoutes, { prefix: '/api/v1' });
 await app.register(backupRoutes, { prefix: '/api/v1' });
+await app.register(photoRoutes, { prefix: '/api/v1' });
 
 try {
   await app.listen({ port: config.API_PORT, host: '0.0.0.0' });

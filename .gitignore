@@ -17,3 +17,6 @@ Thumbs.db
 # Backup dumpovi — sadrže sve podatke klijenata i hešove lozinki. Nikad u git.
 backups/
 *.sql.gz
+
+# Fotografije vozila — lični podaci klijenata. Nikad u git (štite se sinhronizacijom).
+uploads/

@@ -12,6 +12,7 @@ import { LaborItemForm, PartItemForm, ExternalItemForm } from '../components/wor
 import { WorkOrderEditForm } from '../components/WorkOrderEditForm.tsx';
 import { DocumentChainBar } from '../components/DocumentChain.tsx';
 import { LinkQuoteDialog } from '../components/LinkQuoteDialog.tsx';
+import { PhotoSection } from '../components/PhotoSection.tsx';
 import { allowedTransitions, isEditable, statusClass } from '../lib/workOrderStatus.ts';
 import { money, formatDate } from '../lib/documentHelpers.ts';
 
@@ -169,6 +170,8 @@ export function WorkOrderDetail(): React.JSX.Element {
           </section>
         )}
       </div>
+
+      <PhotoSection workOrderId={wo.id} editable={editable} />
 
       {/* Rad majstora */}
       <ItemSection title="Rad majstora" onAdd={editable ? () => setDialog({ kind: 'labor' }) : undefined} addLabel="+ Dodaj rad">

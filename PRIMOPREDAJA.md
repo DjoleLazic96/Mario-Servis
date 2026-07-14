@@ -64,6 +64,7 @@ karton/
 - **Vraćanje:** Podešavanja → Backup → „Vrati iz backupa". Traži admina, ukucanu frazu `VRATI IZ BACKUPA` i obavezan razlog.
 - **Garancije:** vraćanje je sve-ili-ništa (`psql --single-transaction`) — neuspeli restore ostavlja bazu netaknutom; tabele `session` i `backup_run` se ne vraćaju iz dumpa (sve sesije se gase, evidencija backupa preživljava); lozinka baze ide kroz `PGPASSWORD`, nikad kroz argumente procesa.
 - **Lokacija:** `BACKUP_DIR` u `.env` (podrazumevano `./backups`, sidreno na koren monorepoa). Direktorijum je u `.gitignore`.
+- ⚠️ **Šta backup NE pokriva: fotografije vozila.** One žive na disku (`UPLOADS_DIR`, podrazumevano `./uploads`) i štite se **odvojenom inkrementalnom sinhronizacijom** (rsync na offsite odredište, npr. Hetzner Storage Box). Razlog: slike se nikad ne menjaju, pa bi ih bilo besmisleno pakovati u svaki dnevni backup. **Na VPS-u ovo MORA da se podesi** — inače gubitak diska znači gubitak slika. Aplikacija to izričito piše na Backup ekranu.
 
 **11. SMTP / email.** ⚠️ **Važno — trenutno ponašanje:** worker koji stvarno šalje podsetnike čita **`SMTP_HOST` i `SMTP_PORT` iz `.env`** i šalje **bez autentifikacije** (podrazumevano Mailpit `localhost:1025`). SMTP polja u **Podešavanja → Servis** (host/port/korisnik/lozinka/pošiljalac) se **čuvaju u bazi ali ih slanje još ne koristi** — to je poznati tehnički dug (vidi t. 17). Za produkciju sa pravim mejlom trenutno se konfiguriše `.env`, a za autentifikovani SMTP treba dovezati `auth` u worker.
 
@@ -97,10 +98,12 @@ Sve četiri stavke su dokazane end-to-end (worker + Mailpit).
   - *Osnovni tok (18):* klijent → vozilo (VIN+vlasništvo+tablica) → ponuda → prihvatanje → nalog iz ponude → „Utvrđeno stanje" → rad/deo/eksterni/interna stavka → predračun → račun → plaćanje → izveštaj prihoda → dokumentna traka → prijemni list.
   - *Negativni (10):* drugi predračun, drugi račun, kopiranje računa, izmena snapshot-a, admin-only akcije kao korisnik, blokiran dan, van radnog vremena, zauzet majstor, zastarela verzija, `sort=DROP;--` i injection u pretrazi.
   - *Backup/restore (9):* kreiranje, evidencija, neuspeo restore + baza netaknuta, obavezna fraza i razlog, uspešan restore, odjava sesija, audit.
+- **`karton/tests/photos.py`** — 15 provera fotografija sa prijema: upload, serviranje iza prijave (bez sesije → 401), folder `vozila/<VIN>/<datum>_<RN>/`, fajl na disku, **limit 10**, brisanje dok je nalog otvoren, **zaključavanje posle završetka**, galerija po posetama.
 - **`pnpm -r typecheck`** — statička TypeScript provera nad api/worker/web/shared.
 
 **17. Poznata ograničenja / tehnički dug.**
 - **SMTP iz Podešavanja se ne koristi za slanje** (worker čita `.env`, bez `auth`). Vidi t. 11. — *najznačajniji dug.*
+- **Sinhronizacija fotografija na VPS-u nije podešena** (ops korak, ne kod): `rsync` iz `UPLOADS_DIR` na offsite odredište. Bez toga slike nisu zaštićene. Vidi t. 10.
 - **Čitač saobraćajne** je lokalni desktop helper (PC/SC, `127.0.0.1`); nije deo VPS-a i radi samo na mašini sa fizičkim čitačem.
 - **Fontovi** su sistemski (self-host odložen dok ne stigne Marijev logo/brend).
 - **PWA ikonice** su privremene (čekaju finalni logo).
@@ -165,7 +168,10 @@ Ključni dokazi: interna stavka ostaje na nalogu ali NE ide na predračun/račun
 5. **Baza — šema i admin:** `pnpm migrate`, pa `pnpm seed` → **odmah** napravi pravog admina i ugasi demo (checklista 1–2).
 6. **Procesi:** API i worker pod systemd/pm2, auto-restart, UTC, restart posle reboota.
 7. **Web + proxy:** proxy servira `dist`, prosleđuje `/api` na API; TLS terminacija na proxy-ju.
-8. **Backup:** `BACKUP_DIR` na trajnom volumenu; cron za offsite kopiju i rotaciju/retenciju; probaj restore na staging bazi.
+8. **Backup + slike:** `BACKUP_DIR` i `UPLOADS_DIR` na trajnom disku. Dva odvojena posla:
+   - baza → dnevni `pg_dump`, rotacija/retencija, kopija offsite;
+   - **slike → inkrementalni `rsync` iz `UPLOADS_DIR` na Hetzner Storage Box** (slike se nikad ne menjaju, pa se kopira samo novo).
+   Probaj restore baze na staging-u i vrati slike sa Storage Box-a.
 9. **Smoke test:** prijava, kreiranje zapisa, ručni backup, restore na staging-u; provera PWA „instaliraj" (traži HTTPS).
 10. **Čitač saobraćajne:** ostaje **lokalno** na mašini u servisu sa fizičkim čitačem (`127.0.0.1` + Origin allowlist) — ne ide na VPS.
 

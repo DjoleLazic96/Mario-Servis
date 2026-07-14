@@ -18,6 +18,7 @@ import { Modal } from '../components/Modal.tsx';
 import { VehicleForm } from '../components/VehicleForm.tsx';
 import { WorkOrderHistory } from '../components/WorkOrderHistory.tsx';
 import { DocumentChainBar } from '../components/DocumentChain.tsx';
+import { PhotoGallery } from '../components/PhotoGallery.tsx';
 import { OwnerPicker } from '../components/OwnerPicker.tsx';
 
 type Dialog = 'edit' | 'owner' | 'plate' | null;
@@ -193,6 +194,11 @@ export function VehicleDetail(): React.JSX.Element {
       </section>
 
       <LatestOrderChain vehicleId={vehicle.id} />
+
+      <section className="card">
+        <h2 className="card-title">Galerija slika</h2>
+        <PhotoGallery vehicleId={vehicle.id} />
+      </section>
 
       <section className="card">
         <h2 className="card-title">Istorija servisa</h2>

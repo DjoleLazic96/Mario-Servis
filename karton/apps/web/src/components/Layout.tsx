@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth.tsx';
 
-// 13 ekrana (spec §3); za sada su aktivni Dashboard + placeholderi.
+// Glavna navigacija; Podešavanja se dodaju samo adminu (ADMIN_NAV niže).
 const NAV = [
   { to: '/', label: 'Početna', end: true },
   { to: '/klijenti', label: 'Klijenti' },

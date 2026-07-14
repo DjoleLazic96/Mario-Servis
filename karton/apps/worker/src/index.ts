@@ -10,6 +10,10 @@ import { runBackupWithEvidence } from '@karton/shared/backup';
  */
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
+// PAŽNJA: SMTP se čita iz .env, a NE iz Podešavanja u aplikaciji — što god Mario tamo
+// ukuca, ovde se ne koristi. Nema ni autentikacije (`auth`) ni TLS-a (`secure: false`),
+// pa ovo radi samo sa lokalnim Mailpit-om. Pre produkcije: čitati smtp_* iz tabele
+// settings, dodati auth i secure prema portu (465 = odmah TLS, 587 = STARTTLS).
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST ?? 'localhost',
   port: Number(process.env.SMTP_PORT ?? 1025),

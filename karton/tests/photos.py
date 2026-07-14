@@ -1,6 +1,8 @@
 """Regresija za slike sa prijema: limit 10, iza prijave, zaključano posle završetka, folder po VIN/poseti."""
 import json, os, subprocess, sys, urllib.request, urllib.error, http.cookiejar
 
+sys.stdout.reconfigure(encoding='utf-8')   # Windows konzola je podrazumevano cp1252
+
 BASE = 'http://localhost:3000/api/v1'
 jar = http.cookiejar.CookieJar(); op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 anon = urllib.request.build_opener()   # bez sesije

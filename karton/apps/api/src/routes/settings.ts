@@ -56,6 +56,10 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
     return toSettings(rows[0]);
   });
 
+  // PAŽNJA (SMTP): smtp_* se ovde samo ČUVA — worker ih ne čita, nego šalje preko
+  // SMTP_* iz .env. Lozinka se pritom upisuje u čistom tekstu. Pre produkcije oboje mora
+  // da se sredi (worker da čita iz baze + šifrovanje lozinke), inače Mario podesi SMTP
+  // u aplikaciji i ništa se ne desi — a to ne puca, samo tiho ne radi.
   app.patch('/settings', { preHandler: requireAdmin }, async (request, reply) => {
     const b = settingsSchema.parse(request.body);
     const cur = await pool.query(SEL);
@@ -69,10 +73,9 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
         b.defaultValidityDays, b.reminderSendTime, b.pageSize]);
     invalidateSettingsCache();
     const { rows } = await pool.query(SEL);
-    // lozinka se nikad ne upisuje u audit
-    const { ...oldValue } = toSettings(cur.rows[0]);
+    // Lozinka ne može da procuri u audit: SEL je i ne čita, vraća samo `has_smtp_password`.
     await writeAudit({ userId: request.currentUser!.id, entityType: 'settings', entityId: 1, action: 'settings.changed',
-      oldValue, newValue: toSettings(rows[0]) });
+      oldValue: toSettings(cur.rows[0]), newValue: toSettings(rows[0]) });
     return toSettings(rows[0]);
   });
 

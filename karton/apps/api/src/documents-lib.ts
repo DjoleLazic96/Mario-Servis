@@ -106,7 +106,7 @@ const DOC_SELECT = `
     (SELECT rh.plate FROM registration_history rh WHERE rh.vehicle_id=v.id AND rh.valid_to IS NULL LIMIT 1) plate
   FROM document d JOIN customer c ON c.id=d.customer_id JOIN vehicle v ON v.id=d.vehicle_id`;
 
-export function toDocument(r: any, totalAmount: number): Document {
+function toDocument(r: any, totalAmount: number): Document {
   return {
     id: r.id, number: r.number, type: r.type, status: r.status, workOrderId: r.work_order_id,
     customer: { id: r.customer_id, name: r.customer_name, type: r.customer_type },

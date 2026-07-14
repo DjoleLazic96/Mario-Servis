@@ -4,6 +4,8 @@ Kreira sopstvene entitete (svež klijent/vozilo), ne oslanja se na zatečeno sta
 """
 import json
 import sys
+
+sys.stdout.reconfigure(encoding='utf-8')   # Windows konzola je podrazumevano cp1252
 import subprocess
 import urllib.request
 import urllib.error

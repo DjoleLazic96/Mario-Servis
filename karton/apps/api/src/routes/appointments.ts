@@ -6,6 +6,7 @@ import { pool, tx } from '../db.ts';
 import { sendError } from '../http.ts';
 import { requireAuth } from '../auth-guards.ts';
 import { writeAudit } from '../audit.ts';
+import { addDays } from '../time.ts';
 
 const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const TIME = z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/);
@@ -67,17 +68,12 @@ async function syncReminder(client: PoolClient, apptId: number): Promise<void> {
   const s = await client.query<{ t: string }>(`SELECT to_char(reminder_send_time,'HH24:MI') t FROM settings WHERE id=1`);
   const sendTime = s.rows[0]?.t ?? '09:00';
   // Dan pre termina, u vreme iz podešavanja — a to vreme je BEOGRADSKO (zidno vreme servisa).
-  const sendAt = `${offsetDay(row.date, -1)} ${sendTime}:00`;
+  const sendAt = `${addDays(row.date, -1)} ${sendTime}:00`;
   await client.query(
     // `$2::timestamptz` bi ovo protumačio po zoni sesije (UTC) → 09:00 bi postalo 11:00 u Beogradu.
     // `AT TIME ZONE 'Europe/Belgrade'` pretvara zidno beogradsko vreme u ispravan trenutak (spec §5).
     `INSERT INTO appointment_reminder (appointment_id, offset_min, scheduled_send_at, send_status)
      VALUES ($1, 1440, ($2::timestamp AT TIME ZONE 'Europe/Belgrade'), 'scheduled')`, [apptId, sendAt]);
-}
-function offsetDay(iso: string, days: number): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  const dt = new Date(Date.UTC(y!, m! - 1, d!)); dt.setUTCDate(dt.getUTCDate() + days);
-  return dt.toISOString().slice(0, 10);
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

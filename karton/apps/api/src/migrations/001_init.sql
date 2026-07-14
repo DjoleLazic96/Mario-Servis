@@ -377,7 +377,11 @@ CREATE TABLE settings (
     smtp_host             text,
     smtp_port             int,
     smtp_username         text,
-    smtp_password         text,                 -- šifrovano na aplikativnom nivou
+    -- PAŽNJA: čuva se u ČISTOM TEKSTU. Šifrovanje nije implementirano.
+    -- Kolona se trenutno ni ne koristi — worker šalje preko SMTP_* iz .env (vidi
+    -- apps/worker/src/index.ts). Pre produkcije: šifrovati ključem iz okruženja
+    -- I povezati workera na ova podešavanja. Do tada ovde ne upisivati pravu lozinku.
+    smtp_password         text,
     sender_email          text,
     work_hours_from       time NOT NULL DEFAULT '08:00',
     work_hours_to         time NOT NULL DEFAULT '18:00',

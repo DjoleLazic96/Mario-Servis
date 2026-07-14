@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { UserRole } from '@karton/shared';
 import { api, ApiRequestError } from './api.ts';
 
-export interface CurrentUser {
+interface CurrentUser {
   id: number;
   name: string;
   email: string;

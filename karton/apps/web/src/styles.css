@@ -495,15 +495,19 @@ textarea:focus { border-color: var(--accent); }
 .status-opt.active { border-color: var(--accent); background: var(--accent-soft); }
 
 /* --- Document chain bar (dvoredna traka) --- */
-.chain-bar { display: flex; gap: 12px; flex-wrap: wrap; }
+.chain-bar { display: flex; gap: 12px; flex-wrap: wrap; margin: 4px 0 22px; }
 .chain-group { display: flex; align-items: stretch; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
 .chain-group-label { align-self: center; font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-faint); padding: 0 6px; writing-mode: vertical-rl; transform: rotate(180deg); }
 .chain-cell { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; min-width: 92px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 7px; background: #f8f9fa; cursor: pointer; text-align: left; }
 .chain-cell:hover:not(:disabled) { border-color: var(--accent); }
 .chain-cell.current { border-color: var(--accent); background: var(--accent-soft); cursor: default; }
 .chain-cell.empty { opacity: .55; cursor: default; background: transparent; border-style: dashed; }
+/* „+ Veži ponudu" — prazan kvadratić koji poziva na akciju (nalog u radu bez ponude) */
+.chain-cell.add { cursor: pointer; background: var(--accent-soft); border-style: dashed; border-color: var(--accent); }
+.chain-cell.add:hover { border-style: solid; }
 .chain-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); }
 .chain-num { font-size: 13px; font-weight: 600; }
+.chain-add { font-size: 13px; font-weight: 700; color: var(--accent); }
 .chain-none { color: var(--ink-faint); }
 
 /* --- Document actions + paper --- */
@@ -674,8 +678,8 @@ textarea:focus { border-color: var(--accent); }
 .card-grid + .card-grid,
 .table-wrap + .card,
 .card + .table-wrap,
-.page > section.card + section.card { margin-top: 16px; }
-.page > .card:not(:first-child) { margin-top: 16px; }
+.page > section.card + section.card { margin-top: 20px; }
+.page > .card:not(:first-child) { margin-top: 20px; }
 .section-h + .card-grid { margin-top: 0; }
 
 /* --- Logo u podešavanjima --- */

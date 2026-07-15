@@ -78,7 +78,8 @@ export function WorkOrders(): React.JSX.Element {
         <table className="data-table">
           <thead><tr>
             <SortableTh field="number" label="Broj" sort={sort} onSort={doSort} />
-            <SortableTh field="plate" label="Vozilo" sort={sort} onSort={doSort} />
+            <SortableTh field="plate" label="Tablica" sort={sort} onSort={doSort} />
+            <th>Vozilo</th>
             <SortableTh field="customer" label="Klijent" sort={sort} onSort={doSort} />
             <SortableTh field="received" label="Prijem" sort={sort} onSort={doSort} />
             <SortableTh field="status" label="Status" sort={sort} onSort={doSort} />
@@ -87,13 +88,14 @@ export function WorkOrders(): React.JSX.Element {
             {result?.data.map((w) => (
               <tr key={w.id} className="clickable" onClick={() => navigate(`/nalozi/${w.id}`)}>
                 <td className="mono strong" data-label="Broj">{w.number}</td>
-                <td data-label="Vozilo"><span className="mono">{w.vehicle.plate ?? '—'}</span> {w.vehicle.make} {w.vehicle.model}</td>
+                <td className="mono" data-label="Tablica">{w.vehicle.plate ?? '—'}</td>
+                <td data-label="Vozilo">{w.vehicle.make} {w.vehicle.model}</td>
                 <td data-label="Klijent">{w.customer.name}</td>
                 <td className="mono" data-label="Prijem">{formatDate(w.receivedOn)}</td>
                 <td data-label="Status"><span className={`badge ${statusClass[w.status]}`}>{labels.workOrderStatus[w.status]}</span></td>
               </tr>
             ))}
-            {!loading && result?.data.length === 0 && <tr><td colSpan={5} className="table-empty">Nema naloga za ovaj filter.</td></tr>}
+            {!loading && result?.data.length === 0 && <tr><td colSpan={6} className="table-empty">Nema naloga za ovaj filter.</td></tr>}
           </tbody>
         </table>
       </div>

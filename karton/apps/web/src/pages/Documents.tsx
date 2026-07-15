@@ -69,6 +69,7 @@ export function Documents(): React.JSX.Element {
             <SortableTh field="number" label="Broj" sort={sort} onSort={doSort} />
             <SortableTh field="type" label="Tip" sort={sort} onSort={doSort} />
             <SortableTh field="customer" label="Klijent" sort={sort} onSort={doSort} />
+            <th>Tablica</th>
             <th>Vozilo</th>
             <SortableTh field="issued" label="Datum" sort={sort} onSort={doSort} />
             <SortableTh field="total" label="Iznos" sort={sort} onSort={doSort} right />
@@ -80,13 +81,14 @@ export function Documents(): React.JSX.Element {
                 <td className="mono strong" data-label="Broj">{d.number}</td>
                 <td data-label="Tip">{docTypeLabel[d.type]}</td>
                 <td data-label="Klijent">{d.customer.name}</td>
-                <td data-label="Vozilo"><span className="mono">{d.vehicle.plate ?? '—'}</span> {d.vehicle.make} {d.vehicle.model}</td>
+                <td className="mono" data-label="Tablica">{d.vehicle.plate ?? '—'}</td>
+                <td data-label="Vozilo">{d.vehicle.make} {d.vehicle.model}</td>
                 <td className="mono" data-label="Datum">{formatDate(d.issuedOn)}</td>
                 <td className="ta-r mono" data-label="Iznos">{money(d.totalAmount)}</td>
                 <td data-label="Status"><span className={`badge ${docStatusClass[d.status]}`}>{docStatusLabel(d.type, d.status)}</span></td>
               </tr>
             ))}
-            {!loading && result?.data.length === 0 && <tr><td colSpan={7} className="table-empty">Nema dokumenata.</td></tr>}
+            {!loading && result?.data.length === 0 && <tr><td colSpan={8} className="table-empty">Nema dokumenata.</td></tr>}
           </tbody>
         </table>
       </div>

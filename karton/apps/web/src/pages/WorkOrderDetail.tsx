@@ -131,13 +131,15 @@ export function WorkOrderDetail(): React.JSX.Element {
         </div>
       </header>
 
-      <DocumentChainBar chain={wo.chain} currentId={-1} />
+      <DocumentChainBar
+        chain={wo.chain}
+        currentId={-1}
+        onAddQuote={editable && !wo.sourceQuoteId ? () => setDialog({ kind: 'linkQuote' }) : undefined}
+      />
 
-      {editable && (
+      {editable && wo.sourceQuoteId && (
         <div className="inline-actions">
-          {wo.sourceQuoteId
-            ? <button className="btn-link" onClick={unlinkQuote} disabled={saving}>Skini ponudu sa naloga</button>
-            : <button className="btn-link" onClick={() => setDialog({ kind: 'linkQuote' })}>Veži postojeću ponudu</button>}
+          <button className="btn-link danger" onClick={unlinkQuote} disabled={saving}>Skini ponudu sa naloga</button>
         </div>
       )}
 

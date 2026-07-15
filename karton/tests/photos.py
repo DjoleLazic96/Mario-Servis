@@ -1,15 +1,39 @@
 """Regresija za slike sa prijema: limit 10, iza prijave, zaključano posle završetka, folder po VIN/poseti."""
-import json, os, subprocess, sys, urllib.request, urllib.error, http.cookiejar
+import atexit, json, os, subprocess, sys, urllib.request, urllib.error, http.cookiejar
 
 sys.stdout.reconfigure(encoding='utf-8')   # Windows konzola je podrazumevano cp1252
 
 BASE = 'http://localhost:3000/api/v1'
+UPLOADS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'uploads')
 jar = http.cookiejar.CookieJar(); op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 anon = urllib.request.build_opener()   # bez sesije
 ok = fail = 0
 
 
 def csrf(): return next((c.value for c in jar if c.name == 'XSRF-TOKEN'), '')
+
+
+def db(sql):
+    return subprocess.run(['docker', 'exec', 'karton-db', 'psql', '-U', 'karton', '-d', 'karton', '-t', '-A', '-c', sql],
+                          capture_output=True, text=True).stdout.strip()
+
+
+def cleanup(woid):
+    """Test završi (zaključa) nalog, pa API ne da brisanje — čistimo direktno u bazi i na disku,
+    inače bi svaki pokretaj ostavio po jedan nalog sa slikama u demou."""
+    for rel in db(f"SELECT file_path FROM work_order_photo WHERE work_order_id={woid}").splitlines():
+        rel = rel.strip()
+        if not rel:
+            continue
+        try: os.remove(os.path.join(UPLOADS, *rel.split('/')))
+        except FileNotFoundError: pass
+        try: os.rmdir(os.path.dirname(os.path.join(UPLOADS, *rel.split('/'))))   # ukloni prazan folder posete
+        except OSError: pass
+    db(f"DELETE FROM work_order_photo WHERE work_order_id={woid};"
+       f"DELETE FROM labor_item WHERE work_order_id={woid};"
+       f"DELETE FROM part_item WHERE work_order_id={woid};"
+       f"DELETE FROM external_service_item WHERE work_order_id={woid};"
+       f"DELETE FROM work_order WHERE id={woid};")
 
 
 def call(m, p, b=None, raw=False):
@@ -49,6 +73,7 @@ vid = vs['data'][0]['id']
 st, wo = call('POST', '/work-orders', {'vehicleId': vid, 'requestedWork': 'Test slika sa prijema.'})
 assert st == 201, wo
 woid = wo['id']
+atexit.register(cleanup, woid)   # obriši test-nalog i slike pri izlazu — bez obzira na ishod
 print(f'=== test nalog {wo["number"]} (vozilo {vid}) ===\n')
 
 print('── Upload i serviranje ──')
@@ -71,7 +96,6 @@ row = subprocess.run(['docker', 'exec', 'karton-db', 'psql', '-U', 'karton', '-d
                       '-c', f'SELECT file_path FROM work_order_photo WHERE id={pid}'],
                      capture_output=True, text=True).stdout.strip()
 check('putanja je vozila/<VIN>/<datum>_<RN>/…', row.startswith('vozila/') and '_RN-' in row, row)
-UPLOADS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'uploads')
 abs_path = os.path.join(UPLOADS, *row.split('/'))
 check('fajl stvarno postoji na disku', os.path.isfile(abs_path), row)
 

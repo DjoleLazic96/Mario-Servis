@@ -101,7 +101,7 @@ const DOC_SELECT = `
     to_char(d.issued_on,'YYYY-MM-DD') issued_on, to_char(d.due_on,'YYYY-MM-DD') due_on,
     to_char(d.valid_until,'YYYY-MM-DD') valid_until, to_char(d.paid_on,'YYYY-MM-DD') paid_on,
     d.payment_method, d.source_document_id, d.source_relation_type, d.note, d.amount_eur, d.version,
-    c.name customer_name, c.type customer_type,
+    c.name customer_name, c.type customer_type, c.tax_id customer_tax_id, c.address customer_address,
     v.vin, v.make, v.model,
     (SELECT rh.plate FROM registration_history rh WHERE rh.vehicle_id=v.id AND rh.valid_to IS NULL LIMIT 1) plate
   FROM document d JOIN customer c ON c.id=d.customer_id JOIN vehicle v ON v.id=d.vehicle_id`;
@@ -109,7 +109,10 @@ const DOC_SELECT = `
 function toDocument(r: any, totalAmount: number): Document {
   return {
     id: r.id, number: r.number, type: r.type, status: r.status, workOrderId: r.work_order_id,
-    customer: { id: r.customer_id, name: r.customer_name, type: r.customer_type },
+    // taxId/address idu na papir (zaglavlje „Kupac") — zato ih dokument nosi, za razliku
+    // od ostalih mesta gde je dovoljno ime.
+    customer: { id: r.customer_id, name: r.customer_name, type: r.customer_type,
+      taxId: r.customer_tax_id, address: r.customer_address },
     vehicle: { id: r.vehicle_id, vin: r.vin, make: r.make, model: r.model, plate: r.plate },
     issuedOn: r.issued_on, dueOn: r.due_on, validUntil: r.valid_until, paidOn: r.paid_on,
     paymentMethod: r.payment_method, sourceDocumentId: r.source_document_id, sourceRelationType: r.source_relation_type,

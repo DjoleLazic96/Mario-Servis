@@ -139,7 +139,8 @@ export function WorkOrderDetail(): React.JSX.Element {
 
       {editable && wo.sourceQuoteId && (
         <div className="inline-actions">
-          <button className="btn-link danger" onClick={unlinkQuote} disabled={saving}>Skini ponudu sa naloga</button>
+          <button className="btn-secondary btn-sm btn-unlink" onClick={unlinkQuote} disabled={saving}
+            title="Nalog ostaje, ponuda se samo odvezuje">↩ Skini ponudu sa naloga</button>
         </div>
       )}
 

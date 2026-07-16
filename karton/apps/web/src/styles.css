@@ -426,7 +426,25 @@ textarea:focus { border-color: var(--accent); }
 /* --- Document actions + paper --- */
 .doc-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .doc-paper { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 26px 30px; max-width: 720px; }
-.doc-meta { display: flex; flex-wrap: wrap; gap: 22px; padding-bottom: 16px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+
+/* --- Zaglavlje papira: izdavalac levo, vrsta i broj desno --- */
+.doc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap;
+  padding-bottom: 16px; border-bottom: 2px solid var(--ink); }
+.doc-issuer { display: flex; gap: 12px; align-items: flex-start; }
+.doc-logo { width: 54px; height: 54px; object-fit: contain; flex: none; }
+.doc-issuer-name { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
+.doc-issuer-lines { font-size: 11.5px; color: var(--ink-soft); line-height: 1.5; margin-top: 2px; }
+.doc-ident { text-align: right; }
+.doc-kind { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-soft); font-weight: 700; }
+.doc-no { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+
+/* --- Kupac / Vozilo --- */
+.doc-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.doc-parties h4 { margin: 0 0 5px; font-size: 10px; text-transform: uppercase; letter-spacing: .09em; color: var(--ink-faint); font-weight: 700; }
+.dp-name { font-size: 14px; font-weight: 700; }
+.dp-line { font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
+
+.doc-meta { display: flex; flex-wrap: wrap; gap: 22px; padding: 14px 0 16px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
 .doc-meta > div { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
 .dm-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-faint); }
 .due-tag { font-size: 11px; color: var(--ink-soft); }
@@ -436,9 +454,21 @@ textarea:focus { border-color: var(--accent); }
 .doc-item-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .doc-item-table td { padding: 5px 0; border-bottom: 1px solid var(--line-soft); }
 .doc-item-table td:first-child { width: 55%; }
+/* Bez ovoga se na telefonu „2 h × 2.500" i iznos slepe jedno za drugo. */
+.doc-item-table td + td { padding-left: 12px; }
+.doc-item-table td:last-child { white-space: nowrap; }
 .doc-total { display: flex; justify-content: space-between; border-top: 2px solid var(--ink); margin-top: 14px; padding-top: 10px; font-weight: 700; font-size: 16px; }
 .doc-eur { text-align: right; font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
 .doc-note { margin-top: 14px; font-size: 13px; color: var(--ink-soft); border-left: 3px solid var(--line); padding-left: 10px; }
+
+/* --- Podaci za uplatu (predračun i račun) --- */
+.doc-pay { margin-top: 20px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 8px; padding: 14px 16px; }
+.doc-pay h4 { margin: 0 0 8px; font-size: 10px; text-transform: uppercase; letter-spacing: .09em; color: var(--accent-deep); font-weight: 700; }
+.doc-pay dl { margin: 0; display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; font-size: 13px; }
+.doc-pay dt { color: var(--ink-soft); font-size: 12px; }
+.doc-pay dd { margin: 0; }
+.doc-foot { margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--line-soft);
+  font-size: 11px; color: var(--ink-faint); text-align: center; }
 
 /* --- Quote items builder --- */
 .quote-items { display: flex; flex-direction: column; gap: 8px; }
@@ -446,9 +476,16 @@ textarea:focus { border-color: var(--accent); }
 .quote-row input, .quote-row select { padding: 8px 10px; font-size: 13px; }
 
 @media print {
-  .sidebar, .doc-actions, .chain-bar, .link-back, .page-head button { display: none !important; }
+  .sidebar, .doc-actions, .chain-bar, .link-back, .page-head button,
+  .inline-actions, .page-head .badge { display: none !important; }
   .app-main { padding: 0; }
   .doc-paper { border: none; max-width: none; padding: 0; }
+  /* Zeleni okvir „Podaci za uplatu" mora da se odštampa i na crno-belom štampaču —
+     browseri podrazumevano izostavljaju pozadine. */
+  .doc-pay { -webkit-print-color-adjust: exact; print-color-adjust: exact; break-inside: avoid; }
+  .doc-head, .doc-parties, .doc-rubric { break-inside: avoid; }
+  /* Naslov strane („Račun R-2026-0001") je već u zaglavlju papira — ne dupliramo ga. */
+  .page-head h1 { display: none; }
 }
 
 /* --- Dashboard --- */
@@ -645,8 +682,12 @@ textarea:focus { border-color: var(--accent); }
 
 /* --- Sitne akcije ispod trake dokumenata --- */
 .inline-actions {
-  margin: 10px 0 0;
+  margin: -12px 0 18px;
 }
+/* Skidanje ponude je povratna, bezopasna radnja — dugme je diskretno, ne crveno
+   upozorenje. Crvena se čuva za brisanje. */
+.btn-unlink { color: var(--ink-soft); }
+.btn-unlink:hover:not(:disabled) { color: var(--danger); border-color: var(--danger); }
 
 .hint.danger {
   color: var(--danger);
@@ -944,6 +985,24 @@ textarea:focus { border-color: var(--accent); }
   .doc-paper,
   .pl-sheet {
     overflow-x: auto;
+  }
+  .doc-paper {
+    padding: 18px 16px;
+  }
+  /* Kupac i Vozilo jedno ispod drugog; zaglavlje takođe. */
+  .doc-parties {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .doc-ident {
+    text-align: left;
+  }
+  .doc-pay dl {
+    grid-template-columns: 1fr;
+    gap: 1px 0;
+  }
+  .doc-pay dt {
+    margin-top: 6px;
   }
 }
 

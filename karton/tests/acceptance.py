@@ -77,6 +77,31 @@ assert st == 200, 'admin prijava pala'
 uemail = 'radnik-test@karton.local'
 
 
+def _obrisi_test_podatke():
+    """Briše klijenta/vozilo/naloge/dokumente koje ovaj test napravi.
+    Ranije je svaki pokretaj ostavljao po jednog „Primopredaja DOO N" sa celim lancem —
+    nakupilo se i preneslo čak i na server pri prvom prenosu."""
+    db("""
+      BEGIN;
+      UPDATE work_order SET source_quote_id=NULL WHERE customer_id IN (SELECT id FROM customer WHERE name LIKE 'Primopredaja DOO%');
+      DELETE FROM document_item WHERE document_id IN (SELECT id FROM document WHERE customer_id IN (SELECT id FROM customer WHERE name LIKE 'Primopredaja DOO%'));
+      DELETE FROM document WHERE customer_id IN (SELECT id FROM customer WHERE name LIKE 'Primopredaja DOO%');
+      DELETE FROM labor_item WHERE work_order_id IN (SELECT id FROM work_order WHERE customer_id IN (SELECT id FROM customer WHERE name LIKE 'Primopredaja DOO%'));
+      DELETE FROM part_item WHERE work_order_id IN (SELECT id FROM work_order WHERE customer_id IN (SELECT id FROM customer WHERE name LIKE 'Primopredaja DOO%'));
+      DELETE FROM external_service_item WHERE work_order_id IN (SELECT id FROM work_order WHERE customer_id IN (SELECT id FROM customer WHERE name LIKE 'Primopredaja DOO%'));
+      DELETE FROM work_order_photo WHERE work_order_id IN (SELECT id FROM work_order WHERE customer_id IN (SELECT id FROM customer WHERE name LIKE 'Primopredaja DOO%'));
+      DELETE FROM work_order WHERE customer_id IN (SELECT id FROM customer WHERE name LIKE 'Primopredaja DOO%');
+      DELETE FROM appointment_reminder WHERE appointment_id IN (SELECT id FROM appointment WHERE customer_id IN (SELECT id FROM customer WHERE name LIKE 'Primopredaja DOO%'));
+      DELETE FROM appointment WHERE customer_id IN (SELECT id FROM customer WHERE name LIKE 'Primopredaja DOO%');
+      DELETE FROM registration_history WHERE vehicle_id IN (SELECT vehicle_id FROM ownership_history WHERE customer_id IN (SELECT id FROM customer WHERE name LIKE 'Primopredaja DOO%'));
+      DELETE FROM ownership_history WHERE customer_id IN (SELECT id FROM customer WHERE name LIKE 'Primopredaja DOO%');
+      DELETE FROM vehicle WHERE vin LIKE 'ACPT%' AND id NOT IN (SELECT vehicle_id FROM ownership_history);
+      DELETE FROM customer_contact WHERE customer_id IN (SELECT id FROM customer WHERE name LIKE 'Primopredaja DOO%');
+      DELETE FROM customer WHERE name LIKE 'Primopredaja DOO%';
+      COMMIT;
+    """)
+
+
 def _obrisi_test_korisnika():
     # Zapisi vise o korisniku (created_by u 12+ tabela), pa ih prvo prebacimo na admina.
     db("""
@@ -102,8 +127,12 @@ def _obrisi_test_korisnika():
     """)
 
 
+# Redosled je bitan: prvo podaci (vise o korisniku), pa tek onda korisnik.
+# atexit izvršava obrnutim redom registracije → registrujemo korisnika PRE podataka.
 atexit.register(_obrisi_test_korisnika)
-_obrisi_test_korisnika()   # ako je prethodni pokušaj pukao na pola
+atexit.register(_obrisi_test_podatke)
+_obrisi_test_podatke()     # ako je prethodni pokušaj pukao na pola
+_obrisi_test_korisnika()
 A('POST', '/users', {'name': 'Radnik Test', 'email': uemail, 'password': 'radnik123', 'role': 'user'})
 U('GET', '/settings')
 st, _ = U('POST', '/auth/login', {'email': uemail, 'password': 'radnik123'})

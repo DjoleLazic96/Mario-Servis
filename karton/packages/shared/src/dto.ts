@@ -60,6 +60,9 @@ export interface CustomerRef {
   id: number;
   name: string;
   type: CustomerType;
+  /** Popunjeno samo tamo gde treba na papiru (ponuda/predračun/račun). */
+  taxId?: string | null;
+  address?: string | null;
 }
 
 export interface Vehicle {

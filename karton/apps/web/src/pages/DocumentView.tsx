@@ -16,10 +16,18 @@ const RUBRICS: { key: DocumentItem['itemType']; title: string }[] = [
 
 type Dialog = 'convert' | 'markPaid' | 'unmarkPaid' | 'edit' | 'fixPayment' | null;
 
+/** Podaci izdavaoca za zaglavlje papira — iz Podešavanja. */
+interface Shop {
+  shopName: string; address: string | null; taxId: string | null; phone: string | null; logo: string | null;
+  companyId: string | null; bankAccount: string | null; bankName: string | null;
+}
+
 export function DocumentView(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [shop, setShop] = useState<Shop | null>(null);
+  useEffect(() => { void api.get<Shop>('/settings').then(setShop).catch(() => setShop(null)); }, []);
   const [doc, setDoc] = useState<DocumentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -113,6 +121,47 @@ export function DocumentView(): React.JSX.Element {
 
       {/* Papir dokumenta */}
       <div className="doc-paper">
+        {/* Zaglavlje: ko izdaje, šta izdaje, kome i za koje vozilo.
+            Bez ovoga je papir bio samo spisak stavki — mušterija ne zna ni od koga je. */}
+        <header className="doc-head">
+          <div className="doc-issuer">
+            {shop?.logo && <img className="doc-logo" src={shop.logo} alt="" />}
+            <div>
+              <div className="doc-issuer-name">{shop?.shopName ?? ''}</div>
+              <div className="doc-issuer-lines">
+                {shop?.address && <div>{shop.address}</div>}
+                <div>
+                  {shop?.taxId && <>PIB {shop.taxId}</>}
+                  {shop?.taxId && shop?.companyId && ' · '}
+                  {shop?.companyId && <>MB {shop.companyId}</>}
+                </div>
+                {shop?.phone && <div>Tel {shop.phone}</div>}
+              </div>
+            </div>
+          </div>
+          <div className="doc-ident">
+            <div className="doc-kind">{docTypeLabel[doc.type]}</div>
+            <div className="doc-no mono">{doc.number}</div>
+          </div>
+        </header>
+
+        <div className="doc-parties">
+          <section>
+            <h4>Kupac</h4>
+            <div className="dp-name">{doc.customer.name}</div>
+            {doc.customer.address && <div className="dp-line">{doc.customer.address}</div>}
+            {doc.customer.taxId && (
+              <div className="dp-line mono">{doc.customer.type === 'company' ? 'PIB' : 'JMBG'} {doc.customer.taxId}</div>
+            )}
+          </section>
+          <section>
+            <h4>Vozilo</h4>
+            <div className="dp-name">{doc.vehicle.make} {doc.vehicle.model}</div>
+            {doc.vehicle.plate && <div className="dp-line mono">{doc.vehicle.plate}</div>}
+            <div className="dp-line mono muted">VIN {doc.vehicle.vin}</div>
+          </section>
+        </div>
+
         <div className="doc-meta">
           <div><span className="dm-label">Datum izdavanja</span><span className="mono">{formatDate(doc.issuedOn)}</span></div>
           {doc.type === 'invoice'
@@ -149,6 +198,27 @@ export function DocumentView(): React.JSX.Element {
         </div>
         {doc.amountEur != null && <div className="doc-eur">≈ {money(doc.amountEur)} EUR <span className="muted">(informativno)</span></div>}
         {doc.note && <p className="doc-note">{doc.note}</p>}
+
+        {/* Podaci za uplatu — samo na papirima po kojima se PLAĆA (predračun i račun),
+            i samo dok uplata NIJE stigla. Na plaćenom računu bi tražiti uplatu bilo
+            besmisleno; na otkazanom/isteklom nema šta da se plaća. */}
+        {(doc.type === 'invoice' || doc.type === 'proforma')
+          && (doc.status === 'unpaid' || doc.status === 'valid')
+          && shop?.bankAccount && (
+          <section className="doc-pay">
+            <h4>Podaci za uplatu</h4>
+            <dl>
+              <dt>Primalac</dt><dd>{shop.shopName}{shop.address ? `, ${shop.address}` : ''}</dd>
+              <dt>Račun</dt><dd className="mono strong">{shop.bankAccount}{shop.bankName ? ` · ${shop.bankName}` : ''}</dd>
+              <dt>Poziv na broj</dt><dd className="mono">{doc.number}</dd>
+              <dt>Iznos</dt><dd className="mono strong">{money(doc.totalAmount)} RSD</dd>
+            </dl>
+          </section>
+        )}
+
+        <footer className="doc-foot">
+          Dokument je izdat elektronski i punovažan je bez pečata i potpisa.
+        </footer>
       </div>
 
       {/* Modali akcija */}

@@ -8,6 +8,7 @@ import { sortRows } from '../lib/sortRows.ts';
 
 interface SettingsData {
   shopName: string; address: string | null; taxId: string | null; phone: string | null; logo: string | null;
+  companyId: string | null; bankAccount: string | null; bankName: string | null;
   smtpHost: string | null; smtpPort: number | null; smtpUsername: string | null; senderEmail: string | null;
   hasSmtpPassword: boolean;
   workHoursFrom: string; workHoursTo: string; defaultValidityDays: number; reminderSendTime: string; pageSize: number; version: number;
@@ -97,9 +98,18 @@ function ServiceSettings(): React.JSX.Element {
         <label className="field"><span>Naziv</span><input value={s.shopName} onChange={(e) => set({ shopName: e.target.value })} required /></label>
         <div className="form-2col">
           <label className="field"><span>Adresa</span><input value={s.address ?? ''} onChange={(e) => set({ address: e.target.value })} /></label>
-          <label className="field"><span>PIB</span><input value={s.taxId ?? ''} onChange={(e) => set({ taxId: e.target.value })} /></label>
+          <label className="field"><span>Telefon</span><input value={s.phone ?? ''} onChange={(e) => set({ phone: e.target.value })} /></label>
         </div>
-        <label className="field"><span>Telefon</span><input value={s.phone ?? ''} onChange={(e) => set({ phone: e.target.value })} /></label>
+        <div className="form-2col">
+          <label className="field"><span>PIB</span><input value={s.taxId ?? ''} onChange={(e) => set({ taxId: e.target.value })} /></label>
+          <label className="field"><span>Matični broj</span><input value={s.companyId ?? ''} onChange={(e) => set({ companyId: e.target.value })} /></label>
+        </div>
+        <div className="form-2col">
+          <label className="field"><span>Tekući račun <small className="hint">— na račun, da klijent ima gde da uplati</small></span>
+            <input value={s.bankAccount ?? ''} onChange={(e) => set({ bankAccount: e.target.value })} placeholder="265-1110310008045-17" /></label>
+          <label className="field"><span>Banka</span>
+            <input value={s.bankName ?? ''} onChange={(e) => set({ bankName: e.target.value })} placeholder="Raiffeisen banka" /></label>
+        </div>
 
         <div className="field">
           <span>Logo <small className="hint">(PNG/JPEG/SVG, do 400 KB — štampa se na prijemnom listu)</small></span>

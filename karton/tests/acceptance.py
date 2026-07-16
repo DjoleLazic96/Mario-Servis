@@ -2,6 +2,7 @@
 Acceptance test za V1 — prati tačno scenario iz primopredaje.
 Kreira sopstvene entitete (svež klijent/vozilo), ne oslanja se na zatečeno stanje.
 """
+import atexit
 import json
 import sys
 
@@ -71,9 +72,38 @@ A('GET', '/settings')
 st, _ = A('POST', '/auth/login', {'email': 'admin', 'password': 'admin'})
 assert st == 200, 'admin prijava pala'
 
-# napravi običnog korisnika (za test rola) i prijavi ga
-n = len(A('GET', '/users')[1])
-uemail = f'radnik{n}@karton.local'
+# Običan korisnik (za proveru rola). FIKSNA adresa + čišćenje na izlazu — ranije je
+# svaki pokretaj ostavljao po jednog „Radnik Test" u bazi (radnik1, radnik2, …).
+uemail = 'radnik-test@karton.local'
+
+
+def _obrisi_test_korisnika():
+    # Zapisi vise o korisniku (created_by u 12+ tabela), pa ih prvo prebacimo na admina.
+    db("""
+      DO $$
+      DECLARE r record; adm int; test int;
+      BEGIN
+        SELECT id INTO test FROM app_user WHERE email='radnik-test@karton.local';
+        IF test IS NULL THEN RETURN; END IF;
+        SELECT id INTO adm FROM app_user WHERE email='admin';
+        IF adm IS NULL THEN RETURN; END IF;
+        FOR r IN
+          SELECT tc.table_name t, kcu.column_name c
+          FROM information_schema.table_constraints tc
+          JOIN information_schema.key_column_usage kcu ON kcu.constraint_name=tc.constraint_name
+          JOIN information_schema.constraint_column_usage ccu ON ccu.constraint_name=tc.constraint_name
+          WHERE tc.constraint_type='FOREIGN KEY' AND ccu.table_name='app_user' AND tc.table_schema='public'
+        LOOP
+          EXECUTE format('UPDATE %I SET %I=%s WHERE %I=%s', r.t, r.c, adm, r.c, test);
+        END LOOP;
+        DELETE FROM session;
+        DELETE FROM app_user WHERE id=test;
+      END $$;
+    """)
+
+
+atexit.register(_obrisi_test_korisnika)
+_obrisi_test_korisnika()   # ako je prethodni pokušaj pukao na pola
 A('POST', '/users', {'name': 'Radnik Test', 'email': uemail, 'password': 'radnik123', 'role': 'user'})
 U('GET', '/settings')
 st, _ = U('POST', '/auth/login', {'email': uemail, 'password': 'radnik123'})

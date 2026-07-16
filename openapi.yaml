@@ -789,6 +789,40 @@ paths:
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { description: 'INVOICE_NOT_PAID — račun nije plaćen' }
 
+  /settings/test-email:
+    post:
+      tags: [settings]
+      summary: 'ADMIN: pošalji probni mejl kroz SAČUVANA SMTP podešavanja'
+      description: >
+        Šalje istim putem kao pravi podsetnik (SMTP iz tabele `settings`, uz `.env` kao rezervu),
+        da se SMTP ne podešava naslepo. Greška mail servera se vraća kakva jeste.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to]
+              properties:
+                to: { type: string, format: email }
+      responses:
+        '200':
+          description: Poslato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sentTo: { type: string }
+                  host: { type: string }
+                  port: { type: integer }
+                  source:
+                    type: string
+                    enum: [settings, env]
+                    description: '`env` znači da SMTP host nije upisan u Podešavanjima'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: 'SMTP_FAILED — slanje nije uspelo; poruka nosi odgovor mail servera' }
+
   /settings/logo:
     put:
       tags: [settings]

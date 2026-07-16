@@ -125,7 +125,13 @@ Slikanje **samo pri prijemu** vozila (ne i pri povratu) — dokaz stanja, zašti
 
 Default vreme: 09:00 dan pre (podešavanje). Statusi: `scheduled` / `processing` / `sent` / `failed` (greška slanja, ide u retry) / `skipped` (svesno preskočen — nije greška). Čuva se: uključen, planirano vreme, status, broj pokušaja, poslednji pokušaj, poslednja greška, vreme uspešnog slanja. Retry (samo za `failed`) sa rastućim razmakom (5 → 15 → 60 → 180 → 360 min, max 5 pokušaja). Šablon (izmenljiv u fazi 2, u v1 konstanta u kodu): naslov „Podsetnik za zakazani termin — [Naziv servisa]"; sadržaj: ime klijenta, naziv servisa, datum, vreme, vozilo, tablica, telefon servisa, napomena da je poruka automatska; pošiljalac: naziv servisa iz Podešavanja.
 
-> **Napomena o SMTP-u (tehnički dug):** slanje trenutno koristi `SMTP_HOST`/`SMTP_PORT` iz `.env` bez autentifikacije (lokalno: Mailpit). SMTP polja iz Podešavanja se čuvaju ali ih worker još ne koristi — obavezno dovezati pre produkcije.
+**SMTP (rešeno 16.07.2026):** slanje koristi SMTP iz **Podešavanja** (čita se pri svakom krugu, pa izmena važi bez restarta). Prijava (`auth`) se šalje kad su upisani korisnik i lozinka; TLS se bira po portu — 465 odmah šifrovano, 587 STARTTLS (obavezan), ostalo bez TLS-a (lokalni Mailpit). Ako u Podešavanjima nema hosta, pada na `SMTP_*` iz `.env`.
+
+Lozinka se u bazi čuva **šifrovano** (AES-256-GCM, ključ `SECRETS_KEY` iz `.env` — nije u bazi); API je nikad ne vraća, samo `hasSmtpPassword`. Ako se ključ izgubi, lozinka se ne može pročitati i ukuca se ponovo.
+
+Dugme **„Pošalji probni mejl"** u Podešavanjima šalje istim putem kao pravi podsetnik i vraća grešku mail servera kakva jeste (`SMTP_FAILED`) — da se SMTP ne podešava naslepo.
+
+> **Gmail:** traži App Password (nalog mora imati 2FA), port 587. Gmail prepisuje adresu pošiljaoca na onu kojom se prijavljuje — ako se `senderEmail` razlikuje od korisnika, mušterija ipak vidi korisničku adresu (osim verifikovanog aliasa).
 
 ### 4.12 Prihod i naplata (odluka 20)
 Prihod = isključivo računi `paid`, po `paid_on`. Ponude i predračuni nikad ne ulaze. Nenaplaćeno = zbir računa `unpaid`. `due_on` je informativan (sortiranje, „kasni X dana", „dospeva…"), nikad ne menja status.
@@ -274,6 +280,7 @@ Model: `{ "code": "...", "message": "...", "fields": { ... }?, "warnings": [ ...
 | 422 | `BACKUP_UNUSABLE` | vraćanje iz backupa koji nije uspešno završen |
 | 500 | `BACKUP_FAILED` | `pg_dump` nije uspeo (detalj u `backup_run.error`) |
 | 500 | `RESTORE_FAILED` | `psql` nije uspeo; baza ostaje netaknuta (vraćanje je u transakciji) |
+| 422 | `SMTP_FAILED` | „Pošalji probni mejl" nije uspeo; poruka nosi odgovor mail servera |
 | 422 | `WORK_ORDER_CANCELLED` | predračun iz otkazanog naloga (BR-14) |
 | 422 | `ACTIVE_INVOICE_EXISTS` | nalog već ima `unpaid`/`paid` račun — novo fakturisanje ili novi predračun blokirani (BR-18, BR-40) |
 | 422 | `INVOICE_NOT_UNPAID` | naplata/ispravka računa koji nije `unpaid` |

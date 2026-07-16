@@ -66,7 +66,12 @@ karton/
 - **Lokacija:** `BACKUP_DIR` u `.env` (podrazumevano `./backups`, sidreno na koren monorepoa). Direktorijum je u `.gitignore`.
 - ⚠️ **Šta backup NE pokriva: fotografije vozila.** One žive na disku (`UPLOADS_DIR`, podrazumevano `./uploads`) i štite se **odvojenom inkrementalnom sinhronizacijom** (rsync na offsite odredište, npr. Hetzner Storage Box). Razlog: slike se nikad ne menjaju, pa bi ih bilo besmisleno pakovati u svaki dnevni backup. **Na VPS-u ovo MORA da se podesi** — inače gubitak diska znači gubitak slika. Aplikacija to izričito piše na Backup ekranu.
 
-**11. SMTP / email.** ⚠️ **Važno — trenutno ponašanje:** worker koji stvarno šalje podsetnike čita **`SMTP_HOST` i `SMTP_PORT` iz `.env`** i šalje **bez autentifikacije** (podrazumevano Mailpit `localhost:1025`). SMTP polja u **Podešavanja → Servis** (host/port/korisnik/lozinka/pošiljalac) se **čuvaju u bazi ali ih slanje još ne koristi** — to je poznati tehnički dug (vidi t. 17). Za produkciju sa pravim mejlom trenutno se konfiguriše `.env`, a za autentifikovani SMTP treba dovezati `auth` u worker.
+**11. SMTP / email.** Slanje koristi SMTP iz **Podešavanja → Servis** (host, port, korisnik, lozinka, pošiljalac). Čita se pri svakom krugu, pa izmena važi odmah — bez restarta. Prijava se šalje kad su upisani korisnik i lozinka; TLS se bira po portu (**465** odmah šifrovano, **587** STARTTLS obavezan, ostalo bez TLS-a — lokalni Mailpit). Ako host u Podešavanjima nije upisan, pada na `SMTP_*` iz `.env`.
+
+- **Lozinka se čuva šifrovano** (AES-256-GCM). Ključ je `SECRETS_KEY` iz `.env` i **nije u bazi** — backup baze sam po sebi ne otkriva lozinku. Ako se ključ izgubi, lozinka se ne može pročitati; ukuca se ponovo u Podešavanjima. **Ključ čuvaj uz backup plan.**
+- API nikad ne vraća lozinku — samo `hasSmtpPassword: true/false`.
+- **„Pošalji probni mejl"** (dugme u Podešavanjima) šalje istim putem kao pravi podsetnik i prikazuje odgovor mail servera. Koristi **sačuvana** podešavanja — prvo „Sačuvaj", pa test.
+- **Gmail:** port **587**, korisnik = cela adresa, lozinka = **App Password** (nalog mora imati 2FA; obična lozinka ne radi). Gmail **prepisuje** adresu pošiljaoca na onu kojom se prijavljuje — ako se „Email pošiljaoca" razlikuje od korisnika, mušterija ipak vidi korisničku adresu.
 
 **Pravila podsetnika (potvrđena i ugrađena, spec §4.11):**
 1. Klijent može bez emaila; email se dodaje naknadno; može ih imati više (prvi = primarni).
@@ -102,7 +107,8 @@ Sve četiri stavke su dokazane end-to-end (worker + Mailpit).
 - **`pnpm -r typecheck`** — statička TypeScript provera nad api/worker/web/shared.
 
 **17. Poznata ograničenja / tehnički dug.**
-- **SMTP iz Podešavanja se ne koristi za slanje** (worker čita `.env`, bez `auth`). Vidi t. 11. — *najznačajniji dug.*
+- ~~SMTP iz Podešavanja se ne koristi za slanje~~ — **rešeno 16.07.2026** (worker čita Podešavanja, `auth` + TLS, lozinka šifrovana, dugme „Pošalji probni mejl"). Vidi t. 11.
+- **`admin` / `admin`** je namerno slaba demo prijava — **zameniti pravim nalogom i jakom lozinkom pre prave upotrebe.**
 - **Sinhronizacija fotografija na VPS-u nije podešena** (ops korak, ne kod): `rsync` iz `UPLOADS_DIR` na offsite odredište. Bez toga slike nisu zaštićene. Vidi t. 10.
 - **Čitač saobraćajne** je lokalni desktop helper (PC/SC, `127.0.0.1`); nije deo VPS-a i radi samo na mašini sa fizičkim čitačem.
 - **Fontovi** su sistemski (self-host odložen dok ne stigne Marijev logo/brend).
@@ -148,7 +154,7 @@ Ključni dokazi: interna stavka ostaje na nalogu ali NE ide na predračun/račun
 2. ☐ Ugasiti/obrisati `admin` / `admin`.
 3. ☐ Obrisati test podatke (test klijenti, vozila, nalozi, dokumenti).
 4. ☐ Postaviti pravi logo (Podešavanja → Servis → Logo).
-5. ☐ Podesiti SMTP — **trenutno kroz `.env`** (`SMTP_HOST`/`SMTP_PORT`); za autentifikovani server prvo dovezati `auth` u worker (t. 17).
+5. ☐ Podesiti SMTP u **Podešavanja → Servis** (Gmail: port 587, App Password) i potvrditi dugmetom **„Pošalji probni mejl"** — mora stići pravi mejl, ne verovati na reč.
 6. ☐ Backup: `BACKUP_DIR` na trajnom disku + offsite kopija + retencija (rotacija starih dumpova).
 7. ☐ Proveriti da restore radi na svežoj bazi (na staging-u, ne na produkciji).
 8. ☐ Proveriti da se aplikacija podigne posle restarta servera (systemd/pm2 auto-start).
@@ -164,7 +170,7 @@ Ključni dokazi: interna stavka ostaje na nalogu ali NE ide na predračun/račun
 1. **Server:** VPS (Ubuntu 24.04), Node 24, pnpm, PostgreSQL 18 (native ili Docker), reverse proxy (Caddy ili nginx) sa **TLS** — obavezno za `Secure` kolačić i PWA.
 2. **Baza:** kreiraj bazu i app korisnika; postavi `DATABASE_URL`. Bez javno izloženog porta.
 3. **Kod:** `git clone`, `pnpm install`, build weba: `pnpm --filter @karton/web build` (statika u `apps/web/dist`).
-4. **`.env` (produkcija):** `NODE_ENV=production`, `APP_BASE_URL=https://domen` (odatle QR na prijemnom listu), **jak `SESSION_SECRET` (≥32)**, `SMTP_*`, `BACKUP_DIR` na trajnom disku, `TZ=UTC`.
+4. **`.env` (produkcija):** `NODE_ENV=production`, `APP_BASE_URL=https://domen` (odatle QR na prijemnom listu), **jak `SESSION_SECRET` (≥32)**, **jak `SECRETS_KEY` (≥32, čuvati uz backup — bez njega se SMTP lozinka ne čita)**, `BACKUP_DIR` na trajnom disku, `TZ=UTC`. `SMTP_*` je samo rezerva — pravi SMTP se unosi kroz Podešavanja.
 5. **Baza — šema i admin:** `pnpm migrate`, pa `pnpm seed` → **odmah** napravi pravog admina i ugasi demo (checklista 1–2).
 6. **Procesi:** API i worker pod systemd/pm2, auto-restart, UTC, restart posle reboota.
 7. **Web + proxy:** proxy servira `dist`, prosleđuje `/api` na API; TLS terminacija na proxy-ju.

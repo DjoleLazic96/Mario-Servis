@@ -2,10 +2,13 @@ import { z } from 'zod';
 import { hash } from '@node-rs/argon2';
 import type { FastifyInstance } from 'fastify';
 import { pool } from '../db.ts';
+import { config } from '../config.ts';
 import { sendError } from '../http.ts';
 import { requireAuth, requireAdmin } from '../auth-guards.ts';
 import { writeAudit } from '../audit.ts';
 import { invalidateSettingsCache } from '../settings-cache.ts';
+import { encryptSecret } from '@karton/shared/crypto';
+import { buildTransport, fromHeader, loadSmtp } from '@karton/shared/mailer';
 
 const TIME = z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/);
 
@@ -56,20 +59,19 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
     return toSettings(rows[0]);
   });
 
-  // PAŽNJA (SMTP): smtp_* se ovde samo ČUVA — worker ih ne čita, nego šalje preko
-  // SMTP_* iz .env. Lozinka se pritom upisuje u čistom tekstu. Pre produkcije oboje mora
-  // da se sredi (worker da čita iz baze + šifrovanje lozinke), inače Mario podesi SMTP
-  // u aplikaciji i ništa se ne desi — a to ne puca, samo tiho ne radi.
   app.patch('/settings', { preHandler: requireAdmin }, async (request, reply) => {
     const b = settingsSchema.parse(request.body);
     const cur = await pool.query(SEL);
     if (cur.rows[0]!.version !== b.version) return sendError(reply, 409, 'VERSION_CONFLICT', 'Podešavanja su izmenjena u međuvremenu.');
+    // Lozinka se ŠIFRUJE pre upisa (ključ je SECRETS_KEY iz .env, nije u bazi).
+    // Prazno polje = „ne diram lozinku" → coalesce zadržava postojeću.
+    const password = b.smtpPassword ? encryptSecret(b.smtpPassword, config.SECRETS_KEY) : null;
     await pool.query(
       `UPDATE settings SET shop_name=$1, address=$2, tax_id=$3, phone=$4, smtp_host=$5, smtp_port=$6, smtp_username=$7,
         smtp_password=coalesce($8, smtp_password), sender_email=$9, work_hours_from=$10, work_hours_to=$11,
         default_validity_days=$12, reminder_send_time=$13, page_size=$14, version=version+1, updated_at=now() WHERE id=1`,
       [b.shopName, b.address ?? null, b.taxId ?? null, b.phone ?? null, b.smtpHost ?? null, b.smtpPort ?? null,
-        b.smtpUsername ?? null, b.smtpPassword || null, b.senderEmail ?? null, b.workHoursFrom, b.workHoursTo,
+        b.smtpUsername ?? null, password, b.senderEmail ?? null, b.workHoursFrom, b.workHoursTo,
         b.defaultValidityDays, b.reminderSendTime, b.pageSize]);
     invalidateSettingsCache();
     const { rows } = await pool.query(SEL);
@@ -77,6 +79,35 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
     await writeAudit({ userId: request.currentUser!.id, entityType: 'settings', entityId: 1, action: 'settings.changed',
       oldValue: toSettings(cur.rows[0]), newValue: toSettings(rows[0]) });
     return toSettings(rows[0]);
+  });
+
+  /**
+   * POST /settings/test-email — „Pošalji probni mejl".
+   * Bez ovoga se SMTP podešava naslepo: greška bi se videla tek kad podsetnik tiho ne stigne.
+   * Koristi ISTI put kao pravi podsetnik (loadSmtp + buildTransport), da test ne laže.
+   */
+  app.post('/settings/test-email', { preHandler: requireAdmin }, async (request, reply) => {
+    const b = z.object({ to: z.string().email('Unesite ispravnu email adresu.') }).parse(request.body);
+    const smtp = await loadSmtp(pool, config.SECRETS_KEY);
+    try {
+      await buildTransport(smtp).sendMail({
+        from: fromHeader(smtp),
+        to: b.to,
+        subject: `Probni mejl — ${smtp.shopName}`,
+        text: `Ovo je probni mejl iz aplikacije Karton.\n\n`
+          + `Ako ga vidite, slanje podsetnika radi.\n\n`
+          + `Server: ${smtp.host}:${smtp.port}\n`
+          + `Prijava: ${smtp.username ?? '(bez prijave)'}\n`
+          + `Izvor podešavanja: ${smtp.source === 'settings' ? 'ekran Podešavanja' : '.env (rezerva)'}\n`,
+      });
+    } catch (err) {
+      // Poruka provajdera je ovde najkorisnija stvar — vraćamo je kakva jeste.
+      const msg = err instanceof Error ? err.message : String(err);
+      return sendError(reply, 422, 'SMTP_FAILED', `Slanje nije uspelo: ${msg}`);
+    }
+    await writeAudit({ userId: request.currentUser!.id, entityType: 'settings', entityId: 1, action: 'settings.changed',
+      newValue: { probniMejl: b.to, smtpHost: smtp.host, izvor: smtp.source } });
+    return { sentTo: b.to, host: smtp.host, port: smtp.port, source: smtp.source };
   });
 
   // PUT /settings/logo — data URI, do 400 KB

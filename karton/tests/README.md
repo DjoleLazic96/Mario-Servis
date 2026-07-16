@@ -63,6 +63,22 @@ python tests/reminders.py
 
 Nije destruktivan — svoj termin/klijenta/vozilo pravi i briše sam.
 
+## `smtp.py` — šifrovanje lozinke i slanje kroz Podešavanja (13 provera)
+
+Regresija za stanje pre 16.07.2026: worker je slao preko `SMTP_*` iz `.env` i **potpuno
+ignorisao ekran Podešavanja**, a lozinku čuvao u čistom tekstu. Kvar se nije video —
+ništa ne pukne, podsetnik prosto ne stigne.
+
+Test tvrdi: lozinka je u bazi šifrovana (AES-GCM `v1:…`), API je nikad ne vraća, probni
+mejl ide kroz **Podešavanja** (ne `.env`), stvarno stigne u Mailpit sa ispravnim
+pošiljaocem, a neispravan SMTP daje `422 SMTP_FAILED` sa porukom provajdera.
+
+```bash
+python tests/smtp.py
+```
+
+Traži podignut Mailpit (`docker compose up -d`). Vraća SMTP podešavanja na zatečeno.
+
 ## Statička provera
 
 ```bash

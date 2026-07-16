@@ -1,8 +1,8 @@
 process.env.TZ = 'UTC';
 import pg from 'pg';
-import nodemailer from 'nodemailer';
 import { resolve } from 'node:path';
 import { runBackupWithEvidence } from '@karton/shared/backup';
+import { buildTransport, fromHeader, loadSmtp } from '@karton/shared/mailer';
 
 /**
  * Worker (odvojen proces, teh. preporuka §5): zakazani poslovi.
@@ -10,16 +10,17 @@ import { runBackupWithEvidence } from '@karton/shared/backup';
  */
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
-// PAŽNJA: SMTP se čita iz .env, a NE iz Podešavanja u aplikaciji — što god Mario tamo
-// ukuca, ovde se ne koristi. Nema ni autentikacije (`auth`) ni TLS-a (`secure: false`),
-// pa ovo radi samo sa lokalnim Mailpit-om. Pre produkcije: čitati smtp_* iz tabele
-// settings, dodati auth i secure prema portu (465 = odmah TLS, 587 = STARTTLS).
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST ?? 'localhost',
-  port: Number(process.env.SMTP_PORT ?? 1025),
-  secure: false,
-});
-const SENDER = process.env.SENDER_EMAIL ?? 'servis@localhost';
+// SMTP se čita iz Podešavanja pri svakom slanju (pa izmena u aplikaciji odmah važi,
+// bez restarta workera). Ako host tamo nije upisan, `loadSmtp` pada na SMTP_* iz .env.
+function requireSecretsKey(): string {
+  const k = process.env.SECRETS_KEY;
+  if (!k || k.length < 32) {
+    console.error('SECRETS_KEY nedostaje ili je kraći od 32 znaka — bez njega se SMTP lozinka ne može pročitati.');
+    process.exit(1);
+  }
+  return k;
+}
+const SECRETS_KEY = requireSecretsKey();
 
 const RETRY_BACKOFF_MIN = [5, 15, 60, 180, 360]; // rastući razmak, max 5 pokušaja (BR-30)
 
@@ -48,6 +49,11 @@ async function sendReminders(): Promise<void> {
       await client.query(`UPDATE appointment_reminder SET send_status='processing' WHERE id=$1`, [r.id]);
     }
     await client.query('COMMIT');
+    if (due.rows.length === 0) return;
+
+    // Svež SMTP za svaki krug — izmena u Podešavanjima važi odmah, bez restarta.
+    const smtp = await loadSmtp(pool, SECRETS_KEY);
+    const transporter = buildTransport(smtp);
 
     for (const r of due.rows) {
       // uslovi se proveravaju u trenutku slanja (BR-30)
@@ -75,7 +81,7 @@ async function sendReminders(): Promise<void> {
       }
       try {
         await transporter.sendMail({
-          from: `${d.shop} <${SENDER}>`,
+          from: fromHeader(smtp),
           to: d.email,
           subject: `Podsetnik za zakazani termin — ${d.shop}`,
           text: `Poštovani/a ${d.cname},\n\nPodsećamo Vas na zakazani termin u servisu ${d.shop}.\n\n`

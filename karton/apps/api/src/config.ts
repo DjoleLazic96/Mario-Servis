@@ -11,6 +11,9 @@ const schema = z.object({
   API_PORT: z.coerce.number().int().positive().default(3000),
   APP_BASE_URL: z.string().url(),
   SESSION_SECRET: z.string().min(32),
+  // Ključ za šifrovanje tajni u bazi (SMTP lozinka). Ako se izgubi, SMTP lozinka se
+  // više ne može pročitati — ponovo se ukuca u Podešavanjima. Zato ide i u backup plan.
+  SECRETS_KEY: z.string().min(32),
   SMTP_HOST: z.string().default('localhost'),
   SMTP_PORT: z.coerce.number().int().positive().default(1025),
   SENDER_EMAIL: z.string().default('servis@localhost'),

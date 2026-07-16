@@ -36,6 +36,9 @@ function ServiceSettings(): React.JSX.Element {
   const [msg, setMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [smtpPassword, setSmtpPassword] = useState('');
+  const [testTo, setTestTo] = useState('');
+  const [testing, setTesting] = useState(false);
+  const [testMsg, setTestMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   useEffect(() => {
@@ -54,6 +57,18 @@ function ServiceSettings(): React.JSX.Element {
     try { setS(await api.patch<SettingsData>('/settings', body)); setSmtpPassword(''); setMsg('Sačuvano.'); }
     catch (err) { setMsg(err instanceof ApiRequestError ? err.body.message : 'Greška.'); }
     finally { setSaving(false); }
+  }
+
+  /** Šalje kroz SAČUVANA podešavanja (server ih čita iz baze) — istim putem kao pravi podsetnik. */
+  async function sendTest(): Promise<void> {
+    setTesting(true); setTestMsg(null);
+    try {
+      const r = await api.post<{ sentTo: string; host: string; source: string }>('/settings/test-email', { to: testTo.trim() });
+      setTestMsg({ ok: true, text: `Poslato na ${r.sentTo} preko ${r.host}`
+        + (r.source === 'env' ? ' — PAŽNJA: iz .env rezerve, jer SMTP host nije upisan gore.' : '.') });
+    } catch (err) {
+      setTestMsg({ ok: false, text: err instanceof ApiRequestError ? err.body.message : 'Slanje nije uspelo.' });
+    } finally { setTesting(false); }
   }
 
   async function uploadLogo(file: File): Promise<void> {
@@ -121,8 +136,21 @@ function ServiceSettings(): React.JSX.Element {
           <label className="field"><span>SMTP lozinka</span>
             <input type="password" value={smtpPassword} onChange={(e) => setSmtpPassword(e.target.value)} autoComplete="new-password"
               placeholder={s.hasSmtpPassword ? 'sačuvana — ostavi prazno' : 'nije postavljena'} />
+            <small className="hint">Za Gmail: App Password (16 znakova), ne lozinka naloga.</small>
           </label>
         </div>
+
+        <div className="smtp-test">
+          <label className="field"><span>Probni mejl na adresu</span>
+            <input type="email" value={testTo} onChange={(e) => setTestTo(e.target.value)}
+              placeholder="npr. vasa.adresa@gmail.com" autoComplete="off" />
+          </label>
+          <button type="button" className="btn-secondary" disabled={testing || !testTo.trim()} onClick={sendTest}>
+            {testing ? 'Šaljem…' : 'Pošalji probni mejl'}
+          </button>
+        </div>
+        <small className="hint">Testira <strong>sačuvana</strong> podešavanja — ako si nešto menjao gore, prvo klikni „Sačuvaj".</small>
+        {testMsg && <div className={testMsg.ok ? 'ok-box' : 'login-error'}>{testMsg.text}</div>}
 
         {msg && <div className={msg === 'Sačuvano.' ? 'ok-box' : 'login-error'}>{msg}</div>}
         <div className="form-actions"><button className="btn-primary" disabled={saving}>{saving ? 'Čuvanje…' : 'Sačuvaj'}</button></div>

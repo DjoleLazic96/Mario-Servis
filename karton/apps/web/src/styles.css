@@ -354,9 +354,12 @@ button {
 .owner-results { list-style: none; margin: 6px 0 0; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 6px 20px rgba(0,0,0,.1); max-height: 220px; overflow: auto; }
 .owner-results li { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
 .owner-results li:hover { background: #f3f5f7; }
-.owner-picked { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: #f8f9fa; }
+.owner-picked { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: #f8f9fa; flex-wrap: wrap; }
 .owner-name { font-weight: 600; }
 .owner-type { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-faint); }
+/* „promeni" ide skroz desno, kao dugme — `auto` levo ga gura na kraj reda bez obzira
+   koliko su podaci o vozilu dugački. */
+.owner-change { margin-left: auto; flex: none; }
 .mini-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .mini-table th { text-align: left; padding: 5px 8px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-faint); border-bottom: 1px solid var(--line); }
 .mini-table td { padding: 6px 8px; border-bottom: 1px solid var(--line-soft); }

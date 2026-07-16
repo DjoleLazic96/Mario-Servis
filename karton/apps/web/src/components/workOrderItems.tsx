@@ -5,6 +5,7 @@ import type {
 } from '@karton/shared';
 import { api } from '../api.ts';
 import { money } from '../lib/documentHelpers.ts';
+import { DecimalInput } from './DecimalInput.tsx';
 
 /** Stavka rada — tri načina obračuna (sat/km/paušal, BR-43). */
 export function LaborItemForm({
@@ -24,19 +25,21 @@ export function LaborItemForm({
   const [amount, setAmount] = useState(initial?.amount != null && initial.billingUnit === 'flat' ? String(initial.amount) : '');
 
   useEffect(() => {
-    void api.get<Mechanic[]>('/mechanics?status=active').then((m) => {
-      setMechanics(m);
-      if (!initial && m[0]) setMechanicId((cur) => cur || m[0]!.id);
-    });
+    // Majstor se NAMERNO ne bira sam. Ranije se prvi sa spiska tiho ubacivao, a pošto je to
+    // zaobilazilo `onPickMechanic`, cena je ostajala prazna — i „— izaberi —" se nikad nije
+    // video, iako stoji u kodu. Ko ne pipne meni, ne dobije cenu i ne shvati zašto.
+    void api.get<Mechanic[]>('/mechanics?status=active').then(setMechanics);
     void api.get<Service[]>('/services?status=active').then(setServices);
-  }, [initial]);
+  }, []);
 
   // predlog cene: sat → cena majstora; km/paušal → cenovnik usluga (kada se izabere naziv)
   function onPickMechanic(id: number): void {
     setMechanicId(id);
+    // Cena UVEK prati majstora, i kada je prethodno ručno menjana: bolje da se vidi čija je
+    // cena nego da tiho ostane cena pogrešnog majstora. Prazno polje primetiš, pogrešan broj ne.
     if (unit === 'hour') {
       const m = mechanics.find((x) => x.id === id);
-      if (m && !unitPrice) setUnitPrice(String(m.hourlyRate));
+      if (m) setUnitPrice(String(m.hourlyRate));
     }
   }
   function onPickService(svcName: string): void {
@@ -64,8 +67,10 @@ export function LaborItemForm({
   return (
     <form onSubmit={submit} className="form">
       <label className="field"><span>Majstor</span>
-        <select value={mechanicId} onChange={(e) => onPickMechanic(Number(e.target.value))} required>
-          <option value={0} disabled>— izaberi —</option>
+        {/* Bez `required`: ono se oglašava samo kad je vrednost prazan string, a ovde je „0" —
+            nikad se nije javljalo. „Sačuvaj" je ionako zaključan dok majstor nije izabran. */}
+        <select value={mechanicId} onChange={(e) => onPickMechanic(Number(e.target.value))}>
+          <option value={0} disabled>— izaberi majstora —</option>
           {mechanics.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
         </select></label>
 
@@ -83,13 +88,13 @@ export function LaborItemForm({
 
       {unit === 'flat' ? (
         <label className="field"><span>Iznos (RSD)</span>
-          <input type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} required /></label>
+          <DecimalInput value={amount} onChange={setAmount} required /></label>
       ) : (
         <div className="form-2col">
           <label className="field"><span>{unit === 'hour' ? 'Sati' : 'Kilometri'}</span>
-            <input type="number" min={0} step="0.01" value={quantity} onChange={(e) => setQuantity(e.target.value)} required /></label>
+            <DecimalInput value={quantity} onChange={setQuantity} required /></label>
           <label className="field"><span>{unit === 'hour' ? 'Cena/sat' : 'Cena/km'}</span>
-            <input type="number" min={0} value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} required /></label>
+            <DecimalInput value={unitPrice} onChange={setUnitPrice} required /></label>
         </div>
       )}
 
@@ -125,9 +130,9 @@ export function PartItemForm({
         <input value={name} onChange={(e) => setName(e.target.value)} required autoFocus /></label>
       <div className="form-2col">
         <label className="field"><span>Količina</span>
-          <input type="number" min={0} step="0.01" value={quantity} onChange={(e) => setQuantity(e.target.value)} required /></label>
+          <DecimalInput value={quantity} onChange={setQuantity} required /></label>
         <label className="field"><span>Cena po jedinici</span>
-          <input type="number" min={0} value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} required /></label>
+          <DecimalInput value={unitPrice} onChange={setUnitPrice} required /></label>
       </div>
       <label className="check-inline">
         <input type="checkbox" checked={internal} onChange={(e) => setInternal(e.target.checked)} />
@@ -165,7 +170,7 @@ export function ExternalItemForm({
         <input value={description} onChange={(e) => setDescription(e.target.value)} /></label>
       <div className="form-2col">
         <label className="field"><span>Cena</span>
-          <input type="number" min={0} value={price} onChange={(e) => setPrice(e.target.value)} required /></label>
+          <DecimalInput value={price} onChange={setPrice} required /></label>
         <label className="field"><span>Napomena</span>
           <input value={note} onChange={(e) => setNote(e.target.value)} /></label>
       </div>

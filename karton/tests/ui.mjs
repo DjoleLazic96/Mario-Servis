@@ -164,17 +164,108 @@ if (await novi.count()) {
   }
 }
 
+// ── 7. Stavka rada: majstor, cena i decimalni zarez ─────────────────────────────
+console.log('\n=== STAVKA RADA ===');
+{
+  // Traži OTVOREN nalog — dugme „+ Dodaj rad" postoji samo dok je nalog izmenjiv.
+  const nalozi = await p.evaluate(async () => {
+    const r = await fetch('/api/v1/work-orders?status=open&pageSize=1', { credentials: 'include' });
+    return (await r.json()).data ?? [];
+  });
+  if (nalozi.length === 0) {
+    console.log('  (preskočeno — nema otvorenog naloga)');
+  } else {
+    await p.goto(`${BASE}/nalozi/${nalozi[0].id}`, { waitUntil: 'networkidle' });
+    await p.waitForTimeout(600);
+    await p.locator('button', { hasText: '+ Dodaj rad' }).first().click();
+    await p.waitForTimeout(500);
+
+    const sel = p.locator('.modal-card select').first();
+    // Ranije se prvi majstor tiho birao sam, zaobilazeći logiku za cenu — pa je cena
+    // ostajala prazna, a čovek nije imao pojma zašto.
+    check('Majstor se NE bira sam', (await sel.inputValue()) === '0',
+      (await sel.locator('option:checked').textContent())?.trim());
+
+    const sati = p.locator('.modal-card .form-2col input').first();
+    await sati.click();
+    await sati.pressSequentially('1,5');
+    check('Zarez u „Sati" je primljen kao decimala', (await sati.inputValue()) === '1.5',
+      `„1,5" → „${await sati.inputValue()}"`);
+
+    const cena = p.locator('.modal-card .form-2col input').nth(1);
+    const opcije = await sel.locator('option').allTextContents();
+    await sel.selectOption({ index: 1 });
+    await p.waitForTimeout(250);
+    const prva = await cena.inputValue();
+    check('Izbor majstora povlači njegovu cenu', Number(prva) > 0, `${opcije[1]?.trim()} → ${prva}`);
+
+    if (opcije.length > 2) {
+      await cena.fill('999');
+      await sel.selectOption({ index: 2 });
+      await p.waitForTimeout(250);
+      const druga = await cena.inputValue();
+      // Odluka korisnika (17.07.2026): cena UVEK prati majstora, i preko ručnog unosa —
+      // bolje vidljiva tuđa cena nego tiho zadržana cena pogrešnog majstora.
+      check('Promena majstora prepisuje i ručno unetu cenu', druga !== '999' && Number(druga) > 0,
+        `999 → ${opcije[2]?.trim()} → ${druga}`);
+    }
+
+    const decimala = await p.evaluate(() => {
+      const el = document.querySelectorAll('.modal-card .form-2col input')[1];
+      el.value = '2500.5';
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      return { value: el.value, valid: el.validity.valid, stepMismatch: el.validity.stepMismatch };
+    });
+    // `type="number"` bez `step` je odbijao SVAKU decimalu („2500,50" nemoguće).
+    check('Decimalna cena je dozvoljena', decimala.valid && !decimala.stepMismatch,
+      `2500.5 → valid=${decimala.valid}`);
+  }
+}
+
+// ── 8. „Promeni" kao dugme skroz desno ──────────────────────────────────────────
+console.log('\n=== IZBOR VOZILA: dugme „Promeni" ===');
+{
+  await p.goto(`${BASE}/nalozi`, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(400);
+  const novi = p.locator('button', { hasText: /Novi nalog|\+ Nalog/ }).first();
+  if (await novi.count()) {
+    await novi.click();
+    await p.waitForTimeout(500);
+    // `.owner-picked` (red sa „Promeni") postoji tek kad je vozilo izabrano.
+    await p.locator('.modal-card input.owner-search').first().fill('BG');
+    await p.waitForTimeout(700);
+    await p.locator('.modal-card .owner-results li').first().click();
+    await p.waitForTimeout(400);
+    const r = await p.evaluate(() => {
+      const red = document.querySelector('.owner-picked');
+      const dug = red?.querySelector('.owner-change');
+      if (!red || !dug) return null;
+      const a = red.getBoundingClientRect(), b = dug.getBoundingClientRect();
+      return { razmakDesno: Math.round(a.right - b.right), jeDugme: !dug.classList.contains('btn-link') };
+    });
+    if (r) {
+      check('„Promeni" je skroz desno u redu', r.razmakDesno <= 16, `${r.razmakDesno}px od desne ivice`);
+      check('„Promeni" izgleda kao dugme, ne kao link', r.jeDugme);
+    } else {
+      console.log('  (preskočeno — vozilo nije unapred izabrano)');
+    }
+  }
+}
+
 // ── 5. Bojenje pretrage ─────────────────────────────────────────────────────────
 console.log('\n=== ŽUTO BOJENJE PRETRAGE ===');
-for (const [put, pojam] of [['/vozila', 'olf'], ['/klijenti', 'ark']]) {
+for (const [put, pojam, kartica] of [['/vozila', 'olf'], ['/klijenti', 'ark'], ['/izvestaji', 'ark', 'Pretraga naloga']]) {
   await p.goto(`${BASE}${put}`, { waitUntil: 'networkidle' });
   await p.waitForTimeout(400);
+  // Izveštaji imaju kartice; pretraga naloga nije na prvoj.
+  if (kartica) { await p.locator('button.tab', { hasText: kartica }).first().click(); await p.waitForTimeout(600); }
   const polje = p.locator('input.search, input[placeholder*="retrag"], input[placeholder*="Ime"], input[placeholder*="Tablica"]').first();
   if (!(await polje.count())) { console.log(`  (preskočeno ${put} — nema polja za pretragu)`); continue; }
   await polje.fill(pojam);
   await p.waitForTimeout(900);
   const r = await p.evaluate(() => {
-    const m = document.querySelectorAll('.data-table mark');
+    // Spiskovi koriste .data-table, izveštaji .mini-table — bojenje mora u obe.
+    const m = document.querySelectorAll('.data-table mark, .mini-table mark');
     return { broj: m.length, tekst: m[0]?.textContent ?? '', boja: m[0] ? getComputedStyle(m[0]).backgroundColor : '' };
   });
   check(`${put}: pogodak „${pojam}" je obojen`, r.broj > 0, `${r.broj} pogodaka`);

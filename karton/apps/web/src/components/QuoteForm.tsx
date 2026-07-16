@@ -5,6 +5,7 @@ import { api, ApiRequestError } from '../api.ts';
 import { OwnerPicker } from './OwnerPicker.tsx';
 import { VehiclePicker } from './VehiclePicker.tsx';
 import { money } from '../lib/documentHelpers.ts';
+import { DecimalInput } from './DecimalInput.tsx';
 
 type Row = { itemType: 'labor' | 'part' | 'external'; name: string; amount: string };
 
@@ -61,7 +62,7 @@ export function QuoteForm({ onCreated }: { onCreated: (id: number) => void }): R
               <option value="external">Eksterni</option>
             </select>
             <input placeholder="Naziv" value={r.name} onChange={(e) => setRow(i, { name: e.target.value })} />
-            <input type="number" min={0} placeholder="Iznos" value={r.amount} onChange={(e) => setRow(i, { amount: e.target.value })} />
+            <DecimalInput placeholder="Iznos" value={r.amount} onChange={(v) => setRow(i, { amount: v })} />
             <button type="button" className="btn-link danger" onClick={() => setRows((rs) => rs.filter((_, idx) => idx !== i))} disabled={rows.length === 1}>×</button>
           </div>
         ))}
@@ -74,7 +75,7 @@ export function QuoteForm({ onCreated }: { onCreated: (id: number) => void }): R
         <label className="field"><span>Rok važenja <small className="hint">(podrazumevano iz podešavanja)</small></span>
           <DateInput value={validUntil} onChange={setValidUntil} /></label>
         <label className="field"><span>Iznos u EUR <small className="hint">(informativno)</small></span>
-          <input type="number" step="0.01" min={0} value={amountEur} onChange={(e) => setAmountEur(e.target.value)} /></label>
+          <DecimalInput value={amountEur} onChange={setAmountEur} /></label>
       </div>
       <label className="field"><span>Napomena</span>
         <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></label>

@@ -3,6 +3,7 @@ import { DateInput } from '../components/DateInput.tsx';
 import type { Mechanic } from '@karton/shared';
 import { api } from '../api.ts';
 import { money, formatDate } from '../lib/documentHelpers.ts';
+import { Highlight } from '../components/Highlight.tsx';
 
 type Tab = 'revenue' | 'orders' | 'mechanic' | 'vehicle';
 
@@ -85,7 +86,7 @@ function OrderSearch(): React.JSX.Element {
       </div>
       <table className="mini-table">
         <thead><tr><th>Broj</th><th>Datum</th><th>Klijent</th><th>Vozilo</th><th>Delovi</th></tr></thead>
-        <tbody>{rows.map((r) => <tr key={r.number}><td className="mono">{r.number}</td><td className="mono">{formatDate(r.received_on)}</td><td>{r.customer}</td><td>{r.make} {r.model} <span className="mono muted">{r.plate ?? ''}</span></td><td className="muted">{r.parts ?? '—'}</td></tr>)}
+        <tbody>{rows.map((r) => <tr key={r.number}><td className="mono">{r.number}</td><td className="mono">{formatDate(r.received_on)}</td><td><Highlight text={r.customer} q={q} /></td><td><Highlight text={`${r.make} ${r.model}`} q={q} /> <span className="mono muted"><Highlight text={r.plate ?? ''} q={q} /></span></td><td className="muted">{r.parts ?? '—'}</td></tr>)}
           {rows.length === 0 && <tr><td colSpan={5} className="card-empty">Nema rezultata.</td></tr>}</tbody>
       </table>
     </div>
@@ -141,7 +142,7 @@ function ByVehicle(): React.JSX.Element {
       </div>
       <table className="mini-table">
         <thead><tr><th>Broj</th><th>Datum</th><th>Vozilo</th><th>Opis</th></tr></thead>
-        <tbody>{rows.map((r) => <tr key={r.number}><td className="mono">{r.number}</td><td className="mono">{formatDate(r.received_on)}</td><td>{r.make} {r.model} {r.year ? `· ${r.year}` : ''} {r.fuel ? `· ${r.fuel}` : ''}</td><td className="muted">{r.description ?? '—'}</td></tr>)}
+        <tbody>{rows.map((r) => <tr key={r.number}><td className="mono">{r.number}</td><td className="mono">{formatDate(r.received_on)}</td><td><Highlight text={r.make} q={make} /> <Highlight text={r.model} q={model} /> {r.year ? `· ${r.year}` : ''} {r.fuel ? <>· <Highlight text={r.fuel} q={fuel} /></> : ''}</td><td className="muted">{r.description ?? '—'}</td></tr>)}
           {rows.length === 0 && <tr><td colSpan={4} className="card-empty">Nema rezultata.</td></tr>}</tbody>
       </table>
     </div>

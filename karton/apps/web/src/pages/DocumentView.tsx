@@ -7,6 +7,7 @@ import { useAuth } from '../auth.tsx';
 import { Modal } from '../components/Modal.tsx';
 import { DocumentChainBar } from '../components/DocumentChain.tsx';
 import { docTypeLabel, docStatusLabel, docStatusClass, money, dueInfo, validityWarn, formatDate } from '../lib/documentHelpers.ts';
+import { DecimalInput } from '../components/DecimalInput.tsx';
 
 const RUBRICS: { key: DocumentItem['itemType']; title: string }[] = [
   { key: 'labor', title: 'Rad' },
@@ -266,7 +267,7 @@ function EditDocModal({ doc, onClose, onSubmit, busy, error }: {
         <label className="field"><span>Rok važenja</span>
           <DateInput value={validUntil} onChange={setValidUntil} autoFocus /></label>
         <label className="field"><span>Iznos u EUR <small className="hint">(informativno, ne zamenjuje RSD)</small></span>
-          <input type="number" step="0.01" min={0} value={amountEur} onChange={(e) => setAmountEur(e.target.value)} placeholder="npr. 250.00" /></label>
+          <DecimalInput value={amountEur} onChange={setAmountEur} placeholder="npr. 250.00" /></label>
         <label className="field"><span>Napomena</span>
           <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} /></label>
         {error && <div className="login-error">{error}</div>}

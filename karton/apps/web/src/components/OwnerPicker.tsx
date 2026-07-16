@@ -67,8 +67,8 @@ export function OwnerPicker({
       <div className="owner-picked">
         <span className="owner-name">{value.name}</span>
         <span className="owner-type">{value.type === 'company' ? 'pravno' : 'fizičko'}</span>
-        <button type="button" className="btn-link" onClick={() => setOpen(true)}>
-          promeni
+        <button type="button" className="btn-secondary btn-sm owner-change" onClick={() => setOpen(true)}>
+          Promeni
         </button>
       </div>
     );

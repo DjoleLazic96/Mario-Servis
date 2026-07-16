@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { DateInput } from './DateInput.tsx';
 import type { Mechanic, MechanicInput, MechanicSpecialty } from '@karton/shared';
 import { labels } from '@karton/shared';
+import { DecimalInput } from './DecimalInput.tsx';
 
 export function MechanicForm({
   initial,
@@ -48,7 +49,7 @@ export function MechanicForm({
         </label>
         <label className="field">
           <span>Cena po satu (RSD)</span>
-          <input type="number" min={0} value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} required />
+          <DecimalInput value={hourlyRate} onChange={setHourlyRate} required />
         </label>
       </div>
       <div className="form-2col">

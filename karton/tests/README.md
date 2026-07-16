@@ -109,7 +109,29 @@ onome što je i ranije radilo (broj dokumenta, ime, VIN).
 python tests/search.py
 ```
 
-## `ui.mjs` — regresije u pregledaču (20 provera)
+## `sw-update.mjs` — da li aplikacija vidi novu verziju (4 provere)
+
+**Najvažniji test u ovom folderu**, jer hvata kvar koji nijedan drugi ne može.
+
+Regresija (17.07.2026): posle deploya je korisnik i dalje gledao STARU verziju i prijavio
+da izmene „ne rade" — iako su bile na serveru. Uzrok: service worker servira svoju keširanu
+kopiju, a ubačeni `registerSW.js` je samo registrovao SW i nikad nije osvežio stranu.
+
+**Zašto ovaj test postoji odvojeno:** `ui.mjs` i `responsive.mjs` kreću iz PRAZNOG pregledača
+— bez service workera i bez keša — pa uvek dobiju novu verziju i uvek prođu. Fizički ne mogu
+da vide ovaj kvar. Zato je i promakao: testovi zeleni, korisnik gleda staru verziju.
+
+Ovaj test namerno pravi **dva različita builda**, servira v1 dok SW ne preuzme kontrolu,
+podmetne v2 pod isti server i proveri da li je posle **jednog** osvežavanja aplikacija stvarno
+prešla na v2. Statički server šalje ista `Cache-Control` zaglavlja kao Caddy na produkciji.
+
+```bash
+node tests/sw-update.mjs      # ne traži pokrenut stack, sam diže server
+```
+
+Sam pravi buildove (~15s) i vraća `apps/web/index.html` u prvobitno stanje.
+
+## `ui.mjs` — regresije u pregledaču (29 provera)
 
 Stvari koje se ne vide iz koda, nego tek kad se **izmere**:
 
@@ -121,6 +143,10 @@ Stvari koje se ne vide iz koda, nego tek kad se **izmere**:
   nje (poslednji u DOM-u), pa je dugme delovalo mrtvo. Test broji otvorene prozore.
 - **`.warn-box`** — `flex-direction: column` je rečenicu sa `<strong>`/`<code>` lomio na stubac.
 - **Bojenje pretrage** i **srpske poruke validacije**.
+- **Stavka rada** — majstor se ne bira sam (ranije se tiho birao prvi sa spiska, zaobilazeći
+  logiku za cenu, pa je cena ostajala prazna); izbor majstora povlači njegovu cenu i preko
+  ručno unete; zarez radi kao decimalni znak; decimalna cena uopšte prolazi.
+- **„Promeni"** kod izbora vozila — dugme, skroz desno u redu.
 
 ```bash
 APP_USER=admin APP_PW=admin node tests/ui.mjs http://localhost:5173

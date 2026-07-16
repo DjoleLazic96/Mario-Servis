@@ -62,7 +62,7 @@ export function VehiclePicker({
         <span className="owner-name mono">{value.currentPlate ?? 'bez tablice'}</span>
         <span>{value.make} {value.model}{value.year ? ` · ${value.year}` : ''}</span>
         <span className="owner-type">{value.currentOwner?.name ?? 'bez vlasnika'}</span>
-        <button type="button" className="btn-link" onClick={() => setOpen(true)}>promeni</button>
+        <button type="button" className="btn-secondary btn-sm owner-change" onClick={() => setOpen(true)}>Promeni</button>
       </div>
     );
   }

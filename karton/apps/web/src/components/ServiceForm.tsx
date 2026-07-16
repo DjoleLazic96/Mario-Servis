@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import type { Service, ServiceInput, ServiceBillingUnit } from '@karton/shared';
+import { DecimalInput } from './DecimalInput.tsx';
 
 export function ServiceForm({
   initial,
@@ -38,7 +39,7 @@ export function ServiceForm({
         </label>
         <label className="field">
           <span>{billingUnit === 'km' ? 'Cena po km (RSD)' : 'Iznos (RSD)'}</span>
-          <input type="number" min={0} value={defaultPrice} onChange={(e) => setDefaultPrice(e.target.value)} required />
+          <DecimalInput value={defaultPrice} onChange={setDefaultPrice} required />
         </label>
       </div>
       <label className="field">

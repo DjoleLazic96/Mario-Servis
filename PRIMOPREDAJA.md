@@ -1,4 +1,4 @@
-# Karton — Primopredaja V1
+# AUTO SERVIS S23 — Primopredaja V1
 
 Datum: 2026-07-10 · Grana: `main` · Repo: https://github.com/DjoleLazic96/Mario-Servis
 
@@ -163,14 +163,57 @@ Ključni dokazi: interna stavka ostaje na nalogu ali NE ide na predračun/račun
 
 ---
 
-## Predlog redosleda za deployment na VPS
+## PRODUKCIJA — urađeno 16.07.2026
+
+Aplikacija radi na **https://autoserviss23.rs** (i `www`). Ovo je zatečeno stanje servera.
+
+| | |
+|---|---|
+| Server | Hetzner CX22, Ubuntu 26.04 LTS, IP `46.224.116.244` |
+| Pristup | SSH **samo ključem** (`~/.ssh/autoservis_s23`), lozinka isključena, `fail2ban` aktivan, auto-zakrpe uključene |
+| Firewall | Hetzner Cloud: propušta samo **22, 80, 443** |
+| Aplikacija | `/opt/autoservis/app` · tajne: `/opt/autoservis/secrets.env` (chmod 600) |
+| Baza | PostgreSQL 18 u Dockeru, jaka lozinka, vezana **samo na 127.0.0.1** (nije na internetu), volumen `karton-db-data` |
+| Web + proxy | **Caddy** — servira `apps/web/dist`, prosleđuje `/api` na `127.0.0.1:3000`, sertifikat od Let's Encrypt sam obnavlja |
+| Procesi | `systemd`: `karton-api`, `karton-worker` (+ `caddy`, `docker`) — **dižu se sami posle restarta (provereno)** |
+| Prijava | korisnik `mario`, admin. Lozinka **nije u repou** (repo je javan) — dogovorena usmeno. `admin`/`admin` **obrisan** |
+| Podaci | preneti demo: 3 klijenta, 3 vozila, 6 naloga, 3 dokumenta, 18 slika |
+| Slike | `/opt/autoservis/uploads` (35 GB slobodno ≈ 14.000 naloga sa 10 slika) |
+| Backup | `/opt/autoservis/backups`, dnevni u 02:00 po Beogradu |
+
+**Tajne** (`DB_PASSWORD`, `SESSION_SECRET`, `SECRETS_KEY`) su generisane na serveru i **nigde drugde ne postoje**. Pročitaj ih i skloni van servera:
+
+```
+ssh -i ~/.ssh/autoservis_s23 root@46.224.116.244 "cat /opt/autoservis/secrets.env"
+```
+
+> Ako se izgubi `SECRETS_KEY` zajedno sa serverom, **SMTP lozinka se ne može pročitati iz backupa** — ukuca se ponovo.
+
+**Korisne komande:**
+```
+systemctl status karton-api karton-worker caddy   # stanje
+journalctl -u karton-api -f                       # dnevnik API-ja
+journalctl -u karton-worker -f                    # podsetnici i backup
+cd /opt/autoservis && docker compose --env-file secrets.env ps
+```
+
+### Otvoreno (nije urađeno)
+
+1. **Lozinka naloga `mario` je slaba** — reč iz rečnika + cifre. Kočnica na prijavi je štiti od robota koji skeniraju internet, ali ne i od nekog ko cilja baš Marija (liči na adresu servisa). **Ojačati pre prvog pravog klijenta**, kroz Podešavanja → Korisnici.
+2. **Offsite backup** — baza i slike postoje **samo na ovom serveru**. Ako disk crkne, nema ih. Treba `rsync` na Hetzner Storage Box (~€3/mes).
+3. **Gmail SMTP** — nije unet. **Dok se ne unese u Podešavanja, podsetnici na serveru ne rade.**
+4. **Čitač saobraćajne** — radi samo lokalno (`127.0.0.1`), ne preko weba. Nije kvar, priroda čitača.
+
+---
+
+## Predlog redosleda za deployment na VPS (istorijski — urađeno gore)
 
 > Principi (teh. preporuka §10): sve okruženjske razlike u `.env`; nikad hardkodovan localhost; `Secure` kolačić samo u produkciji; baza samo migracijama; proces u UTC.
 
 1. **Server:** VPS (Ubuntu 24.04), Node 24, pnpm, PostgreSQL 18 (native ili Docker), reverse proxy (Caddy ili nginx) sa **TLS** — obavezno za `Secure` kolačić i PWA.
 2. **Baza:** kreiraj bazu i app korisnika; postavi `DATABASE_URL`. Bez javno izloženog porta.
 3. **Kod:** `git clone`, `pnpm install`, build weba: `pnpm --filter @karton/web build` (statika u `apps/web/dist`).
-4. **`.env` (produkcija):** `NODE_ENV=production`, `APP_BASE_URL=https://domen` (odatle QR na prijemnom listu), **jak `SESSION_SECRET` (≥32)**, **jak `SECRETS_KEY` (≥32, čuvati uz backup — bez njega se SMTP lozinka ne čita)**, `BACKUP_DIR` na trajnom disku, `TZ=UTC`. `SMTP_*` je samo rezerva — pravi SMTP se unosi kroz Podešavanja.
+4. **`.env` (produkcija):** `NODE_ENV=production`, `TRUST_PROXY=127.0.0.1` (bez toga kočnica na prijavi vidi sve zahteve kao 127.0.0.1), **jak `SESSION_SECRET` (≥32)**, **jak `SECRETS_KEY` (≥32, čuvati uz backup — bez njega se SMTP lozinka ne čita)**, `BACKUP_DIR` na trajnom disku, `TZ=UTC`. `SMTP_*` je samo rezerva — pravi SMTP se unosi kroz Podešavanja.
 5. **Baza — šema i admin:** `pnpm migrate`, pa `pnpm seed` → **odmah** napravi pravog admina i ugasi demo (checklista 1–2).
 6. **Procesi:** API i worker pod systemd/pm2, auto-restart, UTC, restart posle reboota.
 7. **Web + proxy:** proxy servira `dist`, prosleđuje `/api` na API; TLS terminacija na proxy-ju.

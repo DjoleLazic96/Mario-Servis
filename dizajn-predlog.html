@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<title>Karton — predlog boja i znaka</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    background: #e9ebee; color: #1f2933; font-size: 14px;
+  }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  .sub { color: #5a6672; margin: 0 0 28px; }
+  h2 { font-size: 16px; margin: 36px 0 4px; }
+  .note { color: #5a6672; font-size: 13px; margin: 0 0 14px; max-width: 780px; }
+  .row { display: flex; gap: 18px; flex-wrap: wrap; }
+
+  /* ── mini-aplikacija ── */
+  .variant { flex: 1 1 380px; min-width: 340px; }
+  .variant-name { font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .tag { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; background: #dfe3e7; color: #5a6672; }
+  .tag.best { background: #d9ede2; color: #2f6b4c; }
+
+  .app {
+    display: grid; grid-template-columns: 132px 1fr;
+    border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    font-family: var(--font);
+  }
+  .side { background: var(--sidebar); padding: 12px 10px; }
+  .brand { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .brand-tile {
+    width: 26px; height: 26px; border-radius: 6px; flex: none;
+    background: var(--brand, var(--accent)); display: grid; place-items: center;
+  }
+  .brand-name { color: #fff; font-weight: 700; font-size: 13px; letter-spacing: .02em; }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav i {
+    font-style: normal; color: var(--sidebar-ink); font-size: 12px;
+    padding: 6px 8px; border-radius: 5px;
+  }
+  .nav i.on { background: var(--accent); color: #fff; font-weight: 600; }
+
+  .main { padding: 14px; }
+  .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .title { font-weight: 700; font-size: 16px; color: var(--ink); font-family: var(--font-display, var(--font)); }
+  .btn {
+    background: var(--accent); color: #fff; border: none;
+    border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600;
+    font-family: inherit; cursor: pointer;
+  }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 8px; overflow: hidden; }
+  th {
+    text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-soft); padding: 7px 9px; border-bottom: 1px solid var(--line); font-weight: 600;
+  }
+  td { padding: 8px 9px; border-bottom: 1px solid var(--line-soft); color: var(--ink); font-size: 12px; }
+  tr:last-child td { border-bottom: none; }
+  .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, monospace; }
+  .badge { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+  .b-ok { background: var(--ok-bg); color: var(--ok); }
+  .b-work { background: var(--warn-bg, #fdf2e3); color: var(--warn, #8a5a1e); }
+  .b-wait { background: var(--wait-bg, #eef0f2); color: var(--wait, #77808a); }
+  .swatches { display: flex; gap: 5px; margin-top: 8px; }
+  .sw { width: 26px; height: 20px; border-radius: 4px; border: 1px solid rgba(0,0,0,.08); }
+
+  /* ── logo predlozi ── */
+  .marks { display: flex; gap: 18px; flex-wrap: wrap; }
+  .mark {
+    flex: 1 1 300px; background: #fff; border: 1px solid #dfe3e7;
+    border-radius: 10px; padding: 18px;
+  }
+  .mark h3 { margin: 0 0 2px; font-size: 15px; }
+  .mark p { margin: 0 0 14px; color: #5a6672; font-size: 12.5px; }
+  .sizes { display: flex; align-items: flex-end; gap: 16px; padding: 14px; background: #f4f5f7; border-radius: 8px; }
+  .sizes.dark { background: #2A2E33; margin-top: 8px; }
+  .size { text-align: center; }
+  .size span { display: block; font-size: 10px; color: #8b939b; margin-top: 5px; }
+  .sizes.dark .size span { color: #7d858d; }
+  .wordmark { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 12px; background: #f4f5f7; border-radius: 8px; }
+  .wm-text { font-family: 'Barlow Semi Condensed', sans-serif; line-height: 1; }
+  .wm-1 { font-size: 24px; font-weight: 700; letter-spacing: .04em; color: #22262B; }
+  .wm-2 { font-size: 10.5px; font-weight: 500; letter-spacing: .18em; color: #6b7075; text-transform: uppercase; }
+  .verdict { background: #fff; border: 1px solid #dfe3e7; border-left: 3px solid #2D6E77; border-radius: 8px; padding: 14px 16px; margin-top: 10px; max-width: 900px; }
+  .verdict b { color: #22262B; }
+  code { background: #eceef0; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h1>Karton — predlog boja i znaka</h1>
+<p class="sub">Za odluku sa Mariom. Ovo je zasebna strana — <b>aplikacija nije menjana</b>.</p>
+
+<!-- ══════════════ SVG DEFINICIJE ══════════════ -->
+<svg width="0" height="0" style="position:absolute">
+  <!-- 1. Tornado od alata -->
+  <symbol id="m1" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="31" fill="#48A848" opacity=".16"/>
+    <path d="M12 17h40M16 27h32M21 37h22M26 47h12" stroke="#3A3F45" stroke-width="6.5" stroke-linecap="round"/>
+    <path d="M12 17h14" stroke="#48A848" stroke-width="6.5" stroke-linecap="round"/>
+    <circle cx="32" cy="56" r="3.4" fill="#3A3F45"/>
+  </symbol>
+
+  <!-- 2. Ključ u vihoru -->
+  <symbol id="m2" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="31" fill="#48A848" opacity=".16"/>
+    <path d="M41 15a10 10 0 1 0 9 12" stroke="#3A3F45" stroke-width="6.5" stroke-linecap="round" fill="none"/>
+    <path d="M50 27 30 47" stroke="#3A3F45" stroke-width="6.5" stroke-linecap="round"/>
+    <path d="M30 47c-6 6-14 4-16-2" stroke="#48A848" stroke-width="6.5" stroke-linecap="round" fill="none"/>
+  </symbol>
+
+  <!-- 3. Navrtka + vihor -->
+  <symbol id="m3" viewBox="0 0 64 64">
+    <path d="M32 3 57 17.5v29L32 61 7 46.5v-29z" fill="none" stroke="#3A3F45" stroke-width="5.5" stroke-linejoin="round"/>
+    <path d="M20 26h24M23 35h18M27 44h10" stroke="#48A848" stroke-width="5" stroke-linecap="round"/>
+  </symbol>
+</svg>
+
+<!-- ══════════════ 1. PALETE ══════════════ -->
+<h2>1 · Tri palete — isti ekran, tri odela</h2>
+<p class="note">Gledaj tabelu i dugmad, ne pojedinačnu boju. Pitanje nije „koja je boja lepša", nego <b>u šta je prijatno gledati 8 sati dnevno</b> i <b>šta liči na Marijev logo</b>.</p>
+
+<div class="row">
+
+  <!-- A: sadašnja -->
+  <div class="variant">
+    <div class="variant-name">A · Sadašnja (plava) <span class="tag">u aplikaciji sada</span></div>
+    <div class="app" style="
+      --bg:#f2f4f6; --surface:#fff; --ink:#1f2933; --ink-soft:#5a6672;
+      --sidebar:#202a37; --sidebar-ink:#c3cbd4; --accent:#2f6fa8;
+      --line:#dfe3e7; --line-soft:#eaedf0; --ok:#3f7a56; --ok-bg:#e8f1ea;
+      --font:'Inter',sans-serif;">
+      <div class="side">
+        <div class="brand"><div class="brand-tile"><svg width="16" height="16"><use href="#m1"/></svg></div><div class="brand-name">Karton</div></div>
+        <div class="nav"><i>Početna</i><i class="on">Radni nalozi</i><i>Vozila</i><i>Dokumenti</i></div>
+      </div>
+      <div class="main">
+        <div class="head"><div class="title">Radni nalozi</div><button class="btn">+ Novi nalog</button></div>
+        <table>
+          <tr><th>Broj</th><th>Vozilo</th><th>Status</th></tr>
+          <tr><td class="mono">RN-2026-0001</td><td>Golf 7</td><td><span class="badge b-ok">Završeno</span></td></tr>
+          <tr><td class="mono">RN-2026-0002</td><td>Ducato</td><td><span class="badge b-work">U radu</span></td></tr>
+          <tr><td class="mono">RN-2026-0003</td><td>Octavia</td><td><span class="badge b-wait">Otvoren</span></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw" style="background:#2f6fa8"></div><div class="sw" style="background:#202a37"></div>
+      <div class="sw" style="background:#f2f4f6"></div><div class="sw" style="background:#3f7a56"></div>
+    </div>
+  </div>
+
+  <!-- B: mockup -->
+  <div class="variant">
+    <div class="variant-name">B · Mockup (narandžasta) <span class="tag">Mariju se sviđa</span></div>
+    <div class="app" style="
+      --bg:#ECEFEC; --surface:#fff; --ink:#1C2127; --ink-soft:#5B6470;
+      --sidebar:#182027; --sidebar-ink:#C9D2D6; --accent:#E2692B;
+      --line:#D9DCD8; --line-soft:#E6E8E5; --ok:#3F8F5F; --ok-bg:#E7F2EC;
+      --warn:#E2692B; --warn-bg:#FBE9DE;
+      --font:'Inter',sans-serif; --font-display:'Barlow Semi Condensed',sans-serif;">
+      <div class="side">
+        <div class="brand"><div class="brand-tile"><svg width="16" height="16"><use href="#m1"/></svg></div><div class="brand-name">Karton</div></div>
+        <div class="nav"><i>Početna</i><i class="on">Radni nalozi</i><i>Vozila</i><i>Dokumenti</i></div>
+      </div>
+      <div class="main">
+        <div class="head"><div class="title">Radni nalozi</div><button class="btn">+ Novi nalog</button></div>
+        <table>
+          <tr><th>Broj</th><th>Vozilo</th><th>Status</th></tr>
+          <tr><td class="mono">RN-2026-0001</td><td>Golf 7</td><td><span class="badge b-ok">Završeno</span></td></tr>
+          <tr><td class="mono">RN-2026-0002</td><td>Ducato</td><td><span class="badge b-work">U radu</span></td></tr>
+          <tr><td class="mono">RN-2026-0003</td><td>Octavia</td><td><span class="badge b-wait">Otvoren</span></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw" style="background:#E2692B"></div><div class="sw" style="background:#182027"></div>
+      <div class="sw" style="background:#ECEFEC"></div><div class="sw" style="background:#3F8F5F"></div>
+    </div>
+  </div>
+
+  <!-- C: iz logoa -->
+  <div class="variant">
+    <div class="variant-name">C · Iz logoa <span class="tag best">moj predlog</span></div>
+    <div class="app" style="
+      --bg:#F3F1EA; --surface:#fff; --ink:#22262B; --ink-soft:#6b7075;
+      --sidebar:#2A2E33; --sidebar-ink:#C3C7CB; --accent:#2D6E77; --brand:#48A848;
+      --line:#E2DFD6; --line-soft:#EDEBE4; --ok:#3F8F5F; --ok-bg:#E7F2EC;
+      --warn:#9A6A24; --warn-bg:#F6EBD9;
+      --font:'Inter',sans-serif; --font-display:'Barlow Semi Condensed',sans-serif;">
+      <div class="side">
+        <div class="brand"><div class="brand-tile" style="background:#fff"><svg width="18" height="18"><use href="#m1"/></svg></div><div class="brand-name">Karton</div></div>
+        <div class="nav"><i>Početna</i><i class="on">Radni nalozi</i><i>Vozila</i><i>Dokumenti</i></div>
+      </div>
+      <div class="main">
+        <div class="head"><div class="title">Radni nalozi</div><button class="btn">+ Novi nalog</button></div>
+        <table>
+          <tr><th>Broj</th><th>Vozilo</th><th>Status</th></tr>
+          <tr><td class="mono">RN-2026-0001</td><td>Golf 7</td><td><span class="badge b-ok">Završeno</span></td></tr>
+          <tr><td class="mono">RN-2026-0002</td><td>Ducato</td><td><span class="badge b-work">U radu</span></td></tr>
+          <tr><td class="mono">RN-2026-0003</td><td>Octavia</td><td><span class="badge b-wait">Otvoren</span></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw" style="background:#2D6E77"></div><div class="sw" style="background:#2A2E33"></div>
+      <div class="sw" style="background:#F3F1EA"></div><div class="sw" style="background:#48A848"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="verdict">
+  <b>Zašto C:</b> krem pozadina i grafit su <b>bukvalno boje iz Marijevog logoa</b> (pozadina + tornado/alat), a petrol je komšija zelene — pa aplikacija i logo izgledaju kao <b>jedan proizvod</b>.
+  <b>Zelena iz logoa se ne koristi za dugmad</b> namerno: kod nas zelena već znači <i>Plaćeno / Poslat / Završeno</i>. Da su i dugmad zelena, ne bi se znalo da li zeleno znači „brend" ili „uspeh". Zato zelena ostaje <b>samo u znaku</b>.
+  <br><br>
+  <b>Zašto ne B:</b> narandžasta je odlična na plakatu, ali <b>zamara u tabeli</b> u koju se gleda ceo dan — i sudara se sa značenjem „upozorenje / u radu".
+</div>
+
+<!-- ══════════════ 2. ZNAK ══════════════ -->
+<h2>2 · Tri predloga originalnog znaka</h2>
+<p class="note">Svi su <b>vektorski (SVG)</b> — Mario ih poseduje, skaliraju se savršeno i ne koriste tuđi lik. Ključni test je <b>16px i 32px</b>: logo mora da radi u tabu browsera i u zaglavlju računa. <b>Zato detaljan crtani lik ne može</b> — na 16px postane mrlja.</p>
+
+<div class="marks">
+
+  <div class="mark">
+    <h3>1 · Tornado od alata</h3>
+    <p>Najbliže duhu originala — vihor, sa zelenim akcentom i navrtkom na vrhu.</p>
+    <div class="sizes">
+      <div class="size"><svg width="88" height="88"><use href="#m1"/></svg><span>88px</span></div>
+      <div class="size"><svg width="40" height="40"><use href="#m1"/></svg><span>40px</span></div>
+      <div class="size"><svg width="32" height="32"><use href="#m1"/></svg><span>32px favicon</span></div>
+      <div class="size"><svg width="16" height="16"><use href="#m1"/></svg><span>16px</span></div>
+    </div>
+    <div class="wordmark">
+      <svg width="40" height="40"><use href="#m1"/></svg>
+      <div class="wm-text"><div class="wm-1">MARIO</div><div class="wm-2">Auto servis</div></div>
+    </div>
+  </div>
+
+  <div class="mark">
+    <h3>2 · Ključ u vihoru</h3>
+    <p>Ključ čija se drška uvija u vihor — čitljivo i prepoznatljivo kao „servis".</p>
+    <div class="sizes">
+      <div class="size"><svg width="88" height="88"><use href="#m2"/></svg><span>88px</span></div>
+      <div class="size"><svg width="40" height="40"><use href="#m2"/></svg><span>40px</span></div>
+      <div class="size"><svg width="32" height="32"><use href="#m2"/></svg><span>32px favicon</span></div>
+      <div class="size"><svg width="16" height="16"><use href="#m2"/></svg><span>16px</span></div>
+    </div>
+    <div class="wordmark">
+      <svg width="40" height="40"><use href="#m2"/></svg>
+      <div class="wm-text"><div class="wm-1">MARIO</div><div class="wm-2">Auto servis</div></div>
+    </div>
+  </div>
+
+  <div class="mark">
+    <h3>3 · Navrtka + vihor</h3>
+    <p>Najčistiji i najotporniji na sitne veličine — najbolje se štampa.</p>
+    <div class="sizes">
+      <div class="size"><svg width="88" height="88"><use href="#m3"/></svg><span>88px</span></div>
+      <div class="size"><svg width="40" height="40"><use href="#m3"/></svg><span>40px</span></div>
+      <div class="size"><svg width="32" height="32"><use href="#m3"/></svg><span>32px favicon</span></div>
+      <div class="size"><svg width="16" height="16"><use href="#m3"/></svg><span>16px</span></div>
+    </div>
+    <div class="wordmark">
+      <svg width="40" height="40"><use href="#m3"/></svg>
+      <div class="wm-text"><div class="wm-1">MARIO</div><div class="wm-2">Auto servis</div></div>
+    </div>
+  </div>
+
+</div>
+
+<h2>Na tamnoj podlozi (sidebar aplikacije)</h2>
+<p class="note">Logo mora da radi i na tamnom — u sidebaru i na PWA ikonici.</p>
+<div class="sizes dark">
+  <div class="size"><svg width="56" height="56"><use href="#m1"/></svg><span>Tornado</span></div>
+  <div class="size"><svg width="56" height="56"><use href="#m2"/></svg><span>Ključ</span></div>
+  <div class="size"><svg width="56" height="56"><use href="#m3"/></svg><span>Navrtka</span></div>
+</div>
+
+<div class="verdict" style="border-left-color:#48A848">
+  <b>Moja preporuka:</b> paleta <b>C</b> + znak <b>1 (Tornado)</b> ako želite da se zadrži duh originala, ili <b>3 (Navrtka)</b> ako je prioritet da bude neprobojno čitljiv na štampi i sitnim ikonicama.
+  <br><br>
+  <b>Sve tri palete i sva tri znaka su samo predlog</b> — aplikacija je i dalje netaknuta. Kad izaberete, ugrađujem: boje, font (Barlow Semi Condensed kao u mockupu), logo u sidebaru, na prijemnom listu, PWA ikonicu i favicon.
+</div>
+
+</body>
+</html>

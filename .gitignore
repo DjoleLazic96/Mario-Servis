@@ -20,3 +20,9 @@ backups/
 
 # Fotografije vozila — lični podaci klijenata. Nikad u git (štite se sinhronizacijom).
 uploads/
+
+# Lične beleške i tajne — NIKAD u repo
+00 GMAIL.txt
+*GMAIL*
+*.secret
+secrets.env

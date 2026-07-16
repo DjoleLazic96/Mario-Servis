@@ -1,5 +1,10 @@
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth.tsx';
+import { api } from '../api.ts';
+
+/** Dok se Podešavanja ne učitaju — i na prijavi, koja ih ne sme čitati (nema sesije). */
+export const APP_NAME = 'AUTO SERVIS S23';
 
 // Glavna navigacija; Podešavanja se dodaju samo adminu (ADMIN_NAV niže).
 const NAV = [
@@ -18,6 +23,13 @@ const ADMIN_NAV = [{ to: '/podesavanja', label: 'Podešavanja' }];
 export function Layout(): React.JSX.Element {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  // Ime aplikacije = naziv servisa iz Podešavanja: kad Mario promeni naziv, traka ga prati.
+  const [shopName, setShopName] = useState(APP_NAME);
+  useEffect(() => {
+    void api.get<{ shopName: string }>('/settings')
+      .then((s) => { if (s.shopName) setShopName(s.shopName); })
+      .catch(() => { /* ostaje podrazumevano ime */ });
+  }, []);
 
   async function onLogout(): Promise<void> {
     await logout();
@@ -29,7 +41,7 @@ export function Layout(): React.JSX.Element {
       <aside className="sidebar">
         <div className="sidebar-brand">
           <img className="sidebar-logo" src="/icon-192.png" alt="" />
-          <span className="sidebar-name">Karton</span>
+          <span className="sidebar-name">{shopName}</span>
         </div>
         <nav className="sidebar-nav">
           {NAV.map((item) => (

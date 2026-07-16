@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth.tsx';
 import { ApiRequestError } from '../api.ts';
+import { APP_NAME } from '../components/Layout.tsx';
 
 export function Login(): React.JSX.Element {
   const { login } = useAuth();
@@ -33,9 +34,10 @@ export function Login(): React.JSX.Element {
     <div className="login-screen">
       <form className="login-card" onSubmit={onSubmit}>
         <div className="login-brand">
-          <img className="login-logo" src="/logo.png" alt="AUTO SERVIS S23" />
+          <img className="login-logo" src="/logo.png" alt="" />
           <div>
-            <div className="login-title">Karton</div>
+            {/* Fiksno: prijava je pre sesije, a /settings traži prijavu — naziv se ne može učitati. */}
+            <div className="login-title">{APP_NAME}</div>
             <div className="login-sub">Vođenje auto servisa</div>
           </div>
         </div>

@@ -94,7 +94,7 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
         from: fromHeader(smtp),
         to: b.to,
         subject: `Probni mejl — ${smtp.shopName}`,
-        text: `Ovo je probni mejl iz aplikacije Karton.\n\n`
+        text: `Ovo je probni mejl iz aplikacije ${smtp.shopName}.\n\n`
           + `Ako ga vidite, slanje podsetnika radi.\n\n`
           + `Server: ${smtp.host}:${smtp.port}\n`
           + `Prijava: ${smtp.username ?? '(bez prijave)'}\n`

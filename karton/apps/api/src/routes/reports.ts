@@ -121,7 +121,7 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
   // Pun Excel izvoz cele baze (spec §4.18)
   app.get('/export/all.xlsx', async (_request, reply: FastifyReply) => {
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'Karton';
+    wb.creator = 'AUTO SERVIS S23';
 
     const addSheet = async (name: string, headers: string[], sql: string): Promise<void> => {
       const ws = wb.addWorksheet(name);

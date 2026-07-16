@@ -9,8 +9,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate', // automatska ažuriranja (odluka: PWA u v1)
       manifest: {
-        name: 'Karton — vođenje auto servisa',
-        short_name: 'Karton',
+        name: 'AUTO SERVIS S23 — vođenje auto servisa',
+        short_name: 'AUTO SERVIS S23',
         description: 'Evidencija klijenata, vozila, radnih naloga i fakturisanja.',
         lang: 'sr',
         theme_color: '#2a2e33',

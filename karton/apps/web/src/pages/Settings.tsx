@@ -184,7 +184,43 @@ function Users(): React.JSX.Element {
         </table>
       </div>
       {dialog && <UserModal dialog={dialog} onClose={() => setDialog(null)} onDone={() => { setDialog(null); load(); }} />}
+      <LoginLocks />
     </>
+  );
+}
+
+/**
+ * Zaključane adrese. Kočnica gađa uređaj koji pogađa lozinku, ne nalog — pa Marija
+ * niko ne može da zaključa izdaleka. Ako se on sam zaključa, ovde ga admin pušta.
+ */
+function LoginLocks(): React.JSX.Element | null {
+  const [locks, setLocks] = useState<{ ip: string; lockedUntil: string }[]>([]);
+  const load = (): void => { void api.get<typeof locks>('/login-locks').then(setLocks).catch(() => setLocks([])); };
+  useEffect(load, []);
+
+  async function release(ip: string): Promise<void> {
+    await api.del(`/login-locks/${encodeURIComponent(ip)}`);
+    load();
+  }
+
+  if (locks.length === 0) return null; // ništa da se pokaže dok nema zaključanih
+
+  return (
+    <section className="card" style={{ marginTop: 20 }}>
+      <h3 className="card-title">Zaključane adrese</h3>
+      <p className="hint">Posle 5 pogrešnih prijava adresa čeka 30 minuta. Otključava se i sama.</p>
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead><tr><th>Adresa</th><th>Zaključana do</th><th></th></tr></thead>
+          <tbody>{locks.map((l) => (
+            <tr key={l.ip}>
+              <td className="mono strong">{l.ip}</td>
+              <td className="mono">{new Date(l.lockedUntil).toLocaleString('sr-RS')}</td>
+              <td className="ta-r"><button className="btn-link" onClick={() => release(l.ip)}>pusti sada</button></td>
+            </tr>))}</tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 

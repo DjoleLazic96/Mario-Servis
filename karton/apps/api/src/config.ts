@@ -9,7 +9,6 @@ const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   DATABASE_URL: z.string().min(1),
   API_PORT: z.coerce.number().int().positive().default(3000),
-  APP_BASE_URL: z.string().url(),
   SESSION_SECRET: z.string().min(32),
   // Ključ za šifrovanje tajni u bazi (SMTP lozinka). Ako se izgubi, SMTP lozinka se
   // više ne može pročitati — ponovo se ukuca u Podešavanjima. Zato ide i u backup plan.
@@ -21,6 +20,13 @@ const schema = z.object({
   UPLOADS_DIR: z.string().default('./uploads'),
   // fallback kad pg_dump nije na PATH-u (lokalni razvoj: baza je u kontejneru)
   DB_CONTAINER: z.string().default('karton-db'),
+  /**
+   * Adresa reverse proxy-ja (Caddy) od kojeg smemo da verujemo `X-Forwarded-For`.
+   * Bez ovoga bi iza proxy-ja SVI zahtevi izgledali kao 127.0.0.1 — pa bi jedan
+   * napadač zaključao prijavu svima. Prazno = nema proxy-ja (lokalni razvoj).
+   * NIKAD `true` na otvorenom: tada napadač sam šalje X-Forwarded-For i izbegne kočnicu.
+   */
+  TRUST_PROXY: z.string().default(''),
 });
 
 const parsed = schema.safeParse(process.env);

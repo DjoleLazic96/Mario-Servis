@@ -31,6 +31,9 @@ const app = Fastify({
     level: config.isProduction ? 'info' : 'debug',
     transport: config.isProduction ? undefined : { target: 'pino-pretty' },
   },
+  // Verujemo X-Forwarded-For SAMO od našeg Caddy-ja (TRUST_PROXY iz .env), da bi
+  // `request.ip` bila prava adresa posetioca — od nje zavisi kočnica na prijavi.
+  trustProxy: config.TRUST_PROXY || false,
 });
 
 // Redosled registracije je bitan: cookie → session → CSRF.

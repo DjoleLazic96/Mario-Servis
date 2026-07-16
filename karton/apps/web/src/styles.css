@@ -34,6 +34,10 @@ body,
 #root {
   margin: 0;
   height: 100%;
+  /* Stranica se NIKAD ne pomera vodoravno. Ako je nešto šire od ekrana, mora da
+     skroluje unutar svog okvira (tabela, dokument), a ne da gura celu stranicu. */
+  max-width: 100%;
+  overflow-x: hidden;
 }
 body {
   font-family: var(--font);
@@ -263,103 +267,12 @@ button {
 }
 
 /* --- Mobilni: sidebar postaje gornja traka --- */
-@media (max-width: 720px) {
-  .app-shell {
-    grid-template-columns: 1fr;
-  }
-  .sidebar {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    padding: 10px 12px;
-  }
-  .sidebar-brand {
-    padding: 0;
-  }
-  .sidebar-nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-    flex: 1 1 100%;
-    order: 3;
-  }
-  .sidebar-foot {
-    border: none;
-    padding: 0;
-    flex-direction: row;
-    align-items: center;
-    margin-left: auto;
-  }
-
-  /* Tabele -> kartice: svaki red postaje kartica, a data-label ćelije daje naslov polja.
-     Odnosi se samo na tabele čije su ćelije označene; ostale i dalje skroluju vodoravno. */
-  .data-table thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
-  .data-table,
-  .data-table tbody,
-  .data-table tr,
-  .data-table td {
-    display: block;
-    width: auto;
-  }
-  .data-table tr {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    margin-bottom: 10px;
-    padding: 4px 2px;
-  }
-  .data-table tr:hover {
-    background: var(--surface);
-  }
-  .data-table td {
-    border: none;
-    padding: 7px 12px;
-    text-align: left !important;
-  }
-  .data-table td[data-label]::before {
-    content: attr(data-label);
-    display: block;
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    margin-bottom: 2px;
-  }
-  /* ćelija bez data-label (npr. kolona sa dugmadima) nema naslov, ali zadržava razmak */
-  .data-table td:empty {
-    display: none;
-  }
-  .data-table .table-empty {
-    text-align: center !important;
-  }
-  .table-wrap {
-    overflow-x: visible;
-    border: none;
-    background: transparent;
-  }
-
-  .report-filter {
-    flex-wrap: wrap;
-  }
-  .chain-bar {
-    flex-direction: column;
-    gap: 8px;
-  }
-  .form-2col,
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-}
 
 /* --- Page header row + buttons --- */
 .page-head.row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-.btn-group { display: flex; gap: 8px; }
+/* `wrap` je i na širokim ekranima bezbedan (tamo ionako sve stane), a na uskim
+   sprečava da dugmad pobegnu van ekrana — npr. na tabletu od 768px. */
+.btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn-group-sm { display: flex; gap: 10px; }
 .btn-secondary {
   background: var(--surface); color: var(--ink); border: 1px solid var(--line);
@@ -553,7 +466,7 @@ textarea:focus { border-color: var(--accent); }
 
 
 /* --- Reports / Settings --- */
-.report-filter { display: flex; gap: 12px; margin-bottom: 8px; }
+.report-filter { display: flex; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
 .report-stats { display: flex; gap: 14px; flex-wrap: wrap; }
 .stat-box { background: #f8f9fa; border: 1px solid var(--line); border-radius: 8px; padding: 14px 20px; display: flex; flex-direction: column; gap: 4px; }
 .ok-box { background: var(--ok-bg); color: var(--ok); border-radius: var(--radius); padding: 9px 12px; font-size: 13px; }
@@ -662,7 +575,7 @@ textarea:focus { border-color: var(--accent); }
 .cal-appt-who { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-appt-veh { color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-appt-rem { position: absolute; top: 2px; right: 4px; font-size: 9px; color: var(--ink-faint); }
-.legend { display: flex; gap: 10px; margin-top: 14px; }
+.legend { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 .warn-box { background: #fdf6e6; border: 1px solid #e3cf94; border-radius: var(--radius); padding: 10px 12px; font-size: 13px;
   display: flex; flex-direction: column; gap: 8px; color: #6b5410; }
 
@@ -873,3 +786,182 @@ textarea:focus { border-color: var(--accent); }
 .scroll-list { max-height: 220px; overflow-y: auto; }
 .scroll-table { max-height: 260px; overflow-y: auto; }
 .scroll-table thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MOBILNI PRIKAZ — MORA DA OSTANE NA KRAJU FAJLA.
+   Medijski upit NE nosi veću težinu od običnog pravila: ako je isti selektor
+   napisan kasnije u fajlu, on pobeđuje i mobilna podešavanja se tiho ponište.
+   (Tako je i bilo: .form-2col, .data-table td, .chain-bar i .table-wrap su se
+   gazili, pa su na telefonu polja bežala van ekrana a kartice se spajale.)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 720px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 10px 12px;
+  }
+  .sidebar-brand {
+    padding: 0;
+  }
+  .sidebar-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    flex: 1 1 100%;
+    order: 3;
+  }
+  .sidebar-foot {
+    border: none;
+    padding: 0;
+    flex-direction: row;
+    align-items: center;
+    margin-left: auto;
+  }
+
+  /* Tabele -> kartice: svaki red postaje kartica, a data-label ćelije daje naslov polja.
+     Odnosi se samo na tabele čije su ćelije označene; ostale i dalje skroluju vodoravno. */
+  .data-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .data-table,
+  .data-table tbody,
+  .data-table tr,
+  .data-table td {
+    display: block;
+    width: auto;
+  }
+  .data-table {
+    /* `collapse` spaja ivice susednih redova — na telefonu su se zato kartice
+       lepile jedna za drugu i margina između njih se ignorisala. */
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .data-table tr {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    padding: 4px 2px;
+    overflow: hidden; /* dugačak sadržaj (VIN, email) ne sme da probije zaobljeni okvir */
+  }
+  .data-table tr:hover {
+    background: var(--surface);
+  }
+  .data-table td {
+    border: none;
+    padding: 7px 12px;
+    text-align: left !important;
+    /* Dugačke reči bez razmaka (email, VIN, tablica) inače guraju karticu van ekrana. */
+    overflow-wrap: anywhere;
+  }
+  .data-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 2px;
+  }
+  /* ćelija bez data-label (npr. kolona sa dugmadima) nema naslov, ali zadržava razmak */
+  .data-table td:empty {
+    display: none;
+  }
+  .data-table .table-empty {
+    text-align: center !important;
+  }
+  .table-wrap {
+    overflow-x: visible;
+    border: none;
+    background: transparent;
+  }
+
+  .report-filter {
+    flex-wrap: wrap;
+  }
+  .chain-bar {
+    flex-direction: column;
+    gap: 8px;
+  }
+  /* Dve kolone se na telefonu slažu jedna ispod druge — inače desno polje
+     (PIB, „do") ispadne van ekrana. */
+  .form-2col,
+  .form-row,
+  .quote-row {
+    grid-template-columns: 1fr;
+  }
+
+  /* Trake sa filterima (Svi / Otvoren / U radu / …) ne staju u širinu telefona.
+     Umesto da se seku, prelamaju se u više redova. */
+  .tabs {
+    flex-wrap: wrap;
+  }
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .search {
+    width: 100%;
+    min-width: 0;
+  }
+  /* Zaglavlje strane: naslov i dugme jedno ispod drugog kad nema širine. */
+  .page-head.row {
+    flex-wrap: wrap;
+  }
+  /* Grupe dugmadi (Izmeni nalog / Štampaj / …) se prelamaju umesto da beže. */
+  .btn-group {
+    flex-wrap: wrap;
+  }
+  .smtp-test {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Kalendar: 7 dana + kolona sa satima ne mogu da stanu u širinu telefona.
+     Umesto da se stisnu u nečitljivo, kliza vodoravno UNUTAR svoje kartice —
+     stranica se pritom ne pomera. */
+  .cal-scroll {
+    overflow-x: auto;
+    max-height: calc(100vh - 240px);
+  }
+  .cal-head,
+  .cal-body {
+    min-width: 620px;
+  }
+  /* Sve što je šire od ekrana skroluje UNUTAR sebe — stranica se nikad ne
+     pomera vodoravno. */
+  .doc-paper,
+  .pl-sheet {
+    overflow-x: auto;
+  }
+}
+
+/* Vrlo uski ekrani (stari/mali telefoni, ~320px) — poslednja odbrana od
+   vodoravnog pomeranja cele stranice. */
+@media (max-width: 380px) {
+  .page {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .card {
+    padding: 14px 12px;
+  }
+  .tab {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .page-head h1 {
+    font-size: 22px;
+  }
+}

@@ -79,6 +79,24 @@ python tests/smtp.py
 
 Traži podignut Mailpit (`docker compose up -d`). Vraća SMTP podešavanja na zatečeno.
 
+## `responsive.mjs` — responzivnost na 7 širina ekrana (320–1440px)
+
+Regresija za prijavu sa telefona (16.07.2026): kartice klijenata su se stapale u beli
+blok, a filteri i polja u Podešavanjima bežali van ekrana. Uzrok: mobilni `@media`
+blok je stajao PRE osnovnih pravila u `styles.css`, pa ga je kaskada gazila —
+medijski upit NE nosi veću težinu od običnog pravila napisanog kasnije.
+
+**Zato mobilni blok mora da ostane na KRAJU `styles.css`.**
+
+Test vozi pravi Chromium kroz svih 9 ekrana na 7 širina i traži: vodoravno pomeranje
+stranice, sadržaj koji beži van okvira, slepljene kartice, tabelu koja nije providna.
+
+```bash
+APP_USER=admin APP_PW=admin node tests/responsive.mjs http://localhost:5173
+```
+
+Traži Playwright (`pnpm dlx playwright install chromium`).
+
 ## Statička provera
 
 ```bash

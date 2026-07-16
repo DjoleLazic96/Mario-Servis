@@ -427,16 +427,18 @@ textarea:focus { border-color: var(--accent); }
 .doc-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .doc-paper { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 26px 30px; max-width: 720px; }
 
-/* --- Zaglavlje papira: izdavalac levo, vrsta i broj desno --- */
-.doc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap;
-  padding-bottom: 16px; border-bottom: 2px solid var(--ink); }
+/* --- Zaglavlje papira: izdavalac --- */
+.doc-head { padding-bottom: 16px; border-bottom: 2px solid var(--ink); }
 .doc-issuer { display: flex; gap: 12px; align-items: flex-start; }
 .doc-logo { width: 54px; height: 54px; object-fit: contain; flex: none; }
 .doc-issuer-name { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
 .doc-issuer-lines { font-size: 11.5px; color: var(--ink-soft); line-height: 1.5; margin-top: 2px; }
-.doc-ident { text-align: right; }
-.doc-kind { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-soft); font-weight: 700; }
-.doc-no { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+
+/* --- Šta je ovaj papir: traka preko cele širine, da se vidi iz aviona --- */
+.doc-ident { text-align: center; padding: 20px 0 18px; border-bottom: 1px solid var(--line); }
+.doc-kind { font-size: 27px; font-weight: 800; text-transform: uppercase; letter-spacing: .2em;
+  line-height: 1.1; overflow-wrap: anywhere; }
+.doc-no { font-size: 15px; font-weight: 600; color: var(--ink-soft); margin-top: 4px; }
 
 /* --- Kupac / Vozilo --- */
 .doc-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 16px 0; border-bottom: 1px solid var(--line); }
@@ -447,8 +449,8 @@ textarea:focus { border-color: var(--accent); }
 .doc-meta { display: flex; flex-wrap: wrap; gap: 22px; padding: 14px 0 16px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
 .doc-meta > div { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
 .dm-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-faint); }
-.due-tag { font-size: 11px; color: var(--ink-soft); }
-.due-tag.warn { color: var(--danger); font-weight: 600; }
+/* Javlja se samo kad nešto NIJE u redu (račun kasni, ponuda istekla) — otud uvek crveno. */
+.due-tag { font-size: 11px; color: var(--danger); font-weight: 600; }
 .doc-rubric { margin-top: 14px; }
 .doc-rubric h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 0 0 4px; border-bottom: 1px solid var(--line-soft); padding-bottom: 4px; }
 .doc-item-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
@@ -469,6 +471,13 @@ textarea:focus { border-color: var(--accent); }
 .doc-pay dd { margin: 0; }
 .doc-foot { margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--line-soft);
   font-size: 11px; color: var(--ink-faint); text-align: center; }
+/* Zvaničan naziv i poreska napomena — sitno, ali čitko; ovo je obavezan deo papira. */
+.doc-legal { font-size: 11px; color: var(--ink-soft); line-height: 1.5; max-width: 62ch; margin: 0 auto; }
+.doc-legal.strong { font-weight: 700; color: var(--ink); letter-spacing: .02em; }
+.doc-foot > * + * { margin-top: 6px; }
+
+/* Pogodak pretrage — žuto, ali bez menjanja boje slova (mora da se čita i na traci reda). */
+mark { background: #ffe58a; color: inherit; border-radius: 2px; padding: 0 1px; }
 
 /* --- Quote items builder --- */
 .quote-items { display: flex; flex-direction: column; gap: 8px; }
@@ -476,8 +485,15 @@ textarea:focus { border-color: var(--accent); }
 .quote-row input, .quote-row select { padding: 8px 10px; font-size: 13px; }
 
 @media print {
-  .sidebar, .doc-actions, .chain-bar, .link-back, .page-head button,
-  .inline-actions, .page-head .badge { display: none !important; }
+  /* .app-shell je grid „232px 1fr" (meni | sadržaj). Kad se meni sakrije,
+     sadržaj upadne u kolonu od 232px i papir izađe kao uska traka niz levu
+     ivicu A4. Zato se raspored za štampu mora raspustiti, ne samo sakriti meni. */
+  .app-shell { display: block; height: auto; }
+  .sidebar, .doc-actions, .chain-bar, .link-back,
+  .inline-actions { display: none !important; }
+  /* Celo zaglavlje ekrana (naslov, status, dugmad, podnaslov) je aplikacija, ne papir.
+     Sve što tu piše već stoji na samom papiru — status na papir ne ide uopšte. */
+  .page-head { display: none !important; }
   .app-main { padding: 0; }
   .doc-paper { border: none; max-width: none; padding: 0; }
   /* Zeleni okvir „Podaci za uplatu" mora da se odštampa i na crno-belom štampaču —
@@ -613,8 +629,12 @@ textarea:focus { border-color: var(--accent); }
 .cal-appt-veh { color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-appt-rem { position: absolute; top: 2px; right: 4px; font-size: 9px; color: var(--ink-faint); }
 .legend { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
-.warn-box { background: #fdf6e6; border: 1px solid #e3cf94; border-radius: var(--radius); padding: 10px 12px; font-size: 13px;
-  display: flex; flex-direction: column; gap: 8px; color: #6b5410; }
+/* Običan tekst, NE flex — okvir drži rečenice sa <strong>/<code> unutra.
+   Sa `display:flex; flex-direction:column` svaki inline deo („celu", <strong>bazu</strong>,
+   „(klijenti…)") postaje zaseban flex-item u svom redu, pa se rečenica raspadne na stubac. */
+.warn-box { background: #fdf6e6; border: 1px solid #e3cf94; border-radius: var(--radius); padding: 10px 12px;
+  font-size: 13px; line-height: 1.55; color: #6b5410; }
+.warn-box > * + * { margin-top: 8px; }
 
 /* --- Razmaci: blokovi se ne lepe jedan na drugi --- */
 /* Razmak SAMO između blokova jedan ispod drugog — NIKAD između kartica u istom gridu
@@ -994,8 +1014,10 @@ textarea:focus { border-color: var(--accent); }
     grid-template-columns: 1fr;
     gap: 14px;
   }
-  .doc-ident {
-    text-align: left;
+  /* Naslov ostaje centriran i na telefonu, samo manji da „PREDRAČUN" ne pukne u dva reda. */
+  .doc-kind {
+    font-size: 20px;
+    letter-spacing: .12em;
   }
   .doc-pay dl {
     grid-template-columns: 1fr;

@@ -8,9 +8,16 @@ import { VehicleForm } from './VehicleForm.tsx';
 export function VehiclePicker({
   value,
   onChange,
+  customerId,
 }: {
   value: Vehicle | null;
   onChange: (v: Vehicle) => void;
+  /**
+   * Kad je klijent poznat, njegova vozila se nude ODMAH, bez kucanja — u servisu
+   * čovek gotovo uvek dovozi svoje vozilo. Kucanje i dalje pretražuje sva vozila,
+   * jer vozilo ume da promeni vlasnika pa se zatekne pod tuđim imenom.
+   */
+  customerId?: number | null;
 }): React.JSX.Element {
   const [q, setQ] = useState('');
   const [results, setResults] = useState<Vehicle[]>([]);
@@ -18,15 +25,24 @@ export function VehiclePicker({
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const term = q.trim();
+  const listingOwned = Boolean(customerId) && term.length === 0;
 
   useEffect(() => {
-    if (!open || q.trim().length < 1) { setResults([]); return; }
+    if (!open || (term.length < 1 && !customerId)) { setResults([]); return; }
     const t = setTimeout(async () => {
-      const r = await api.get<Paginated<Vehicle>>(`/vehicles?status=active&q=${encodeURIComponent(q.trim())}&pageSize=8`);
+      const qs = new URLSearchParams({ status: 'active', pageSize: '8' });
+      if (term) qs.set('q', term);
+      else qs.set('customerId', String(customerId));
+      const r = await api.get<Paginated<Vehicle>>(`/vehicles?${qs.toString()}`);
       setResults(r.data);
-    }, 200);
+    }, term ? 200 : 0);
     return () => clearTimeout(t);
-  }, [q, open]);
+  }, [term, open, customerId]);
+
+  // Čim se klijent izabere, lista njegovih vozila se sama otvori — inače bi Mario
+  // morao da klikne u polje i kuca tablicu vozila koje već stoji pred njim.
+  useEffect(() => { if (customerId && !value) setOpen(true); }, [customerId, value]);
 
   function pick(v: Vehicle): void { onChange(v); setOpen(false); setQ(''); }
 
@@ -58,6 +74,8 @@ export function VehiclePicker({
           onChange={(e) => setQ(e.target.value)} onFocus={() => setOpen(true)} autoFocus={open} />
         <button type="button" className="btn-secondary btn-sm" onClick={() => { setError(null); setShowNew(true); }}>+ Novo vozilo</button>
       </div>
+      {open && listingOwned && results.length > 0 && <div className="hint">Vozila ovog klijenta — kucajte da pretražite sva.</div>}
+      {open && listingOwned && results.length === 0 && <div className="hint">Ovaj klijent nema zavedeno vozilo — kucajte da pretražite ili dodajte novo.</div>}
       {open && results.length > 0 && (
         <ul className="owner-results">
           {results.map((v) => (

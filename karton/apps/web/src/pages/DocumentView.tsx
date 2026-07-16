@@ -19,7 +19,7 @@ type Dialog = 'convert' | 'markPaid' | 'unmarkPaid' | 'edit' | 'fixPayment' | nu
 /** Podaci izdavaoca za zaglavlje papira — iz Podešavanja. */
 interface Shop {
   shopName: string; address: string | null; taxId: string | null; phone: string | null; logo: string | null;
-  companyId: string | null; bankAccount: string | null; bankName: string | null;
+  companyId: string | null; bankAccount: string | null; bankName: string | null; footerNote: string | null;
 }
 
 export function DocumentView(): React.JSX.Element {
@@ -139,11 +139,13 @@ export function DocumentView(): React.JSX.Element {
               </div>
             </div>
           </div>
-          <div className="doc-ident">
-            <div className="doc-kind">{docTypeLabel[doc.type]}</div>
-            <div className="doc-no mono">{doc.number}</div>
-          </div>
         </header>
+
+        {/* Šta je ovaj papir — preko cele širine, da se vidi na prvi pogled. */}
+        <div className="doc-ident">
+          <div className="doc-kind">{docTypeLabel[doc.type]}</div>
+          <div className="doc-no mono">{doc.number}</div>
+        </div>
 
         <div className="doc-parties">
           <section>
@@ -165,8 +167,8 @@ export function DocumentView(): React.JSX.Element {
         <div className="doc-meta">
           <div><span className="dm-label">Datum izdavanja</span><span className="mono">{formatDate(doc.issuedOn)}</span></div>
           {doc.type === 'invoice'
-            ? <div><span className="dm-label">Datum dospeća</span><span className="mono">{formatDate(doc.dueOn)}</span>{due && <span className={`due-tag ${due.warn ? 'warn' : ''}`}>{due.text}</span>}</div>
-            : <div><span className="dm-label">Rok važenja</span><span className="mono">{formatDate(doc.validUntil)}</span>{expired && <span className="due-tag warn">isteklo</span>}</div>}
+            ? <div><span className="dm-label">Datum dospeća</span><span className="mono">{formatDate(doc.dueOn)}</span>{due && <span className="due-tag">{due}</span>}</div>
+            : <div><span className="dm-label">Rok važenja</span><span className="mono">{formatDate(doc.validUntil)}</span>{expired && <span className="due-tag">isteklo</span>}</div>}
           {doc.paidOn && <div><span className="dm-label">Plaćeno</span><span className="mono">{formatDate(doc.paidOn)}</span> {doc.paymentMethod}</div>}
         </div>
 
@@ -217,7 +219,14 @@ export function DocumentView(): React.JSX.Element {
         )}
 
         <footer className="doc-foot">
-          Dokument je izdat elektronski i punovažan je bez pečata i potpisa.
+          {/* Zvaničan naziv + poreska napomena: iz Podešavanja, jer prestaje da važi
+              onog dana kad servis uđe u sistem PDV-a. Tada se menja tekst, ne kod. */}
+          {shop?.footerNote && <div className="doc-legal">{shop.footerNote}</div>}
+          {/* Vezano za vrstu papira, ne za servis — ponuda nije zahtev za plaćanje, pa joj ne treba. */}
+          {(doc.type === 'invoice' || doc.type === 'proforma') && (
+            <div className="doc-legal strong">Ovo nije fiskalni račun.</div>
+          )}
+          <div>Dokument je izdat elektronski i punovažan je bez pečata i potpisa.</div>
         </footer>
       </div>
 

@@ -1,0 +1,43 @@
+# AUTO SERVIS S23 — jedno poreklo za sve: web i /api su na istom domenu,
+# pa kolačić sesije radi kao same-origin (aplikacija nema CORS i ne treba joj).
+autoserviss23.rs, www.autoserviss23.rs {
+	encode gzip zstd
+
+	# API ide na Node; ostalo je statički web (SPA).
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	handle {
+		root * /opt/autoservis/app/apps/web/dist
+		try_files {path} /index.html
+		file_server
+	}
+
+	# --- Keširanje ---
+	# Fajlovi sa hešom u imenu (/assets/index-D26m3zHr.js) pri svakoj izmeni dobiju
+	# NOVO ime, pa smeju da stoje u kešu zauvek.
+	@immutable path /assets/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+	# Sve ostalo mora da se proveri pri svakom otvaranju. Bez ovoga Caddy ne šalje
+	# nikakav Cache-Control, pa browser sam odlučuje koliko da čuva index.html —
+	# a stari index.html pokazuje na stare /assets/*, pa se nova verzija nikad i ne
+	# preuzme. Tako je posle deploya ostajala stara aplikacija na ekranu.
+	# Obuhvata i SPA rute (/dokumenti/17), jer i one vraćaju index.html.
+	@revalidate not path /assets/* /api/*
+	header @revalidate Cache-Control "no-cache"
+
+	header {
+		# Osnovna zaštita zaglavljima
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/access.log
+	}
+}

@@ -61,7 +61,7 @@ export function AppointmentForm({ mechanics, defaultDate, defaultTime = '09:00',
   return (
     <form onSubmit={(e: FormEvent) => { e.preventDefault(); void doSubmit(false); }} className="form">
       <div className="field"><span>Klijent</span><OwnerPicker value={customer} onChange={setCustomer} /></div>
-      <div className="field"><span>Vozilo</span><VehiclePicker value={vehicle} onChange={setVehicle} /></div>
+      <div className="field"><span>Vozilo</span><VehiclePicker value={vehicle} onChange={setVehicle} customerId={customer?.id} /></div>
       <div className="form-2col">
         <label className="field"><span>Datum</span><DateInput value={date} onChange={setDate} required /></label>
         <label className="field"><span>Vreme</span><TimeInput value={time} onChange={setTime} required /></label>

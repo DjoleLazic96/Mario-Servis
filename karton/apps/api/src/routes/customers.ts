@@ -107,9 +107,18 @@ export async function customerRoutes(app: FastifyInstance): Promise<void> {
       const norm = `$${params.length}`;
       params.push(p.q.toLowerCase());
       const raw = `$${params.length}`;
+      // Klijenta se traži i po onome što nije na njemu samom: po telefonu/mejlu i po
+      // vozilu koje vozi. Mario zna tablicu, a ne uvek prezime.
       conds.push(
         `(regexp_replace(lower(name), '\\s', '', 'g') LIKE '%' || ${norm} || '%'
-          OR lower(coalesce(tax_id, '')) LIKE '%' || ${raw} || '%')`,
+          OR lower(coalesce(tax_id, '')) LIKE '%' || ${raw} || '%'
+          OR EXISTS (SELECT 1 FROM customer_contact cc WHERE cc.customer_id = customer.id
+                     AND regexp_replace(lower(cc.value), '\\s', '', 'g') LIKE '%' || ${norm} || '%')
+          OR EXISTS (SELECT 1 FROM ownership_history oh JOIN vehicle veh ON veh.id = oh.vehicle_id
+                     WHERE oh.customer_id = customer.id AND oh.valid_to IS NULL
+                     AND (regexp_replace(lower(veh.make || veh.model), '\\s', '', 'g') LIKE '%' || ${norm} || '%'
+                          OR EXISTS (SELECT 1 FROM registration_history rh WHERE rh.vehicle_id = veh.id
+                                     AND regexp_replace(lower(rh.plate), '\\s', '', 'g') LIKE '%' || ${norm} || '%'))))`,
       );
     }
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';

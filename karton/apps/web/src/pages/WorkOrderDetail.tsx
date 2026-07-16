@@ -123,7 +123,7 @@ export function WorkOrderDetail(): React.JSX.Element {
         </div>
         <div className="btn-group">
           {editable && <button className="btn-secondary" onClick={() => { setEditError(null); setDialog({ kind: 'edit' }); }}>Izmeni nalog</button>}
-          <button className="btn-secondary" onClick={() => window.open(`/nalozi/${id}/stampa`, '_blank')}>Štampaj prijemni list</button>
+          <button className="btn-secondary" onClick={() => window.open(`/nalozi/${id}/stampa`, '_blank')}>Štampaj radni nalog</button>
           {wo.status !== 'cancelled' && (
             <button className="btn-secondary" onClick={issueProforma} disabled={saving}>Izdaj predračun</button>
           )}

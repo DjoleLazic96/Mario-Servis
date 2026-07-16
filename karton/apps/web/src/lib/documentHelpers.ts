@@ -29,18 +29,18 @@ export function formatDate(iso: string | null | undefined): string {
   return `${d}.${m}.${y}.`;
 }
 
-/** Izvedena UI oznaka dospeća računa (BR-31): „dospeo" nije status. */
 /**
- * Oznaka pored datuma dospeća — javlja se SAMO kad račun kasni.
- * Ranije je za nedospeo račun pisala „dospeva 28.07.2026" tačno ispod polja
- * „Datum dospeća 28.07.2026" — isti podatak dvaput, bez ikakve koristi.
+ * Izvedena UI oznaka dospeća računa (BR-31): „dospeo" nije status.
+ *
+ * Javlja se SAMO kad račun kasni — za nedospeo je ranije pisala „dospeva 28.07.2026"
+ * tačno ispod polja „Datum dospeća 28.07.2026", isti podatak dvaput.
  */
-export function dueInfo(dueOn: string | null): { text: string; warn: boolean } | null {
+export function dueInfo(dueOn: string | null): string | null {
   if (!dueOn) return null;
   const today = new Date().toLocaleDateString('sv-SE');
   if (dueOn >= today) return null;
   const days = Math.round((Date.parse(today) - Date.parse(dueOn)) / 86400000);
-  return { text: `kasni ${days} ${days === 1 ? 'dan' : 'dana'}`, warn: true };
+  return `kasni ${days} ${days === 1 ? 'dan' : 'dana'}`;
 }
 
 /** Upozorenje ako je rok važenja prošao. */

@@ -173,7 +173,10 @@ export function Calendar(): React.JSX.Element {
           <CompleteModal appt={selected} onDone={(woId) => changeStatus(selected, 'completed', woId)} />
         </Modal>
       )}
-      {selected && (
+      {/* `!dialog` je ovde suština: bez toga „Izmeni" i „Realizovano" otvore svoju formu,
+          ali OVAJ prozor ostane iscrtan preko nje (poslednji je u DOM-u) — pa dugmad
+          deluju mrtvo, iako rade. Detalj se sklanja dok je bilo koja forma otvorena. */}
+      {selected && !dialog && (
         <Modal title={`Termin — ${selected.customer.name}`} onClose={() => setSelected(null)}>
           <div className="form">
             <dl className="kv">

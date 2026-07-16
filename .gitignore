@@ -26,3 +26,6 @@ uploads/
 *GMAIL*
 *.secret
 secrets.env
+
+# Slike izgleda dokumenata — generisano radi pregleda, ne pripada repou
+izgled-dokumenata/

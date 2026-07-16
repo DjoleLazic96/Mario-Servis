@@ -19,6 +19,7 @@ const settingsSchema = z.object({
   companyId: z.string().trim().nullish(),
   bankAccount: z.string().trim().nullish(),
   bankName: z.string().trim().nullish(),
+  footerNote: z.string().trim().nullish(),
   phone: z.string().trim().nullish(),
   smtpHost: z.string().trim().nullish(),
   smtpPort: z.number().int().nullish(),
@@ -43,14 +44,14 @@ const logoSchema = z.object({
 function toSettings(r: any): Record<string, unknown> {
   return {
     shopName: r.shop_name, address: r.address, taxId: r.tax_id, phone: r.phone, logo: r.logo,
-    companyId: r.company_id, bankAccount: r.bank_account, bankName: r.bank_name,
+    companyId: r.company_id, bankAccount: r.bank_account, bankName: r.bank_name, footerNote: r.footer_note,
     smtpHost: r.smtp_host, smtpPort: r.smtp_port, smtpUsername: r.smtp_username, senderEmail: r.sender_email,
     hasSmtpPassword: r.has_smtp_password,
     workHoursFrom: r.work_hours_from, workHoursTo: r.work_hours_to, defaultValidityDays: r.default_validity_days,
     reminderSendTime: r.reminder_send_time, pageSize: r.page_size, version: r.version,
   };
 }
-const SEL = `SELECT shop_name, address, tax_id, phone, logo, company_id, bank_account, bank_name,
+const SEL = `SELECT shop_name, address, tax_id, phone, logo, company_id, bank_account, bank_name, footer_note,
   smtp_host, smtp_port, smtp_username, sender_email,
   (smtp_password IS NOT NULL) has_smtp_password,
   to_char(work_hours_from,'HH24:MI') work_hours_from, to_char(work_hours_to,'HH24:MI') work_hours_to,
@@ -75,12 +76,12 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
       `UPDATE settings SET shop_name=$1, address=$2, tax_id=$3, phone=$4, smtp_host=$5, smtp_port=$6, smtp_username=$7,
         smtp_password=coalesce($8, smtp_password), sender_email=$9, work_hours_from=$10, work_hours_to=$11,
         default_validity_days=$12, reminder_send_time=$13, page_size=$14,
-        company_id=$15, bank_account=$16, bank_name=$17,
+        company_id=$15, bank_account=$16, bank_name=$17, footer_note=$18,
         version=version+1, updated_at=now() WHERE id=1`,
       [b.shopName, b.address ?? null, b.taxId ?? null, b.phone ?? null, b.smtpHost ?? null, b.smtpPort ?? null,
         b.smtpUsername ?? null, password, b.senderEmail ?? null, b.workHoursFrom, b.workHoursTo,
         b.defaultValidityDays, b.reminderSendTime, b.pageSize,
-        b.companyId ?? null, b.bankAccount ?? null, b.bankName ?? null]);
+        b.companyId ?? null, b.bankAccount ?? null, b.bankName ?? null, b.footerNote ?? null]);
     invalidateSettingsCache();
     const { rows } = await pool.query(SEL);
     // Lozinka ne može da procuri u audit: SEL je i ne čita, vraća samo `has_smtp_password`.

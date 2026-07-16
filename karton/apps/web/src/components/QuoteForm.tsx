@@ -49,7 +49,7 @@ export function QuoteForm({ onCreated }: { onCreated: (id: number) => void }): R
   return (
     <form onSubmit={submit} className="form">
       <div className="field"><span>Klijent</span><OwnerPicker value={customer} onChange={setCustomer} /></div>
-      <div className="field"><span>Vozilo</span><VehiclePicker value={vehicle} onChange={setVehicle} /></div>
+      <div className="field"><span>Vozilo</span><VehiclePicker value={vehicle} onChange={setVehicle} customerId={customer?.id} /></div>
 
       <div className="field"><span>Stavke procene</span></div>
       <div className="quote-items">

@@ -5,6 +5,7 @@ import { api, ApiRequestError } from '../api.ts';
 import { Modal } from '../components/Modal.tsx';
 import { VehicleForm } from '../components/VehicleForm.tsx';
 import { SortableTh } from '../components/SortableTh.tsx';
+import { Highlight } from '../components/Highlight.tsx';
 
 type Tab = 'active' | 'inService' | 'archived';
 
@@ -108,14 +109,14 @@ export function Vehicles(): React.JSX.Element {
           <tbody>
             {result?.data.map((v) => (
               <tr key={v.id} className="clickable" onClick={() => navigate(`/vozila/${v.id}`)}>
-                <td className="mono strong" data-label="Tablica">{v.currentPlate ?? '—'}</td>
+                <td className="mono strong" data-label="Tablica"><Highlight text={v.currentPlate ?? '—'} q={q} /></td>
                 <td data-label="Vozilo">
-                  {v.make} {v.model}
+                  <Highlight text={`${v.make} ${v.model}`} q={q} />
                   {v.year ? <span className="muted"> · {v.year}</span> : null}
                 </td>
                 <td data-label="Gorivo">{v.fuel ?? '—'}</td>
                 <td data-label="Vlasnik">{v.currentOwner?.name ?? '—'}</td>
-                <td className="mono muted" data-label="VIN">{v.vin}</td>
+                <td className="mono muted" data-label="VIN"><Highlight text={v.vin} q={q} /></td>
               </tr>
             ))}
             {!loading && result?.data.length === 0 && (

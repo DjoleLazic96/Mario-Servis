@@ -6,6 +6,7 @@ import { Modal } from '../components/Modal.tsx';
 import { QuoteForm } from '../components/QuoteForm.tsx';
 import { docTypeLabel, docStatusLabel, docStatusClass, money, formatDate } from '../lib/documentHelpers.ts';
 import { SortableTh } from '../components/SortableTh.tsx';
+import { Highlight } from '../components/Highlight.tsx';
 
 type Tab = 'all' | 'quote' | 'proforma' | 'invoice' | 'unpaid';
 const TABS: { key: Tab; label: string }[] = [
@@ -60,7 +61,7 @@ export function Documents(): React.JSX.Element {
         <div className="tabs">
           {TABS.map((t) => <button key={t.key} className={`tab ${tab === t.key ? 'active' : ''}`} onClick={() => { setTab(t.key); setPage(1); }}>{t.label}</button>)}
         </div>
-        <input className="search" placeholder="Broj dokumenta, klijent…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
+        <input className="search" placeholder="Broj, klijent, tablica, vozilo…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
       </div>
 
       <div className="table-wrap">
@@ -78,11 +79,11 @@ export function Documents(): React.JSX.Element {
           <tbody>
             {result?.data.map((d) => (
               <tr key={d.id} className="clickable" onClick={() => navigate(`/dokumenti/${d.id}`)}>
-                <td className="mono strong" data-label="Broj">{d.number}</td>
+                <td className="mono strong" data-label="Broj"><Highlight text={d.number} q={q} /></td>
                 <td data-label="Tip">{docTypeLabel[d.type]}</td>
-                <td data-label="Klijent">{d.customer.name}</td>
-                <td className="mono" data-label="Tablica">{d.vehicle.plate ?? '—'}</td>
-                <td data-label="Vozilo">{d.vehicle.make} {d.vehicle.model}</td>
+                <td data-label="Klijent"><Highlight text={d.customer.name} q={q} /></td>
+                <td className="mono" data-label="Tablica"><Highlight text={d.vehicle.plate ?? '—'} q={q} /></td>
+                <td data-label="Vozilo"><Highlight text={`${d.vehicle.make} ${d.vehicle.model}`} q={q} /></td>
                 <td className="mono" data-label="Datum">{formatDate(d.issuedOn)}</td>
                 <td className="ta-r mono" data-label="Iznos">{money(d.totalAmount)}</td>
                 <td data-label="Status"><span className={`badge ${docStatusClass[d.status]}`}>{docStatusLabel(d.type, d.status)}</span></td>

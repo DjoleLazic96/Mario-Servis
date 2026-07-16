@@ -30,7 +30,7 @@ function AppRoutes(): React.JSX.Element {
   return (
     <Routes>
       <Route path="/login" element={user && !loading ? <Navigate to="/" replace /> : <Login />} />
-      {/* Prijemni list — bez sidebar-a, otvara dijalog štampe */}
+      {/* Radni nalog za štampu — namerno IZVAN Layout-a (bez sidebar-a), otvara dijalog štampe */}
       <Route path="/nalozi/:id/stampa" element={<Protected><WorkOrderPrint /></Protected>} />
       <Route
         element={

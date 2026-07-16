@@ -16,5 +16,8 @@
     "dev:web": "pnpm --filter @karton/web dev",
     "typecheck": "pnpm -r typecheck"
   },
-  "packageManager": "pnpm@11.10.0"
+  "packageManager": "pnpm@11.10.0",
+  "devDependencies": {
+    "playwright": "^1.61.1"
+  }
 }

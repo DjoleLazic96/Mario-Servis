@@ -5,6 +5,7 @@ import { api, ApiRequestError } from '../api.ts';
 import { Modal } from '../components/Modal.tsx';
 import { CustomerForm } from '../components/CustomerForm.tsx';
 import { SortableTh } from '../components/SortableTh.tsx';
+import { Highlight } from '../components/Highlight.tsx';
 
 type Tab = 'all' | 'individual' | 'company' | 'archived';
 const TABS: { key: Tab; label: string }[] = [
@@ -107,7 +108,7 @@ export function Customers(): React.JSX.Element {
         </div>
         <input
           className="search"
-          placeholder="Pretraga (ime, PIB/JMBG)…"
+          placeholder="Ime, PIB/JMBG, telefon, tablica…"
           value={q}
           onChange={(e) => { setQ(e.target.value); setPage(1); }}
         />
@@ -127,11 +128,11 @@ export function Customers(): React.JSX.Element {
           <tbody>
             {result?.data.map((c) => (
               <tr key={c.id} className="clickable" onClick={() => navigate(`/klijenti/${c.id}`)}>
-                <td className="strong" data-label="Naziv">{c.name}</td>
+                <td className="strong" data-label="Naziv"><Highlight text={c.name} q={q} /></td>
                 <td data-label="Tip">{c.type === 'company' ? 'Pravno' : 'Fizičko'}</td>
-                <td className="mono" data-label="PIB">{c.taxId ?? '—'}</td>
-                <td className="mono" data-label="Telefon">{primary(c, 'phone')}</td>
-                <td data-label="Email">{primary(c, 'email')}</td>
+                <td className="mono" data-label="PIB"><Highlight text={c.taxId ?? '—'} q={q} /></td>
+                <td className="mono" data-label="Telefon"><Highlight text={primary(c, 'phone')} q={q} /></td>
+                <td data-label="Email"><Highlight text={primary(c, 'email')} q={q} /></td>
               </tr>
             ))}
             {!loading && result?.data.length === 0 && (

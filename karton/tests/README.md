@@ -95,7 +95,47 @@ stranice, sadržaj koji beži van okvira, slepljene kartice, tabelu koja nije pr
 APP_USER=admin APP_PW=admin node tests/responsive.mjs http://localhost:5173
 ```
 
-Traži Playwright (`pnpm dlx playwright install chromium`).
+## `search.py` — opseg pretrage (14 provera)
+
+Regresija (16.07.2026): na Dokumentima pretraga „987" nije nalazila ništa, iako vozilo
+ima tablicu BG987-ZZ. Uzrok NIJE bio „traži samo od početka" — `LIKE '%…%'` je oduvek
+hvatao i sredinu teksta. Uzrok je bio **opseg**: Dokumenti su gledali samo broj i ime
+klijenta, Klijenti samo ime i PIB. Tablicu nijedan.
+
+Proverava da svih pet spiskova nalazi po tablici/vozilu, uz zaštitu od regresije na
+onome što je i ranije radilo (broj dokumenta, ime, VIN).
+
+```bash
+python tests/search.py
+```
+
+## `ui.mjs` — regresije u pregledaču (20 provera)
+
+Stvari koje se ne vide iz koda, nego tek kad se **izmere**:
+
+- **Štampa na A4** — `.app-shell` je grid „232px 1fr"; kad se za štampu sakrije meni,
+  sadržaj je upadao u kolonu od 232px i račun je izlazio kao uska traka. Test meri
+  širinu papira u `print` mediju i traži bar 85% strane.
+- **Status na papiru** — „VAŽI"/„Neplaćeno" je stanje u aplikaciji, ne podatak za mušteriju.
+- **Prozor termina** — „Izmeni" je otvarao formu, a prozor sa detaljima je ostajao PREKO
+  nje (poslednji u DOM-u), pa je dugme delovalo mrtvo. Test broji otvorene prozore.
+- **`.warn-box`** — `flex-direction: column` je rečenicu sa `<strong>`/`<code>` lomio na stubac.
+- **Bojenje pretrage** i **srpske poruke validacije**.
+
+```bash
+APP_USER=admin APP_PW=admin node tests/ui.mjs http://localhost:5173
+```
+
+## Playwright
+
+`responsive.mjs` i `ui.mjs` traže Chromium:
+
+```bash
+pnpm dlx playwright install chromium
+```
+
+Sam paket `playwright` je devDependency u korenu — do 17.07.2026. nije bio, pa su ovi
+testovi bili u repou a **nisu mogli da se pokrenu** ni na jednoj drugoj mašini.
 
 ## Statička provera
 

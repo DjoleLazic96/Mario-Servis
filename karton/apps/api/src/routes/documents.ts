@@ -69,7 +69,13 @@ export async function documentRoutes(app: FastifyInstance): Promise<void> {
     if (p.q) {
       params.push(normalizeSearch(p.q)); const norm = `$${params.length}`;
       params.push(p.q.toLowerCase()); const low = `$${params.length}`;
-      conds.push(`(lower(d.number) LIKE '%'||${low}||'%' OR regexp_replace(lower(c.name),'\\s','','g') LIKE '%'||${norm}||'%')`);
+      // Tablica i marka/model su ovde jednako prirodan pojam kao broj dokumenta:
+      // „987" je za Marija vozilo, a ne broj računa. (Isti opseg kao na nalozima.)
+      conds.push(`(lower(d.number) LIKE '%'||${low}||'%'
+        OR regexp_replace(lower(c.name),'\\s','','g') LIKE '%'||${norm}||'%'
+        OR regexp_replace(lower(v.make || v.model),'\\s','','g') LIKE '%'||${norm}||'%'
+        OR EXISTS (SELECT 1 FROM registration_history rh WHERE rh.vehicle_id = d.vehicle_id
+                   AND regexp_replace(lower(rh.plate),'\\s','','g') LIKE '%'||${norm}||'%'))`);
     }
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const order = orderBy(p.sort, {

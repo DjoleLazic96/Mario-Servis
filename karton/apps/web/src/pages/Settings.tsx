@@ -8,7 +8,7 @@ import { sortRows } from '../lib/sortRows.ts';
 
 interface SettingsData {
   shopName: string; address: string | null; taxId: string | null; phone: string | null; logo: string | null;
-  companyId: string | null; bankAccount: string | null; bankName: string | null;
+  companyId: string | null; bankAccount: string | null; bankName: string | null; footerNote: string | null;
   smtpHost: string | null; smtpPort: number | null; smtpUsername: string | null; senderEmail: string | null;
   hasSmtpPassword: boolean;
   workHoursFrom: string; workHoursTo: string; defaultValidityDays: number; reminderSendTime: string; pageSize: number; version: number;
@@ -110,6 +110,13 @@ function ServiceSettings(): React.JSX.Element {
           <label className="field"><span>Banka</span>
             <input value={s.bankName ?? ''} onChange={(e) => set({ bankName: e.target.value })} placeholder="Raiffeisen banka" /></label>
         </div>
+
+        <label className="field">
+          <span>Napomena u podnožju dokumenta <small className="hint">— zvaničan naziv i poreski status; štampa se na ponudi, predračunu i računu</small></span>
+          <textarea rows={3} value={s.footerNote ?? ''} onChange={(e) => set({ footerNote: e.target.value })}
+            placeholder="npr. …nije obveznik PDV-a po članu 33 Zakona o PDV." />
+          <small className="hint">Ovo obavezno izmeniti ako servis uđe u sistem PDV-a — tada tekst više nije tačan.</small>
+        </label>
 
         <div className="field">
           <span>Logo <small className="hint">(PNG/JPEG/SVG, do 400 KB — štampa se na prijemnom listu)</small></span>

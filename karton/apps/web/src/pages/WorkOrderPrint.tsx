@@ -8,7 +8,7 @@ import { api } from '../api.ts';
 
 interface Shop { shopName: string; address: string | null; taxId: string | null; phone: string | null; logo: string | null }
 
-/** Prijemni list (A4) — jedina standardna štampa naloga (spec §4.4). */
+/** Radni nalog (A4) — jedina standardna štampa naloga (spec §4.4). */
 export function WorkOrderPrint(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
   const [wo, setWo] = useState<WorkOrderDetail | null>(null);

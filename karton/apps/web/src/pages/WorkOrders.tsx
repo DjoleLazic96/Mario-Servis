@@ -8,6 +8,7 @@ import { Modal } from '../components/Modal.tsx';
 import { WorkOrderForm } from '../components/WorkOrderForm.tsx';
 import { statusClass } from '../lib/workOrderStatus.ts';
 import { SortableTh } from '../components/SortableTh.tsx';
+import { Highlight } from '../components/Highlight.tsx';
 
 const TABS: { key: WorkOrderStatus | 'all'; label: string }[] = [
   { key: 'all', label: 'Svi' },
@@ -87,10 +88,10 @@ export function WorkOrders(): React.JSX.Element {
           <tbody>
             {result?.data.map((w) => (
               <tr key={w.id} className="clickable" onClick={() => navigate(`/nalozi/${w.id}`)}>
-                <td className="mono strong" data-label="Broj">{w.number}</td>
-                <td className="mono" data-label="Tablica">{w.vehicle.plate ?? '—'}</td>
-                <td data-label="Vozilo">{w.vehicle.make} {w.vehicle.model}</td>
-                <td data-label="Klijent">{w.customer.name}</td>
+                <td className="mono strong" data-label="Broj"><Highlight text={w.number} q={q} /></td>
+                <td className="mono" data-label="Tablica"><Highlight text={w.vehicle.plate ?? '—'} q={q} /></td>
+                <td data-label="Vozilo"><Highlight text={`${w.vehicle.make} ${w.vehicle.model}`} q={q} /></td>
+                <td data-label="Klijent"><Highlight text={w.customer.name} q={q} /></td>
                 <td className="mono" data-label="Prijem">{formatDate(w.receivedOn)}</td>
                 <td data-label="Status"><span className={`badge ${statusClass[w.status]}`}>{labels.workOrderStatus[w.status]}</span></td>
               </tr>

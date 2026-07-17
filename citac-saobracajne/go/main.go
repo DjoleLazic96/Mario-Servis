@@ -176,14 +176,17 @@ func readVehicle() (any, error) {
 
 	owner := strings.TrimSpace(access(all, 0x71, 0xA1, 0xA2, 0x84) + " " + access(all, 0x71, 0xA1, 0xA2, 0x83))
 	return map[string]any{
-		"vin":          access(all, 0x71, 0x8A),
-		"make":         access(all, 0x71, 0xA3, 0x87),
-		"model":        access(all, 0x71, 0xA3, 0x89),
-		"fuel":         access(all, 0x71, 0xA5, 0x92),
-		"year":         access(all, 0x72, 0xC5),
-		"plate":        access(all, 0x71, 0x81),
-		"ownerName":    owner,
-		"ownerAddress": access(all, 0x71, 0xA1, 0xA2, 0x85),
+		"vin":   access(all, 0x71, 0x8A),
+		"make":  access(all, 0x71, 0xA3, 0x87),
+		"model": access(all, 0x71, 0xA3, 0x89),
+		"fuel":  access(all, 0x71, 0xA5, 0x92),
+		"year":  access(all, 0x72, 0xC5),
+		"plate": access(all, 0x71, 0x81),
+		"ownerName": owner,
+		// JMBG (fizičko) ili PIB/matični (pravno) vlasnika — jedini pouzdan ključ za povezivanje
+		// sa postojećim klijentom (aplikacija po njemu sprečava duplikate).
+		"ownerPersonalNo": access(all, 0x72, 0xC2),
+		"ownerAddress":    access(all, 0x71, 0xA1, 0xA2, 0x85),
 	}, nil
 }
 

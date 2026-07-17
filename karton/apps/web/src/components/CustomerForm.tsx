@@ -5,23 +5,33 @@ import type { Customer, CustomerInput } from '@karton/shared';
  * Forma klijenta — koristi se i za kreiranje (sa telefonom/emailom) i za izmenu.
  * Label za PIB/JMBG se menja prema tipu (spec §4.2).
  */
+/** Unapred popunjene vrednosti (npr. sa saobraćajne) — za NOVOG klijenta, nije pun Customer. */
+export interface CustomerPrefill {
+  type?: 'individual' | 'company';
+  name?: string;
+  taxId?: string | null;
+  address?: string | null;
+}
+
 export function CustomerForm({
   initial,
+  prefill,
   withContacts,
   submitting,
   error,
   onSubmit,
 }: {
   initial?: Customer;
+  prefill?: CustomerPrefill;
   withContacts: boolean;
   submitting: boolean;
   error?: string | null;
   onSubmit: (input: CustomerInput) => void;
 }): React.JSX.Element {
-  const [type, setType] = useState<'individual' | 'company'>(initial?.type ?? 'individual');
-  const [name, setName] = useState(initial?.name ?? '');
-  const [taxId, setTaxId] = useState(initial?.taxId ?? '');
-  const [address, setAddress] = useState(initial?.address ?? '');
+  const [type, setType] = useState<'individual' | 'company'>(initial?.type ?? prefill?.type ?? 'individual');
+  const [name, setName] = useState(initial?.name ?? prefill?.name ?? '');
+  const [taxId, setTaxId] = useState(initial?.taxId ?? prefill?.taxId ?? '');
+  const [address, setAddress] = useState(initial?.address ?? prefill?.address ?? '');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
 

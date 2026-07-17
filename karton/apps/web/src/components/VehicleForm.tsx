@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import type { Vehicle, VehicleInput, CustomerRef } from '@karton/shared';
+import type { Vehicle, VehicleInput, CustomerRef, Customer, Paginated } from '@karton/shared';
+import { api } from '../api.ts';
 import { OwnerPicker } from './OwnerPicker.tsx';
+import type { CustomerPrefill } from './CustomerForm.tsx';
 
 const CITAC = 'http://127.0.0.1:8765';
 // Jedan mali .exe (bez instalacije) — hostuje ga sam server, uvek najnovija verzija.
@@ -52,7 +54,9 @@ export function VehicleForm({
   const [owner, setOwner] = useState<CustomerRef | null>(null);
   const [reading, setReading] = useState(false);
   const [cardMsg, setCardMsg] = useState<string | null>(null);
-  const [ownerHint, setOwnerHint] = useState<string | null>(null);
+  // Podaci o vlasniku sa kartice — prosleđuju se OwnerPicker-u koji prvo traži postojećeg
+  // klijenta, pa tek onda nudi pravljenje (bez duplikata).
+  const [ownerPrefill, setOwnerPrefill] = useState<CustomerPrefill | null>(null);
 
   // Lokalni helper za čitač saobraćajne (127.0.0.1). Ako nije pokrenut, forma radi ručno.
   async function loadFromCard(): Promise<void> {
@@ -67,11 +71,37 @@ export function VehicleForm({
       if (c.year) setYear(String(c.year));
       if (c.fuel) setFuel(c.fuel);
       if (c.plate) setPlate(String(c.plate).toUpperCase());
-      setOwnerHint(c.ownerName ? `${c.ownerName}${c.ownerAddress ? ` — ${c.ownerAddress}` : ''}` : null);
+      await matchOwner(c);
       setCardMsg('Podaci učitani sa saobraćajne.');
     } catch {
       setCardMsg(await zastoNeRadi());
     } finally { setReading(false); }
+  }
+
+  /**
+   * Vlasnik sa kartice → klijent. NIKAD ne pravi novog sam (da isti čovek ne bude dvaput —
+   * jednom sa JMBG-om, jednom bez). Pouzdano poklapanje ide samo po JMBG/PIB-u; sve ostalo
+   * ide OwnerPicker-u, koji pokaže postojeće po imenu pre nego što ponudi pravljenje.
+   */
+  async function matchOwner(c: { ownerName?: string; ownerAddress?: string; ownerPersonalNo?: string }): Promise<void> {
+    const name = (c.ownerName ?? '').trim();
+    if (!name) { setOwnerPrefill(null); return; }
+    const pin = (c.ownerPersonalNo ?? '').replace(/\D/g, '');
+    // 13 cifara = JMBG (fizičko). Kraće = pravno (matični/PIB) — u tax_id se za pravno upisuje
+    // PIB (9 cifara), pa matični broj sa kartice NE upisujemo automatski (bio bi pogrešan PIB).
+    const isIndividual = pin.length === 13;
+    const type: 'individual' | 'company' = pin && !isIndividual ? 'company' : 'individual';
+
+    // Pouzdano: klijent sa istim JMBG/PIB već postoji → izaberi ga (i dalje izmenjiv).
+    if (pin) {
+      try {
+        const r = await api.get<Paginated<Customer>>(`/customers?status=active&q=${encodeURIComponent(pin)}&pageSize=5`);
+        const hit = r.data.find((x) => (x.taxId ?? '').replace(/\D/g, '') === pin);
+        if (hit) { setOwner({ id: hit.id, name: hit.name, type: hit.type }); setOwnerPrefill(null); return; }
+      } catch { /* pretraga nije uspela — padni na prefill */ }
+    }
+    // Inače: OwnerPicker traži po imenu i nudi popunjenog „Novog klijenta".
+    setOwnerPrefill({ type, name, address: c.ownerAddress?.trim() || null, taxId: isIndividual ? pin : '' });
   }
 
   function submit(e: FormEvent): void {
@@ -102,7 +132,6 @@ export function VehicleForm({
               )}
             </div>
           )}
-          {ownerHint && <div className="hint">Vlasnik sa kartice: <strong>{ownerHint}</strong> — izaberite ili dodajte klijenta ispod.</div>}
         </>
       )}
 
@@ -148,7 +177,7 @@ export function VehicleForm({
           </label>
           <div className="field">
             <span>Vlasnik</span>
-            <OwnerPicker value={owner} onChange={setOwner} />
+            <OwnerPicker value={owner} onChange={setOwner} prefill={ownerPrefill} />
           </div>
         </>
       )}

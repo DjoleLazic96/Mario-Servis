@@ -245,6 +245,8 @@ export async function workOrderRoutes(app: FastifyInstance): Promise<void> {
     if (query['status']) { params.push(query['status']); conds.push(`wo.status = $${params.length}::work_order_status`); }
     // Ekran „Nezavršeni": samo aktivni nalozi (Otvoren/U radu/Čeka delove).
     if (query['active'] === 'true') conds.push(`wo.status IN ('open','in_progress','waiting_parts')`);
+    // Ekran „Reklamacije": samo nalozi koji su reklamacija nekog drugog.
+    if (query['reklamacija'] === 'true') conds.push(`wo.source_work_order_id IS NOT NULL`);
     if (query['vehicleId']) { params.push(Number(query['vehicleId'])); conds.push(`wo.vehicle_id = $${params.length}`); }
     if (query['customerId']) { params.push(Number(query['customerId'])); conds.push(`wo.customer_id = $${params.length}`); }
     if (p.q) {

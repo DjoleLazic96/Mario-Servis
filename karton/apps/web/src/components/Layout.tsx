@@ -13,6 +13,7 @@ const NAV = [
   { to: '/klijenti', label: 'Klijenti' },
   { to: '/vozila', label: 'Vozila' },
   { to: '/nalozi', label: 'Radni nalozi' },
+  { to: '/reklamacije', label: 'Reklamacije' },
   { to: '/kalendar', label: 'Kalendar' },
   { to: '/dokumenti', label: 'Dokumenti' },
   { to: '/cenovnik', label: 'Cenovnik' },

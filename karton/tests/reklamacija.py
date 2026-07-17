@@ -131,5 +131,12 @@ check('active=true vraća samo nezavršene', st == 200 and all(
     f"statusi: {sorted(set(o['status'] for o in active['data']))}")
 check('Naša reklamacija je među nezavršenima', any(o['id'] == rek['id'] for o in active['data']))
 
+print('\n=== FILTER REKLAMACIJA (ekran „Reklamacije") ===')
+st, only = call('GET', '/work-orders?reklamacija=true&pageSize=200')
+check('reklamacija=true vraća samo reklamacije', st == 200 and all(
+    o['sourceWorkOrderId'] is not None for o in only['data']))
+check('Naša reklamacija je na spisku reklamacija', any(o['id'] == rek['id'] for o in only['data']))
+check('Original NIJE na spisku reklamacija', not any(o['id'] == orig['id'] for o in only['data']))
+
 print(f'\n═══ {ok} prošlo, {fail} palo ═══')
 sys.exit(1 if fail else 0)

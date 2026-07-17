@@ -10,6 +10,7 @@ import { VehicleDetail } from './pages/VehicleDetail.tsx';
 import { Pricelist } from './pages/Pricelist.tsx';
 import { WorkOrders } from './pages/WorkOrders.tsx';
 import { Nezavrseni } from './pages/Nezavrseni.tsx';
+import { Reklamacije } from './pages/Reklamacije.tsx';
 import { WorkOrderDetail } from './pages/WorkOrderDetail.tsx';
 import { Documents } from './pages/Documents.tsx';
 import { DocumentView } from './pages/DocumentView.tsx';
@@ -46,6 +47,7 @@ function AppRoutes(): React.JSX.Element {
         <Route path="/vozila" element={<Vehicles />} />
         <Route path="/vozila/:id" element={<VehicleDetail />} />
         <Route path="/nezavrseni" element={<Nezavrseni />} />
+        <Route path="/reklamacije" element={<Reklamacije />} />
         <Route path="/nalozi" element={<WorkOrders />} />
         <Route path="/nalozi/:id" element={<WorkOrderDetail />} />
         <Route path="/kalendar" element={<Calendar />} />

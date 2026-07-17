@@ -323,8 +323,11 @@ button {
 
 /* --- Forms --- */
 .form { display: flex; flex-direction: column; gap: 14px; }
-.form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end; }
+/* minmax(0,1fr), ne 1fr: „1fr" je zapravo minmax(auto,1fr), pa kolona sa širim sadržajem
+   (npr. datum sa ikonom kalendara) u uskom prozoru otima širinu drugoj i ivice se ne poklope.
+   minmax(0,…) drži obe kolone na tačno 50%. */
+.form-2col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.form-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: end; }
 .form-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
 .radio-row { display: flex; gap: 20px; font-size: 13.5px; }
 .radio-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }

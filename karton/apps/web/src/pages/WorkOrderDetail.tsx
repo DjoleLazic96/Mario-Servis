@@ -140,13 +140,16 @@ export function WorkOrderDetail(): React.JSX.Element {
           </p>
         </div>
         <div className="btn-group">
+          <button className="btn-secondary" onClick={() => window.open(`/nalozi/${id}/stampa`, '_blank')}>Štampaj nalog</button>
           {editable && <button className="btn-secondary" onClick={() => { setEditError(null); setDialog({ kind: 'edit' }); }}>Izmeni nalog</button>}
-          <button className="btn-secondary" onClick={() => window.open(`/nalozi/${id}/stampa`, '_blank')}>Štampaj radni nalog</button>
+          <button className="btn-secondary" onClick={() => setDialog({ kind: 'status' })}>Promeni status</button>
           {wo.status !== 'cancelled' && (
             <button className="btn-secondary" onClick={issueProforma} disabled={saving}>Izdaj predračun</button>
           )}
-          <button className="btn-secondary" onClick={createReklamacija} disabled={saving}>Reklamacija</button>
-          <button className="btn-secondary" onClick={() => setDialog({ kind: 'status' })}>Promeni status</button>
+          {/* Reklamacija se otvara za GOTOV posao — otud samo na završenom nalogu. */}
+          {wo.status === 'completed' && (
+            <button className="btn-secondary" onClick={createReklamacija} disabled={saving}>Reklamacija</button>
+          )}
         </div>
       </header>
 

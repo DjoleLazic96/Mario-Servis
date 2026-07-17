@@ -52,7 +52,7 @@ export function Nezavrseni(): React.JSX.Element {
     <div className="page">
       <header className="page-head row">
         <div>
-          <h1>Nezavršeni</h1>
+          <h1>Monitoring</h1>
           <p className="page-sub">{orders.length} {orders.length === 1 ? 'aktivan nalog' : 'aktivnih naloga'}</p>
         </div>
         <button className="btn-primary" onClick={() => navigate('/nalozi')}>Svi nalozi</button>

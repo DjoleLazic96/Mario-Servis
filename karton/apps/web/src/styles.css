@@ -154,17 +154,54 @@ button {
   flex-direction: column;
   padding: 18px 14px;
 }
+.sidebar-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding-bottom: 18px;
+}
+/* Brand je dugme (klik → Početna) — resetujemo izgled dugmeta. */
 .sidebar-brand {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 8px 18px;
+  padding: 6px 8px;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
 }
+.sidebar-brand:hover { background: var(--sidebar-soft); }
 .sidebar-name {
   font-weight: 700;
   font-size: 17px;
   color: #fff;
 }
+/* Dugme za sklapanje menija (u samom meniju) i za vraćanje (lebdi kad je sklopljen). */
+.sidebar-collapse {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--sidebar-ink);
+  font-size: 20px;
+  line-height: 1;
+  padding: 6px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.sidebar-collapse:hover { background: var(--sidebar-soft); color: #fff; }
+/* Sklopljeno: meni je uzan tamni pojas u kome ostaje samo dugme (☰) koje ga vraća.
+   Ništa ne lebdi preko sadržaja — sadržaj počinje odmah desno od pojasa. */
+.app-shell.collapsed { grid-template-columns: 50px 1fr; }
+.app-shell.collapsed .sidebar { padding: 16px 5px; }
+.app-shell.collapsed .sidebar-brand,
+.app-shell.collapsed .sidebar-nav,
+.app-shell.collapsed .sidebar-foot { display: none; }
+.app-shell.collapsed .sidebar-top { padding: 0; justify-content: center; }
+.app-shell.collapsed .sidebar-collapse { font-size: 18px; }
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -921,6 +958,11 @@ mark { background: #ffe58a; color: inherit; border-radius: 2px; padding: 0 1px; 
     flex-wrap: wrap;
     align-items: center;
     padding: 10px 12px;
+  }
+  .sidebar-top {
+    padding-bottom: 0;
+    align-items: center;
+    flex: 0 1 auto;
   }
   .sidebar-brand {
     padding: 0;

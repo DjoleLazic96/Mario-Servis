@@ -9,7 +9,7 @@ export const APP_NAME = 'AUTO SERVIS S23';
 // Glavna navigacija; Podešavanja se dodaju samo adminu (ADMIN_NAV niže).
 const NAV = [
   { to: '/', label: 'Početna', end: true },
-  { to: '/nezavrseni', label: 'Nezavršeni' },
+  { to: '/nezavrseni', label: 'Monitoring' },
   { to: '/klijenti', label: 'Klijenti' },
   { to: '/vozila', label: 'Vozila' },
   { to: '/nalozi', label: 'Radni nalozi' },
@@ -27,11 +27,21 @@ export function Layout(): React.JSX.Element {
   const navigate = useNavigate();
   // Ime aplikacije = naziv servisa iz Podešavanja: kad Mario promeni naziv, traka ga prati.
   const [shopName, setShopName] = useState(APP_NAME);
+  // Sklapanje menija — stanje se pamti, da ostane sklopljen i posle osvežavanja.
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === '1');
   useEffect(() => {
     void api.get<{ shopName: string }>('/settings')
       .then((s) => { if (s.shopName) setShopName(s.shopName); })
       .catch(() => { /* ostaje podrazumevano ime */ });
   }, []);
+
+  function toggleSidebar(): void {
+    setCollapsed((c) => {
+      const next = !c;
+      localStorage.setItem('sidebar-collapsed', next ? '1' : '0');
+      return next;
+    });
+  }
 
   async function onLogout(): Promise<void> {
     await logout();
@@ -39,11 +49,19 @@ export function Layout(): React.JSX.Element {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${collapsed ? 'collapsed' : ''}`}>
       <aside className="sidebar">
-        <div className="sidebar-brand">
-          <img className="sidebar-logo" src="/icon-192.png" alt="" />
-          <span className="sidebar-name">{shopName}</span>
+        <div className="sidebar-top">
+          {/* Klik na logo/naziv vraća na Početnu. */}
+          <button className="sidebar-brand" onClick={() => navigate('/')} title="Početna">
+            <img className="sidebar-logo" src="/icon-192.png" alt="" />
+            <span className="sidebar-name">{shopName}</span>
+          </button>
+          {/* Isto dugme sklapa i vraća meni; kad je sklopljen ostaje samo ono (☰). */}
+          <button className="sidebar-collapse" onClick={toggleSidebar}
+            title={collapsed ? 'Prikaži meni' : 'Sakrij meni'} aria-label={collapsed ? 'Prikaži meni' : 'Sakrij meni'}>
+            {collapsed ? '☰' : '‹'}
+          </button>
         </div>
         <nav className="sidebar-nav">
           {NAV.map((item) => (

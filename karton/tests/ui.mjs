@@ -310,6 +310,38 @@ for (const [put, pojam, kartica] of [['/vozila', 'olf'], ['/klijenti', 'ark'], [
   }
 }
 
+// ── Meni: „Monitoring", sklapanje, logo → Početna ───────────────────────────────
+console.log('\n=== MENI ===');
+{
+  await p.goto(`${BASE}/vozila`, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(300);
+  const hasMon = await p.locator('.sidebar-nav', { hasText: 'Monitoring' }).count();
+  check('Meni ima „Monitoring"', hasMon > 0);
+  check('Meni više nema „Nezavršeni"', (await p.locator('.sidebar-nav', { hasText: 'Nezavršeni' }).count()) === 0);
+
+  // Sklapanje: sadržaj ne sme da se podvuče pod dugme.
+  await p.locator('.sidebar-collapse').click();
+  await p.waitForTimeout(300);
+  const collapsed = await p.evaluate(() => {
+    const navVisible = document.querySelector('.sidebar-nav')?.offsetParent !== null;
+    const btn = document.querySelector('.sidebar-collapse').getBoundingClientRect();
+    const h1 = document.querySelector('.page-head h1').getBoundingClientRect();
+    return { navHidden: !navVisible, overlap: btn.right > h1.left };
+  });
+  check('Sklapanjem se meni sakrije', collapsed.navHidden);
+  check('Sadržaj se ne podvlači pod dugme', !collapsed.overlap);
+
+  // Vraćanje.
+  await p.locator('.sidebar-collapse').click();
+  await p.waitForTimeout(300);
+  check('Dugme vraća meni', (await p.locator('.sidebar-nav')).isVisible !== undefined && await p.locator('.sidebar-nav').isVisible());
+
+  // Logo → Početna.
+  await p.locator('.sidebar-brand').click();
+  await p.waitForTimeout(300);
+  check('Klik na logo vodi na Početnu', new URL(p.url()).pathname === '/', new URL(p.url()).pathname);
+}
+
 await b.close();
 console.log(`\n═══ ${ok} prošlo, ${fail} palo ═══`);
 process.exit(fail ? 1 : 0);

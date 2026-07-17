@@ -2,6 +2,27 @@ import { useState, type FormEvent } from 'react';
 import type { Vehicle, VehicleInput, CustomerRef } from '@karton/shared';
 import { OwnerPicker } from './OwnerPicker.tsx';
 
+const CITAC = 'http://127.0.0.1:8765';
+
+/**
+ * Zašto čitanje nije uspelo — pošteno, umesto uvek istog „Čitač nije pokrenut".
+ *
+ * Iz JavaScript-a se „helper ne radi" i „helper je odbio ovaj sajt" vide POTPUNO ISTO:
+ * oba su goli TypeError, jer browser sakriva odbijene odgovore (CORS). Zato je stara poruka
+ * uvek tvrdila da čitač nije pokrenut — i kad jeste radio. Čovek gleda upaljen čitač i poruku
+ * da ga nema, i nema šanse da pogodi da je u pitanju domen.
+ *
+ * Trik: `mode: 'no-cors'` ne traži nikakva CORS zaglavlja, pa uspeva čim helper uopšte
+ * odgovara. Tako se ta dva slučaja razdvajaju.
+ */
+async function zastoNeRadi(): Promise<string> {
+  const ziv = await fetch(`${CITAC}/status`, { mode: 'no-cors' }).then(() => true).catch(() => false);
+  return ziv
+    ? `Čitač radi, ali ne prihvata ovaj sajt (${window.location.origin}). Verovatno je starija `
+      + 'verzija čitača — zamenite je novom i pokrenite ponovo.'
+    : 'Čitač nije pokrenut. Uključite „Pokreni čitač" na ovom računaru ili unesite podatke ručno.';
+}
+
 /**
  * Forma vozila. U 'create' modu ima VIN, tablicu i vlasnika (OwnerPicker);
  * u 'edit' modu VIN je zaključan, a tablica/vlasnik se menjaju kroz istorije (detalj).
@@ -35,7 +56,7 @@ export function VehicleForm({
   async function loadFromCard(): Promise<void> {
     setReading(true); setCardMsg(null);
     try {
-      const res = await fetch('http://127.0.0.1:8765/read');
+      const res = await fetch(`${CITAC}/read`);
       const c = await res.json();
       if (c.error) { setCardMsg(c.error); return; }
       if (c.vin) setVin(String(c.vin).toUpperCase());
@@ -47,7 +68,7 @@ export function VehicleForm({
       setOwnerHint(c.ownerName ? `${c.ownerName}${c.ownerAddress ? ` — ${c.ownerAddress}` : ''}` : null);
       setCardMsg('Podaci učitani sa saobraćajne.');
     } catch {
-      setCardMsg('Čitač nije pokrenut. Uključite lokalnu aplikaciju „Karton čitač" ili unesite ručno.');
+      setCardMsg(await zastoNeRadi());
     } finally { setReading(false); }
   }
 

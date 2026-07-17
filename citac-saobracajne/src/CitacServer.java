@@ -14,7 +14,17 @@ import java.util.*;
  */
 public class CitacServer {
   static final int PORT = 8765;
+  /**
+   * Sajtovi kojima helper sme da odgovori. Bez ovoga bi bilo koja stranica sa interneta
+   * mogla da čita saobraćajne dok je čitač uključen — zato spisak, a ne „svima".
+   *
+   * PRODUKCIJSKI DOMEN JE OVDE UGRAĐEN NAMERNO. Ranije se dodavao samo ako se prosledi kao
+   * argument, a `pokreni.bat` ga nije prosleđivao — pa je helper odbijao živi sajt (403) na
+   * SVAKOM računaru. Aplikacija je pri tom prijavljivala „Čitač nije pokrenut", iako je radio.
+   * Domen se ne sme oslanjati na to da se neko seti argumenta.
+   */
   static final Set<String> ALLOWED = new HashSet<>(Arrays.asList(
+    "https://autoserviss23.rs", "https://www.autoserviss23.rs",
     "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"));
 
   public static void main(String[] args) throws Exception {
@@ -32,13 +42,28 @@ public class CitacServer {
 
   static void handle(HttpExchange ex, Job job) throws IOException {
     String origin = ex.getRequestHeaders().getFirst("Origin");
-    if (origin != null && ALLOWED.contains(origin)) {
+    boolean dozvoljen = origin != null && ALLOWED.contains(origin);
+    if (dozvoljen) {
       ex.getResponseHeaders().add("Access-Control-Allow-Origin", origin);
       ex.getResponseHeaders().add("Vary", "Origin");
+      /*
+       * Chrome poziv sa JAVNOG sajta ka 127.0.0.1 tretira kao „Private Network Access":
+       * traži preflight i ovo zaglavlje, inače blokira zahtev pre nego što uopšte stigne
+       * do nas. Bez ovoga bi radilo na jednom, a na drugom računaru ne — zavisno od verzije
+       * Chrome-a. Šalje se samo dozvoljenim sajtovima, uz Allow-Origin.
+       */
+      ex.getResponseHeaders().add("Access-Control-Allow-Private-Network", "true");
     }
-    if ("OPTIONS".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(204, -1); ex.close(); return; }
+    if ("OPTIONS".equals(ex.getRequestMethod())) {
+      if (dozvoljen) {
+        ex.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
+        ex.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+        ex.getResponseHeaders().add("Access-Control-Max-Age", "600");
+      }
+      ex.sendResponseHeaders(204, -1); ex.close(); return;
+    }
     // Bez dozvoljenog Origin-a odbij (browser bi ionako blokirao odgovor)
-    if (origin != null && !ALLOWED.contains(origin)) { send(ex, 403, "{\"error\":\"origin nije dozvoljen\"}"); return; }
+    if (origin != null && !dozvoljen) { send(ex, 403, "{\"error\":\"origin nije dozvoljen\"}"); return; }
     ex.getResponseHeaders().add("Content-Type", "application/json; charset=utf-8");
     try { send(ex, 200, job.run()); }
     catch (Exception e) { send(ex, 200, "{\"error\":\"" + jesc(e.getMessage() == null ? "greška" : e.getMessage()) + "\"}"); }

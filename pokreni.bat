@@ -65,7 +65,10 @@ echo [4/5] Pokrecem API, worker, web i citac saobracajne...
 start "Karton API"    /min cmd /k pnpm dev:api
 start "Karton Worker" /min cmd /k pnpm dev:worker
 start "Karton Web"    /min cmd /k pnpm dev:web
-REM --add-opens: dozvoljava reset PC/SC konteksta ako se citac prikljuci posle starta
+REM --add-opens: dozvoljava reset PC/SC konteksta ako se citac prikljuci posle starta.
+REM Dozvoljeni sajtovi su UGRADJENI u CitacServer.java (i localhost i produkcija) - ovde se
+REM namerno ne prosledjuje argument. Ranije je bas to bio uzrok: helper je odbijao zivi sajt
+REM (403) jer mu ga niko nije prosledio, a aplikacija je javljala "Citac nije pokrenut".
 start "Karton Citac"  /D "%~dp0citac-saobracajne\src" /min cmd /k java -Dfile.encoding=UTF-8 --add-opens java.smartcardio/sun.security.smartcardio=ALL-UNNAMED CitacServer.java
 
 REM ---------- 5) Otvori aplikaciju ----------

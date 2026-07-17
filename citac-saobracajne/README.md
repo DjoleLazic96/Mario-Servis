@@ -11,9 +11,25 @@ saobraćajnu dozvolu preko PC/SC čitača i vraća podatke web aplikaciji
 - `GET /status` → `{ reader, cardPresent }`
 - `GET /read` → `{ vin, make, model, fuel, year, plate, ownerName, ownerAddress }`
 
+## Isporuka na računar servisa (bez instaliranja Jave)
+
+Na računaru gde ima JDK 21+:
+
+```
+spakuj.bat
+```
+
+Napravi `izlaz\AUTO SERVIS S23 citac\` — folder od ~44 MB koji **nosi svoju Javu**.
+Ceo folder se prekopira na računar servisa i pokrene `.exe`. Ne treba instalirati ništa.
+
+Sam sajt ne može da čita karticu — stranica u pregledaču ne sme da priđe USB uređaju.
+Zato ovaj program mora da radi na računaru na kome je čitač.
+
 ## Pokretanje
 
-**Na računaru servisa:** dvoklik na `pokreni-citac.bat`. Ostaviti uključeno dok se radi.
+**Spakovana verzija:** dvoklik na `AUTO SERVIS S23 citac.exe`. Ostaviti prozor otvoren dok se radi.
+
+**Ako je Java već instalirana:** dvoklik na `pokreni-citac.bat`.
 
 **U razvoju**, iz `src/` (potreban JDK 21+, nosi `javax.smartcardio`):
 ```

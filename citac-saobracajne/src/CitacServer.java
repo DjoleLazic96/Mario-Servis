@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
- * Karton — lokalni helper za čitač saobraćajne dozvole.
+ * AUTO SERVIS S23 — lokalni helper za čitač saobraćajne dozvole.
  * Sluša ISKLJUČIVO na 127.0.0.1; prihvata samo dozvoljene Origin-e (CORS).
  * GET /status — stanje čitača/kartice; GET /read — pročita karticu i vrati JSON.
  * Pokretanje: java CitacServer.java  (opciono: prvi argument = dodatni Origin, npr. https://servis.rs)
@@ -34,8 +34,14 @@ public class CitacServer {
     srv.createContext("/read", ex -> handle(ex, () -> readVehicle()));
     srv.setExecutor(null);
     srv.start();
-    System.out.println("Karton čitač saobraćajne — sluša na http://127.0.0.1:" + PORT);
-    System.out.println("Dozvoljeni Origin-i: " + ALLOWED);
+    // Ispis je jedino što Mario vidi — piše mu šta da radi, a ne šta se tehnički desilo.
+    System.out.println("  AUTO SERVIS S23 — čitač saobraćajne");
+    System.out.println("  ────────────────────────────────────────────");
+    System.out.println("  Čitač radi. Ostavite ovaj prozor otvoren dok radite.");
+    System.out.println("  Na sajtu: novo vozilo → „Učitaj saobraćajnu\".");
+    System.out.println();
+    System.out.println("  Ako ne radi, otvorite: http://127.0.0.1:" + PORT + "/status");
+    System.out.println("  Dozvoljeni sajtovi: " + ALLOWED);
   }
 
   interface Job { String run() throws Exception; }

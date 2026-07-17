@@ -1,53 +1,31 @@
-# Karton — čitač saobraćajne dozvole (lokalni helper)
+# AUTO SERVIS S23 — čitač saobraćajne dozvole (lokalni helper)
 
-Mala lokalna aplikacija koja se pokreće na računaru servisa, čita srpsku
-saobraćajnu dozvolu preko PC/SC čitača i vraća podatke web aplikaciji
-(dugme „Učitaj saobraćajnu" u formi vozila).
+Mali lokalni program koji se pokreće na računaru servisa, čita srpsku saobraćajnu dozvolu
+preko PC/SC čitača i vraća podatke web aplikaciji (dugme „Učitaj saobraćajnu" u formi vozila).
+
+**Zašto uopšte postoji:** sajt u pregledaču ne sme da priđe USB čitaču — to je bezbednosni
+zid svakog pregledača. Zato mora da radi jedan mali program na računaru pored čitača.
+
+## Šta se isporučuje: `go/` (jedan mali .exe)
+
+Aktuelna verzija je u [`go/`](go/) — jedan `.exe` od ~5.5 MB, **bez Jave i bez foldera**.
+
+- `go/main.go` — ceo program (HTTP na 127.0.0.1:8765, čitanje kartice, CORS)
+- `go/napravi.bat` — pravi `.exe` (treba Go 1.21+; rezultat je jedan fajl)
+- `go/samopokretanje.bat` — postavi da se sam pokreće pri paljenju računara (bez admin prava)
+
+Na računaru servisa: pokrene se `AUTO SERVIS S23 citac.exe`, ostavi otvoren. Ništa se ne
+instalira. Sajt ga nudi na preuzimanje (dugme „Preuzmi čitač" kad čitač nije pokrenut).
 
 ## Kako radi
-- Sluša **isključivo na `127.0.0.1:8765`** (nije dostupno spolja).
-- Prihvata samo sajtove sa **spiska dozvoljenih** (CORS). Bez toga bi bilo koja stranica sa
-  interneta mogla da čita saobraćajne dok je čitač uključen.
+
+- Sluša **isključivo na `127.0.0.1:8765`** (nedostupno spolja).
+- Odgovara samo sajtovima sa **spiska dozvoljenih** (`allowed` u `main.go`) — inače bi bilo
+  koja stranica mogla da čita saobraćajne. Produkcijski domen je **ugrađen** (ne prosleđuje se).
+- Šalje `Access-Control-Allow-Private-Network` — bez toga noviji Chrome blokira poziv sa
+  javnog sajta ka 127.0.0.1.
 - `GET /status` → `{ reader, cardPresent }`
 - `GET /read` → `{ vin, make, model, fuel, year, plate, ownerName, ownerAddress }`
-
-## Isporuka na računar servisa (bez instaliranja Jave)
-
-Na računaru gde ima JDK 21+:
-
-```
-spakuj.bat
-```
-
-Napravi `izlaz\AUTO SERVIS S23 citac\` — folder od ~44 MB koji **nosi svoju Javu**.
-Ceo folder se prekopira na računar servisa i pokrene `.exe`. Ne treba instalirati ništa.
-
-Sam sajt ne može da čita karticu — stranica u pregledaču ne sme da priđe USB uređaju.
-Zato ovaj program mora da radi na računaru na kome je čitač.
-
-## Pokretanje
-
-**Spakovana verzija:** dvoklik na `AUTO SERVIS S23 citac.exe`. Ostaviti prozor otvoren dok se radi.
-
-**Ako je Java već instalirana:** dvoklik na `pokreni-citac.bat`.
-
-**U razvoju**, iz `src/` (potreban JDK 21+, nosi `javax.smartcardio`):
-```
-java -Dfile.encoding=UTF-8 --add-opens java.smartcardio/sun.security.smartcardio=ALL-UNNAMED CitacServer.java
-```
-Prvi argument dodaje **još jedan** dozvoljen sajt; produkcijski domen je već ugrađen.
-
-## Dozvoljeni sajtovi — zašto su u kodu
-
-Produkcijski domen (`https://autoserviss23.rs`) stoji **ugrađen** u `ALLOWED`.
-
-Ranije se dodavao samo ako se prosledi kao argument, a `pokreni.bat` ga nije prosleđivao —
-pa je helper živom sajtu vraćao **403 na svakom računaru**. Pri tom je aplikacija javljala
-„Čitač nije pokrenut", iako je uredno radio: iz JavaScript-a se odbijen zahtev (CORS) i
-ugašen server vide potpuno isto. Tako je izgledalo kao kvar čitača, a bio je domen.
-
-Pravilo: **dozvoljeni sajt se ne sme oslanjati na to da se neko seti argumenta.**
-Čuva ga `karton/tests/citac.py`.
 
 ## Ako čitanje ne radi — prvo ovo
 
@@ -57,36 +35,29 @@ Kucanjem adrese nema Origin-a, pa provera sajta ne važi — vidi se pravo stanj
 
 | Odgovor | Znači |
 |---|---|
-| `{"reader":"…","cardPresent":true}` | Čitač i helper rade. Problem je između sajta i helpera (domen/verzija). |
-| `{"error":"Nema priključenog čitača."}` | Helper ne vidi čitač: uključiti ga **pre** pokretanja helpera, ili zatvoriti drugi program koji drži karticu. |
-| ništa / greška veze | Helper nije pokrenut. |
+| `{"reader":"…","cardPresent":true}` | Čitač i program rade. Problem je između sajta i programa (verzija). |
+| `{"error":"Nema priključenog čitača."}` | Program ne vidi čitač — priključiti ga i pokrenuti program ponovo. |
+| `{"error":"Kartici se ne može pristupiti…"}` | Druga aplikacija drži karticu — zatvoriti zvaničnu MUP aplikaciju. |
+| ništa / greška veze | Program nije pokrenut. |
 
-## Pakovanje u Windows instaler (bez zasebnog JRE)
-```
-javac -d out src/CitacServer.java
-jpackage --type msi --name "Karton citac" --input out --main-jar ... 
-```
-(Detaljno pakovanje se radi pri isporuci; za sada je dovoljno pokretanje kroz `java`.)
+## Čitač je nezavisan od modela
 
-## Zašto --add-opens
-SunPCSC kešira PC/SC kontekst. Ako se čitač priključi *posle* pokretanja helpera,
-`terminals().list()` trajno pada. Helper tada refleksijom resetuje kontekst i probа ponovo —
-za to je potreban `--add-opens java.smartcardio/sun.security.smartcardio=ALL-UNNAMED`.
+Koristi PC/SC (`github.com/ebfe/scard`) i uzima prvi čitač u kome IMA kartice — nigde nema
+imena ni modela čitača. Drugi čitač ne traži izmenu koda; treba mu samo drajver (Windows ga
+obično sam instalira, CCID standard).
 
 ## Status
-Testirano na živoj kartici (Škoda Kodiaq, MTCOS kartica) — čita VIN, marku,
-model, gorivo, godinu, tablicu i vlasnika. Radi.
 
-Sloj oko čitanja (dozvoljeni sajtovi, CORS, PNA) pokriva `karton/tests/citac.py` — 11 provera,
-ne traži ni čitač ni karticu. Samo čitanje kartice se ne testira automatski: za to treba
-fizička saobraćajna.
+Provereno na živoj kartici (Škoda Kodiaq) — čita VIN, marku, model, gorivo, godinu, tablicu
+i vlasnika. Sloj oko čitanja (dozvoljeni sajtovi, CORS, PNA) pokriva `karton/tests/citac.py`.
 
-**Čitač je nezavisan od modela.** Koristi PC/SC (`javax.smartcardio`) i uzima prvi čitač u kome
-IMA kartice — nigde nema imena ni modela čitača. Drugi čitač ne traži nikakvu izmenu koda;
-treba mu samo drajver (Windows ga obično sam instalira, CCID standard).
+## Reference
+
+- `src/CitacServer.java`, `src/ReadCard.java` — **prethodna** Java verzija (Go port je nastao
+  iz nje). Više se ne isporučuje; ostaje kao referenca.
+- `ref_*.go` — izvorni „Baš Čelik" kod (AGPL), referenca za logiku čitanja.
 
 ## Licenca
-Logika čitanja srpske saobraćajne (SELECT sekvence, redosled fajlova, BER-TLV
-mapiranje tagova) je adaptirana iz open-source projekta **Baš Čelik**
-(github.com/ubavic/bas-celik), koji je pod **AGPL-3.0**. Zato je i ovaj helper
-pod istom licencom.
+
+Logika čitanja srpske saobraćajne adaptirana je iz **Baš Čelik** (github.com/ubavic/bas-celik),
+pod **AGPL-3.0**. Zato je i ovaj helper pod istom licencom.

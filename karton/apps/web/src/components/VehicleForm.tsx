@@ -3,6 +3,8 @@ import type { Vehicle, VehicleInput, CustomerRef } from '@karton/shared';
 import { OwnerPicker } from './OwnerPicker.tsx';
 
 const CITAC = 'http://127.0.0.1:8765';
+// Jedan mali .exe (bez instalacije) — hostuje ga sam server, uvek najnovija verzija.
+const CITAC_DOWNLOAD = '/preuzmi/citac-saobracajne.exe';
 
 /**
  * Zašto čitanje nije uspelo — pošteno, umesto uvek istog „Čitač nije pokrenut".
@@ -92,7 +94,14 @@ export function VehicleForm({
           <button type="button" className="btn-secondary" onClick={loadFromCard} disabled={reading}>
             {reading ? 'Čitam karticu…' : '⬇ Učitaj saobraćajnu'}
           </button>
-          {cardMsg && <div className={cardMsg.startsWith('Podaci') ? 'ok-box' : 'hint'}>{cardMsg}</div>}
+          {cardMsg && (
+            <div className={cardMsg.startsWith('Podaci') ? 'ok-box' : 'hint'}>
+              {cardMsg}
+              {!cardMsg.startsWith('Podaci') && (
+                <> <a href={CITAC_DOWNLOAD} download>Preuzmi čitač</a>.</>
+              )}
+            </div>
+          )}
           {ownerHint && <div className="hint">Vlasnik sa kartice: <strong>{ownerHint}</strong> — izaberite ili dodajte klijenta ispod.</div>}
         </>
       )}

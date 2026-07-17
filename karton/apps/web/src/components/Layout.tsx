@@ -9,6 +9,7 @@ export const APP_NAME = 'AUTO SERVIS S23';
 // Glavna navigacija; Podešavanja se dodaju samo adminu (ADMIN_NAV niže).
 const NAV = [
   { to: '/', label: 'Početna', end: true },
+  { to: '/nezavrseni', label: 'Nezavršeni' },
   { to: '/klijenti', label: 'Klijenti' },
   { to: '/vozila', label: 'Vozila' },
   { to: '/nalozi', label: 'Radni nalozi' },

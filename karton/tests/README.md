@@ -131,7 +131,17 @@ node tests/sw-update.mjs      # ne traži pokrenut stack, sam diže server
 
 Sam pravi buildove (~15s) i vraća `apps/web/index.html` u prvobitno stanje.
 
-## `ui.mjs` — regresije u pregledaču (29 provera)
+## `reklamacija.py` — reklamacije + rok za delove (15 provera)
+
+Reklamacija je NOV nalog vezan za stari: vozilo/klijent se preuzimaju, veza se vidi na oba
+naloga, otvara se BEZ stavki (garancija). „Čeka delove" nosi očekivani datum i napomenu (dve
+kolone) koje se brišu izlaskom iz statusa. Proverava i `active=true` filter (samo nezavršeni).
+
+```bash
+python tests/reklamacija.py
+```
+
+## `ui.mjs` — regresije u pregledaču (34 provere)
 
 Stvari koje se ne vide iz koda, nego tek kad se **izmere**:
 

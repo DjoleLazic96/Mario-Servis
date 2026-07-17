@@ -6,6 +6,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
+ * NAPOMENA: Ovo je PRETHODNA (Java) verzija. Isporučuje se Go verzija iz `../go/main.go`
+ * (jedan mali .exe, bez Jave). Ova datoteka ostaje kao referenca iz koje je Go port nastao.
+ *
  * AUTO SERVIS S23 — lokalni helper za čitač saobraćajne dozvole.
  * Sluša ISKLJUČIVO na 127.0.0.1; prihvata samo dozvoljene Origin-e (CORS).
  * GET /status — stanje čitača/kartice; GET /read — pročita karticu i vrati JSON.

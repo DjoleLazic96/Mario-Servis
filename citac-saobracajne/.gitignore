@@ -2,6 +2,7 @@
 ref_*.go
 # Kompajlirani fajlovi
 *.class
-# Spakovan program (44 MB, nosi svoju Javu) — pravi ga spakuj.bat, ne pripada repou
+# Spakovan program — pravi ga napravi.bat, ne pripada repou (binarno)
 izlaz/
 build/
+go/*.exe

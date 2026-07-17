@@ -5,6 +5,7 @@ import { Modal } from '../components/Modal.tsx';
 import { TimeInput } from '../components/TimeInput.tsx';
 import { SortableTh } from '../components/SortableTh.tsx';
 import { sortRows } from '../lib/sortRows.ts';
+import { PasswordInput } from '../components/PasswordInput.tsx';
 
 interface SettingsData {
   shopName: string; address: string | null; taxId: string | null; phone: string | null; logo: string | null;
@@ -151,7 +152,7 @@ function ServiceSettings(): React.JSX.Element {
         <div className="form-2col">
           <label className="field"><span>SMTP korisnik</span><input value={s.smtpUsername ?? ''} onChange={(e) => set({ smtpUsername: e.target.value })} autoComplete="off" /></label>
           <label className="field"><span>SMTP lozinka</span>
-            <input type="password" value={smtpPassword} onChange={(e) => setSmtpPassword(e.target.value)} autoComplete="new-password"
+            <PasswordInput value={smtpPassword} onChange={setSmtpPassword} autoComplete="new-password"
               placeholder={s.hasSmtpPassword ? 'sačuvana — ostavi prazno' : 'nije postavljena'} />
             <small className="hint">Za Gmail: App Password (16 znakova), ne lozinka naloga.</small>
           </label>
@@ -262,7 +263,7 @@ function UserModal({ dialog, onClose, onDone }: { dialog: { mode: 'new' } | { mo
       <form className="form" onSubmit={save}>
         <label className="field"><span>Ime</span><input value={name} onChange={(e) => setName(e.target.value)} required autoFocus /></label>
         <label className="field"><span>Email</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required readOnly={edit} /></label>
-        <label className="field"><span>{edit ? 'Nova lozinka (opciono)' : 'Lozinka'}</span><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required={!edit} minLength={6} /></label>
+        <label className="field"><span>{edit ? 'Nova lozinka (opciono)' : 'Lozinka'}</span><PasswordInput value={password} onChange={setPassword} required={!edit} minLength={6} autoComplete="new-password" /></label>
         <div className="form-2col">
           <label className="field"><span>Rola</span><select value={role} onChange={(e) => setRole(e.target.value as 'admin' | 'user')}><option value="user">Korisnik</option><option value="admin">Admin</option></select></label>
           {edit && <label className="field"><span>Status</span><select value={status} onChange={(e) => setStatus(e.target.value as 'active' | 'disabled')}><option value="active">Aktivan</option><option value="disabled">Deaktiviran</option></select></label>}

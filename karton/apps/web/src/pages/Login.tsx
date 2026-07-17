@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth.tsx';
 import { ApiRequestError } from '../api.ts';
 import { APP_NAME } from '../components/Layout.tsx';
+import { PasswordInput } from '../components/PasswordInput.tsx';
 
 export function Login(): React.JSX.Element {
   const { login } = useAuth();
@@ -56,10 +57,9 @@ export function Login(): React.JSX.Element {
 
         <label className="field">
           <span>Lozinka</span>
-          <input
-            type="password"
+          <PasswordInput
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={setPassword}
             autoComplete="current-password"
             required
           />

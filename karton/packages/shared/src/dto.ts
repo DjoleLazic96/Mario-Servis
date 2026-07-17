@@ -212,6 +212,12 @@ export interface WorkOrder {
   findings: string | null;
   note: string | null;
   sourceQuoteId: number | null;
+  // Reklamacija: veza na nalog iz kog je nastala (BR-11 stil). Postojanje veze = reklamacija.
+  sourceWorkOrderId: number | null;
+  sourceWorkOrderNumber: string | null;
+  // „Čeka delove" — kad se očekuju i napomena (dve odvojene stvari)
+  partsExpectedOn: string | null;
+  partsNote: string | null;
   // Izlazak na teren (BR-41/42)
   fieldVisit: boolean;
   fieldVisitDate: string | null;
@@ -231,12 +237,20 @@ export interface WorkOrderTotals {
   total: number;
 }
 
+/** Kratka veza na drugi nalog (reklamacija). */
+export interface WorkOrderLink {
+  id: number;
+  number: string;
+}
+
 export interface WorkOrderDetail extends WorkOrder {
   laborItems: LaborItem[];
   partItems: PartItem[];
   externalItems: ExternalItem[];
   totals: WorkOrderTotals;
   chain: DocumentChain;
+  // Nalozi koji su reklamacija OVOG naloga (može ih biti više).
+  reklamacije: WorkOrderLink[];
 }
 
 /** Fotografija vozila snimljena pri prijemu (spec §4.4). Fajl je na disku; ovo je metapodatak. */
@@ -285,6 +299,8 @@ export interface WorkOrderInput {
   findings?: string | null;
   note?: string | null;
   sourceQuoteId?: number | null;
+  partsExpectedOn?: string | null;
+  partsNote?: string | null;
   fieldVisit?: boolean;
   fieldVisitDate?: string | null;
   fieldVisitTime?: string | null;

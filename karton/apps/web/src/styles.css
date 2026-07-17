@@ -482,6 +482,55 @@ textarea:focus { border-color: var(--accent); }
 /* Pogodak pretrage — žuto, ali bez menjanja boje slova (mora da se čita i na traci reda). */
 mark { background: #ffe58a; color: inherit; border-radius: 2px; padding: 0 1px; }
 
+/* Polje lozinke: oko za prikaz stoji unutar polja, desno. */
+.pw-field { position: relative; display: flex; }
+.pw-field input { flex: 1; width: 100%; padding-right: 40px; }
+.pw-toggle { position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; padding: 4px 8px; font-size: 16px; line-height: 1; opacity: .7; }
+.pw-toggle:hover { opacity: 1; }
+
+/* --- Reklamacija (veza nalog↔nalog) --- */
+.rek-banner { background: #fbeee6; border: 1px solid #e6c3a8; border-radius: var(--radius);
+  padding: 9px 13px; font-size: 13px; color: #8a4b1e; margin-bottom: 14px; }
+.rek-tag { display: inline-block; background: #d98b3a; color: #fff; font-size: 10.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em; padding: 2px 8px; border-radius: 999px; margin-right: 6px; }
+.rek-empty { text-align: center; }
+.rek-empty p { margin: 0 0 8px; }
+.rek-empty .btn-primary { margin-top: 4px; }
+
+/* --- Nezavršeni (radionica na jedan pogled) --- */
+.nz-group { margin-bottom: 26px; }
+.nz-group-head { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em; margin: 0 0 12px; padding-bottom: 7px;
+  border-bottom: 2px solid var(--line); color: var(--ink-soft); }
+/* Boja naslova grupe prati status (leva crta u boji). */
+.nz-group-head.nz-open { border-bottom-color: #b7bcc4; }
+.nz-group-head.nz-progress { border-bottom-color: #e0a561; color: #a9601c; }
+.nz-group-head.nz-wait { border-bottom-color: #7f97bd; color: #4a5a78; }
+.nz-count { font-size: 12px; background: var(--line); color: var(--ink-soft); border-radius: 999px;
+  padding: 1px 9px; font-weight: 700; letter-spacing: 0; }
+
+/* 4 u red na računaru; auto-fit spušta na manje kad nema mesta → 1 na telefonu. */
+.nz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.nz-card { text-align: left; background: var(--surface); border: 1px solid var(--line);
+  border-left: 4px solid var(--line); border-radius: 10px; padding: 12px 14px; cursor: pointer;
+  display: flex; flex-direction: column; gap: 5px; font-family: inherit; }
+.nz-card:hover { border-color: var(--ink-soft); box-shadow: 0 2px 10px rgba(20,26,32,.07); }
+/* Leva crta i blagi ton po statusu — da se grupa vidi i kad se skroluje. */
+.nz-card.nz-open { border-left-color: #9aa1ab; }
+.nz-card.nz-progress { border-left-color: #d98b3a; background: #fffaf3; }
+.nz-card.nz-wait { border-left-color: #5c78a8; background: #f5f8fc; }
+.nz-card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.nz-num { font-weight: 700; font-size: 13.5px; }
+.nz-date { font-size: 11.5px; color: var(--ink-faint); }
+.nz-veh { font-size: 13px; }
+.nz-cust { font-size: 12.5px; color: var(--ink-soft); }
+.nz-complaint { font-size: 12.5px; color: var(--ink); font-style: italic; overflow-wrap: anywhere; }
+.nz-parts { display: flex; flex-direction: column; gap: 1px; margin-top: 3px; font-size: 12px;
+  color: #4a5a78; border-top: 1px dashed #cdd6e4; padding-top: 5px; }
+.nz-parts.overdue { color: var(--danger); font-weight: 600; }
+.nz-parts-note { color: var(--ink-soft); font-weight: 400; }
+
 /* --- Quote items builder --- */
 .quote-items { display: flex; flex-direction: column; gap: 8px; }
 .quote-row { display: grid; grid-template-columns: 100px 1fr 110px 28px; gap: 8px; align-items: center; }

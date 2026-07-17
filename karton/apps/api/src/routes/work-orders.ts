@@ -54,6 +54,8 @@ const updateSchema = z.object({
   requestedWork: z.string().trim().nullish(),
   findings: z.string().trim().nullish(),
   note: z.string().trim().nullish(),
+  partsExpectedOn: DATE.nullish(),
+  partsNote: z.string().trim().nullish(),
   reason: z.string().trim().nullish(), // uz ručnu ispravku datuma završetka (BR-11)
   version: z.number().int(),
   ...fieldVisitSchema,
@@ -62,6 +64,9 @@ const updateSchema = z.object({
 const statusSchema = z.object({
   status: z.enum(['open', 'in_progress', 'waiting_parts', 'completed', 'cancelled']),
   reason: z.string().trim().nullish(),
+  // Kad se prelazi na „Čeka delove", odmah se unosi kad se očekuju + napomena (jedan poziv).
+  partsExpectedOn: DATE.nullish(),
+  partsNote: z.string().trim().nullish(),
   version: z.number().int(),
 });
 
@@ -93,6 +98,8 @@ const WO_SELECT = `
     to_char(wo.received_on,'YYYY-MM-DD') AS received_on, to_char(wo.received_time,'HH24:MI') AS received_time,
     to_char(wo.completed_on,'YYYY-MM-DD') AS completed_on, to_char(wo.completed_time,'HH24:MI') AS completed_time,
     wo.odometer_km, wo.requested_work, wo.findings, wo.note, wo.source_quote_id,
+    wo.source_work_order_id, (SELECT o.number FROM work_order o WHERE o.id = wo.source_work_order_id) AS source_work_order_number,
+    to_char(wo.parts_expected_on,'YYYY-MM-DD') AS parts_expected_on, wo.parts_note,
     wo.field_visit, to_char(wo.field_visit_date,'YYYY-MM-DD') AS field_visit_date,
     to_char(wo.field_visit_time,'HH24:MI') AS field_visit_time, wo.field_visit_location, wo.field_visit_km,
     wo.vehicle_drivable, wo.field_visit_outcome, wo.version,
@@ -120,6 +127,10 @@ function toWorkOrder(r: any): WorkOrder {
     findings: r.findings,
     note: r.note,
     sourceQuoteId: r.source_quote_id,
+    sourceWorkOrderId: r.source_work_order_id,
+    sourceWorkOrderNumber: r.source_work_order_number,
+    partsExpectedOn: r.parts_expected_on,
+    partsNote: r.parts_note,
     fieldVisit: r.field_visit,
     fieldVisitDate: r.field_visit_date,
     fieldVisitTime: r.field_visit_time,
@@ -173,6 +184,10 @@ async function loadDetail(id: number, client?: PoolClient): Promise<WorkOrderDet
   const externalTotal = externalItems.filter((i) => !i.internalNoCharge).reduce((s, i) => s + i.price, 0);
   const chain = await chainForWorkOrder(exec, id);
 
+  // Nalozi koji su reklamacija OVOG naloga (na starom nalogu se vidi „Reklamiran nalogom …").
+  const rek = await exec.query<{ id: number; number: string }>(
+    `SELECT id, number FROM work_order WHERE source_work_order_id = $1 ORDER BY id`, [id]);
+
   return {
     ...wo,
     chain,
@@ -185,6 +200,7 @@ async function loadDetail(id: number, client?: PoolClient): Promise<WorkOrderDet
       external: externalTotal,
       total: laborTotal + partsTotal + externalTotal,
     },
+    reklamacije: rek.rows.map((r) => ({ id: r.id, number: r.number })),
   };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -227,6 +243,8 @@ export async function workOrderRoutes(app: FastifyInstance): Promise<void> {
     const conds: string[] = [];
     const params: unknown[] = [];
     if (query['status']) { params.push(query['status']); conds.push(`wo.status = $${params.length}::work_order_status`); }
+    // Ekran „Nezavršeni": samo aktivni nalozi (Otvoren/U radu/Čeka delove).
+    if (query['active'] === 'true') conds.push(`wo.status IN ('open','in_progress','waiting_parts')`);
     if (query['vehicleId']) { params.push(Number(query['vehicleId'])); conds.push(`wo.vehicle_id = $${params.length}`); }
     if (query['customerId']) { params.push(Number(query['customerId'])); conds.push(`wo.customer_id = $${params.length}`); }
     if (p.q) {
@@ -301,6 +319,33 @@ export async function workOrderRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(201).send(created);
   });
 
+  // POST /work-orders/:id/reklamacija — nov nalog vezan za stari.
+  // Mušterija se vratila sa istim problemom: stari nalog je završen i ne dira se,
+  // pravi se NOV sa vezom unazad. Vozilo i klijent se preuzimaju sa starog (bez prekucavanja).
+  // Otvara se prazan (bez stavki) — garancija; stavke se dodaju samo ako ima dodatnog posla.
+  app.post('/work-orders/:id/reklamacija', async (request, reply) => {
+    const sourceId = Number((request.params as { id: string }).id);
+    const b = z.object({ requestedWork: z.string().trim().nullish() }).parse(request.body ?? {});
+    const src = await pool.query<{ vehicle_id: number; customer_id: number; vstatus: string }>(
+      `SELECT wo.vehicle_id, wo.customer_id, v.status AS vstatus
+       FROM work_order wo JOIN vehicle v ON v.id = wo.vehicle_id WHERE wo.id = $1`, [sourceId]);
+    if (!src.rows[0]) return sendError(reply, 404, 'NOT_FOUND', 'Originalni nalog ne postoji.');
+    if (src.rows[0].vstatus !== 'active') return sendError(reply, 422, 'ENTITY_ARCHIVED', 'Vozilo je arhivirano.');
+
+    const created = await tx(async (client) => {
+      const number = await nextNumber(client, 'work_order');
+      const ins = await client.query<{ id: number }>(
+        `INSERT INTO work_order (number, vehicle_id, customer_id, received_on, requested_work, source_work_order_id, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+        [number, src.rows[0]!.vehicle_id, src.rows[0]!.customer_id, todayBelgrade(),
+          b.requestedWork ?? null, sourceId, request.currentUser!.id]);
+      await writeAudit({ userId: request.currentUser!.id, entityType: 'work_order', entityId: ins.rows[0]!.id,
+        action: 'work_order.reklamacija_created', newValue: { sourceWorkOrderId: sourceId } }, client);
+      return (await loadDetail(ins.rows[0]!.id, client))!;
+    });
+    return reply.code(201).send(created);
+  });
+
   // PATCH /work-orders/:id — zaglavlje (BR-08 editable, version)
   app.patch('/work-orders/:id', async (request, reply) => {
     const id = Number((request.params as { id: string }).id);
@@ -323,14 +368,16 @@ export async function workOrderRoutes(app: FastifyInstance): Promise<void> {
           odometer_km=$5, requested_work=$6, findings=$7, note=$8,
           field_visit=$9, field_visit_date=$10, field_visit_time=$11, field_visit_location=$12,
           field_visit_km=$13, vehicle_drivable=$14, field_visit_outcome=$15,
-          completed_on_manual = completed_on_manual OR $16,
-          version = version + 1, updated_at = now() WHERE id = $17`,
+          parts_expected_on=$16, parts_note=$17,
+          completed_on_manual = completed_on_manual OR $18,
+          version = version + 1, updated_at = now() WHERE id = $19`,
         [
           b.receivedOn ?? todayBelgrade(), b.receivedTime ?? null, newCompleted, b.completedTime ?? null,
           b.odometerKm ?? null, b.requestedWork ?? null, b.findings ?? null, b.note ?? null,
           fv, fv ? b.fieldVisitDate ?? null : null, fv ? b.fieldVisitTime ?? null : null,
           fv ? b.fieldVisitLocation ?? null : null, fv ? b.fieldVisitKm ?? null : null,
           fv ? b.vehicleDrivable ?? null : null, fv ? b.fieldVisitOutcome ?? null : null,
+          b.partsExpectedOn ?? null, b.partsNote ?? null,
           completedChanged, id,
         ],
       );
@@ -362,11 +409,16 @@ export async function workOrderRoutes(app: FastifyInstance): Promise<void> {
     await tx(async (client) => {
       const setCompleted = b.status === 'completed' && !cur.rows[0]!.completed_on;
       const clearCompleted = right === 'admin' && (cur.rows[0]!.status === 'completed');
+      // Rok za delove ima smisla samo dok nalog čeka delove — izlaskom se briše.
+      const waitingParts = b.status === 'waiting_parts';
       await client.query(
         `UPDATE work_order SET status=$1, version=version+1, updated_at=now(),
-          completed_on = CASE WHEN $2 THEN $3::date WHEN $4 THEN NULL ELSE completed_on END
-         WHERE id=$5`,
-        [b.status, setCompleted, todayBelgrade(), clearCompleted, id],
+          completed_on = CASE WHEN $2 THEN $3::date WHEN $4 THEN NULL ELSE completed_on END,
+          parts_expected_on = CASE WHEN $5 THEN $6::date ELSE NULL END,
+          parts_note        = CASE WHEN $5 THEN $7        ELSE NULL END
+         WHERE id=$8`,
+        [b.status, setCompleted, todayBelgrade(), clearCompleted,
+          waitingParts, waitingParts ? b.partsExpectedOn ?? null : null, waitingParts ? b.partsNote ?? null : null, id],
       );
       if (right === 'admin') {
         const action = cur.rows[0]!.status === 'completed' ? 'work_order.reopened' : 'work_order.status_corrected';

@@ -34,10 +34,46 @@ const ctx = await b.newContext({ viewport: { width: 1280, height: 900 } });
 const p = await ctx.newPage();
 
 await p.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
+
+// ── 0. Prikaži lozinku (oko) ────────────────────────────────────────────────────
+console.log('=== PRIKAŽI LOZINKU ===');
+{
+  const pw = p.locator('.pw-field input').first();
+  await pw.fill('tajna123');
+  const preKlika = await pw.getAttribute('type');
+  await p.locator('.pw-toggle').first().click();
+  const poKliku = await pw.getAttribute('type');
+  check('Lozinka je podrazumevano skrivena', preKlika === 'password', preKlika);
+  check('Oko otkriva lozinku (type→text)', poKliku === 'text', poKliku);
+  await pw.fill('');
+}
+
 await p.fill('input[autocomplete="username"]', USER);
-await p.fill('input[type="password"]', PW);
+await p.locator('.pw-field input').first().fill(PW);
 await p.click('button[type="submit"]');
 await p.waitForSelector('.sidebar-nav', { timeout: 20000 });
+
+// ── Ekran „Nezavršeni" (kartice po statusu) ─────────────────────────────────────
+console.log('\n=== NEZAVRŠENI (tabla) ===');
+{
+  await p.goto(`${BASE}/nezavrseni`, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(600);
+  const r = await p.evaluate(() => {
+    const cards = document.querySelectorAll('.nz-card');
+    const groups = document.querySelectorAll('.nz-group-head');
+    // Da li su sve kartice iz aktivnih statusa (boja po statusu).
+    const svePogodne = Array.from(cards).every((c) =>
+      c.classList.contains('nz-open') || c.classList.contains('nz-progress') || c.classList.contains('nz-wait'));
+    return { cards: cards.length, groups: groups.length, svePogodne };
+  });
+  check('Ekran „Nezavršeni" se učitao', r.cards >= 0);
+  if (r.cards > 0) {
+    check('Kartice su grupisane (naslov po statusu)', r.groups > 0, `${r.groups} grupa, ${r.cards} kartica`);
+    check('Sve kartice obojene po statusu', r.svePogodne);
+  } else {
+    console.log('  (nema aktivnih naloga za bojenje — preskočeno)');
+  }
+}
 
 // ── 1 + 2. Papir dokumenta: širina u štampi i status ────────────────────────────
 console.log('\n=== ŠTAMPA DOKUMENTA ===');

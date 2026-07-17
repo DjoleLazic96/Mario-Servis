@@ -13,6 +13,7 @@ import { WorkOrderEditForm } from '../components/WorkOrderEditForm.tsx';
 import { DocumentChainBar } from '../components/DocumentChain.tsx';
 import { LinkQuoteDialog } from '../components/LinkQuoteDialog.tsx';
 import { PhotoSection } from '../components/PhotoSection.tsx';
+import { DateInput } from '../components/DateInput.tsx';
 import { allowedTransitions, isEditable, statusClass } from '../lib/workOrderStatus.ts';
 import { money, formatDate } from '../lib/documentHelpers.ts';
 
@@ -37,6 +38,8 @@ export function WorkOrderDetail(): React.JSX.Element {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  // Reklamacija se otvara BEZ sekcija za stavke (garancija). Dugme „Dodaj nove radove" ih otključa.
+  const [unlockItems, setUnlockItems] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -97,10 +100,25 @@ export function WorkOrderDetail(): React.JSX.Element {
     } finally { setSaving(false); }
   }
 
+  async function createReklamacija(): Promise<void> {
+    if (!confirm('Otvoriti reklamacioni nalog za ovo vozilo? Vezuje se za ovaj nalog.')) return;
+    setSaving(true);
+    try {
+      const nova = await api.post<WOD>(`/work-orders/${id}/reklamacija`, {});
+      navigate(`/nalozi/${nova.id}`);
+    } catch (e) {
+      alert(e instanceof ApiRequestError ? e.body.message : 'Greška pri otvaranju reklamacije.');
+    } finally { setSaving(false); }
+  }
+
   if (loading) return <div className="page"><p className="card-empty">Učitavanje…</p></div>;
   if (notFound || !wo) return <div className="page"><p className="card-empty">Nalog ne postoji.</p></div>;
 
   const editable = isEditable(wo.status);
+  const isReklamacija = wo.sourceWorkOrderId != null;
+  const hasItems = wo.laborItems.length > 0 || wo.partItems.length > 0 || wo.externalItems.length > 0;
+  // Sekcije za stavke: uvek za običan nalog; za reklamaciju tek kad ima stavki ili se otključa.
+  const showItems = !isReklamacija || hasItems || unlockItems;
 
   const laborBase = `/work-orders/${id}/labor-items`;
   const partBase = `/work-orders/${id}/part-items`;
@@ -127,9 +145,30 @@ export function WorkOrderDetail(): React.JSX.Element {
           {wo.status !== 'cancelled' && (
             <button className="btn-secondary" onClick={issueProforma} disabled={saving}>Izdaj predračun</button>
           )}
+          <button className="btn-secondary" onClick={createReklamacija} disabled={saving}>Reklamacija</button>
           <button className="btn-secondary" onClick={() => setDialog({ kind: 'status' })}>Promeni status</button>
         </div>
       </header>
+
+      {/* Veza reklamacije — na oba naloga, da se lako skače između originala i reklamacije. */}
+      {isReklamacija && (
+        <div className="rek-banner">
+          <span className="rek-tag">Reklamacija</span>
+          naloga{' '}
+          <button className="btn-link mono" onClick={() => navigate(`/nalozi/${wo.sourceWorkOrderId}`)}>{wo.sourceWorkOrderNumber}</button>
+        </div>
+      )}
+      {wo.reklamacije.length > 0 && (
+        <div className="rek-banner">
+          Reklamiran nalogom{wo.reklamacije.length > 1 ? '/nalozima' : ''}:{' '}
+          {wo.reklamacije.map((r, i) => (
+            <span key={r.id}>
+              {i > 0 && ', '}
+              <button className="btn-link mono" onClick={() => navigate(`/nalozi/${r.id}`)}>{r.number}</button>
+            </span>
+          ))}
+        </div>
+      )}
 
       <DocumentChainBar
         chain={wo.chain}
@@ -161,6 +200,20 @@ export function WorkOrderDetail(): React.JSX.Element {
             <dt>Napomena</dt><dd>{wo.note ?? '—'}</dd>
           </dl>
         </section>
+        {wo.status === 'waiting_parts' && (
+          <section className="card">
+            <h2 className="card-title">Čeka delove</h2>
+            <dl className="kv">
+              <dt>Očekivano</dt>
+              <dd className="mono">
+                {formatDate(wo.partsExpectedOn)}
+                {wo.partsExpectedOn && wo.partsExpectedOn < new Date().toLocaleDateString('sv-SE')
+                  && <span className="due-tag" style={{ marginLeft: 8 }}>kasni</span>}
+              </dd>
+              <dt>Napomena</dt><dd>{wo.partsNote ?? '—'}</dd>
+            </dl>
+          </section>
+        )}
         {wo.fieldVisit && (
           <section className="card">
             <h2 className="card-title">Izlazak na teren</h2>
@@ -176,6 +229,14 @@ export function WorkOrderDetail(): React.JSX.Element {
 
       <PhotoSection workOrderId={wo.id} editable={editable} />
 
+      {!showItems ? (
+        <section className="card rek-empty">
+          <p>Reklamacija se vodi kao <strong>garancija — bez naplate</strong>. Nalaz i fotografije se unose normalno.</p>
+          <p className="hint">Ako je pri reklamaciji bilo dodatnog posla koji se naplaćuje, dodaj ga ovde:</p>
+          {editable && <button className="btn-primary" onClick={() => setUnlockItems(true)}>+ Dodaj nove radove (naplativo)</button>}
+        </section>
+      ) : (
+      <>
       {/* Rad majstora */}
       <ItemSection title="Rad majstora" onAdd={editable ? () => setDialog({ kind: 'labor' }) : undefined} addLabel="+ Dodaj rad">
         <table className="data-table">
@@ -238,6 +299,8 @@ export function WorkOrderDetail(): React.JSX.Element {
         <div className="totals-row"><span>Eksterni servis</span><span className="mono">{money(wo.totals.external)}</span></div>
         <div className="totals-row grand"><span>Ukupno</span><span className="mono">{money(wo.totals.total)} RSD</span></div>
       </div>
+      </>
+      )}
 
       {/* Modali stavki */}
       {dialog?.kind === 'labor' && (
@@ -302,15 +365,22 @@ function StatusModal({ wo, isAdmin, onClose, onDone }: { wo: WOD; isAdmin: boole
   const options = allowedTransitions(wo.status, isAdmin);
   const [target, setTarget] = useState<WorkOrderStatus | ''>('');
   const [reason, setReason] = useState('');
+  const [partsExpectedOn, setPartsExpectedOn] = useState(wo.partsExpectedOn ?? '');
+  const [partsNote, setPartsNote] = useState(wo.partsNote ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const needsReason = options.find((o) => o.to === target)?.adminOnly ?? false;
+  const waitingParts = target === 'waiting_parts';
 
   async function apply(): Promise<void> {
     if (!target) return;
     setSaving(true); setError(null);
     try {
-      const u = await api.post<WOD>(`/work-orders/${wo.id}/status`, { status: target, version: wo.version, reason: reason.trim() || undefined });
+      const u = await api.post<WOD>(`/work-orders/${wo.id}/status`, {
+        status: target, version: wo.version, reason: reason.trim() || undefined,
+        partsExpectedOn: waitingParts ? partsExpectedOn || null : undefined,
+        partsNote: waitingParts ? partsNote.trim() || null : undefined,
+      });
       onDone(u);
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.body.message : 'Greška.');
@@ -330,6 +400,14 @@ function StatusModal({ wo, isAdmin, onClose, onDone }: { wo: WOD; isAdmin: boole
             </label>
           ))}
         </div>
+        {waitingParts && (
+          <div className="form-2col">
+            <label className="field"><span>Delovi se očekuju</span>
+              <DateInput value={partsExpectedOn} onChange={setPartsExpectedOn} /></label>
+            <label className="field"><span>Napomena o delovima</span>
+              <input value={partsNote} onChange={(e) => setPartsNote(e.target.value)} placeholder="npr. naručeno kod Bosch-a" /></label>
+          </div>
+        )}
         {needsReason && (
           <label className="field"><span>Razlog (obavezno)</span>
             <input value={reason} onChange={(e) => setReason(e.target.value)} autoFocus /></label>

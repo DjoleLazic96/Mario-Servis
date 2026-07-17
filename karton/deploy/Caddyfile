@@ -8,6 +8,13 @@ autoserviss23.rs, www.autoserviss23.rs {
 		reverse_proxy 127.0.0.1:3000
 	}
 
+	# Preuzimanje čitača saobraćajne (jedan .exe) — sajt nudi „Preuzmi čitač".
+	# Zaseban folder, da ga deploy web-a (koji briše dist/) ne dira.
+	handle /preuzmi/* {
+		root * /opt/autoservis/downloads
+		file_server
+	}
+
 	handle {
 		root * /opt/autoservis/app/apps/web/dist
 		try_files {path} /index.html

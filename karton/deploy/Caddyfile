@@ -10,7 +10,9 @@ autoserviss23.rs, www.autoserviss23.rs {
 
 	# Preuzimanje čitača saobraćajne (jedan .exe) — sajt nudi „Preuzmi čitač".
 	# Zaseban folder, da ga deploy web-a (koji briše dist/) ne dira.
-	handle /preuzmi/* {
+	# handle_path (ne handle): skida „/preuzmi" prefiks, pa file_server traži fajl
+	# direktno u folderu, a ne u /opt/autoservis/downloads/preuzmi/.
+	handle_path /preuzmi/* {
 		root * /opt/autoservis/downloads
 		file_server
 	}

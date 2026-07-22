@@ -11,7 +11,7 @@ import { todayBelgrade } from '../time.ts';
 import { defaultPageSize } from '../settings-cache.ts';
 
 const createSchema = z.object({
-  vin: z.string().trim().min(1),
+  vin: z.string().trim().min(1).max(17), // VIN je standardno 17 znakova
   make: z.string().trim().min(1),
   model: z.string().trim().min(1),
   year: z.number().int().min(1900).max(2100).nullish(),

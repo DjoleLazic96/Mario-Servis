@@ -310,6 +310,32 @@ for (const [put, pojam, kartica] of [['/vozila', 'olf'], ['/klijenti', 'ark'], [
   }
 }
 
+// ── Ugnježdeni modali-forme (bug 18.07.2026: <form> u <form> je pucao pri čuvanju) ──
+console.log('\n=== UGNJEŽDENI MODALI (novo vozilo/klijent iz naloga) ===');
+{
+  await p.goto(`${BASE}/nalozi`, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(300);
+  const novi = p.locator('button', { hasText: /Novi nalog|\+ Nalog/ }).first();
+  if (await novi.count()) {
+    await novi.click();
+    await p.waitForSelector('.modal-card');
+    await p.locator('button', { hasText: '+ Novo vozilo' }).first().click();
+    await p.waitForTimeout(400);
+    // Modal ide kroz portal u <body> — ne sme biti forme unutar forme.
+    const nested1 = await p.evaluate(() => document.querySelectorAll('form form').length);
+    check('Nema <form> u <form> (novo vozilo iz naloga)', nested1 === 0, `${nested1} ugnježdenih`);
+    const vinMax = await p.locator('.modal-card input.mono').first().getAttribute('maxlength');
+    check('VIN ograničen na 17 znakova', vinMax === '17', vinMax ?? 'bez maxlength');
+    // Još dublje: novi klijent iz tog novog vozila.
+    await p.locator('.modal-card').last().locator('button', { hasText: '+ Novi klijent' }).click();
+    await p.waitForTimeout(400);
+    const nested2 = await p.evaluate(() => document.querySelectorAll('form form').length);
+    check('Nema <form> u <form> ni za novog klijenta iz naloga', nested2 === 0, `${nested2} ugnježdenih`);
+  } else {
+    console.log('  (preskočeno — nema dugmeta „Novi nalog")');
+  }
+}
+
 // ── Meni: „Monitoring", sklapanje, logo → Početna ───────────────────────────────
 console.log('\n=== MENI ===');
 {

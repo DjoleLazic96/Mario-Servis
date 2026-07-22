@@ -142,8 +142,9 @@ export function VehicleForm({
           value={vin}
           onChange={(e) => setVin(e.target.value.toUpperCase())}
           required
+          maxLength={17}
           readOnly={mode === 'edit'}
-          title={mode === 'edit' ? 'VIN se ne menja' : undefined}
+          title={mode === 'edit' ? 'VIN se ne menja' : 'VIN ima 17 znakova'}
         />
       </label>
 

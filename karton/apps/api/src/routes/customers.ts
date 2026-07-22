@@ -14,7 +14,7 @@ const createSchema = z
   .object({
     type: z.enum(['individual', 'company']),
     name: z.string().trim().min(1),
-    taxId: z.string().trim().min(1).nullish(),
+    taxId: z.string().trim().min(1).max(13).nullish(),   // JMBG 13, PIB 9 — 13 je gornja granica
     address: z.string().trim().nullish(),
     phone: z.string().trim().min(1).nullish(),
     email: z.string().trim().email().nullish(),
@@ -28,7 +28,7 @@ const updateSchema = z
   .object({
     type: z.enum(['individual', 'company']),
     name: z.string().trim().min(1),
-    taxId: z.string().trim().min(1).nullish(),
+    taxId: z.string().trim().min(1).max(13).nullish(),   // JMBG 13, PIB 9 — 13 je gornja granica
     address: z.string().trim().nullish(),
   })
   .refine((d) => d.type !== 'company' || !!d.taxId, {

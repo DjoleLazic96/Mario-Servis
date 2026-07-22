@@ -68,7 +68,9 @@ export function CustomerForm({
           {type === 'company' ? 'PIB' : 'JMBG'}
           {type === 'individual' && <em className="opt"> (opciono)</em>}
         </span>
-        <input value={taxId} onChange={(e) => setTaxId(e.target.value)} required={type === 'company'} />
+        {/* Isto polje nosi dva broja: JMBG (13 cifara) za fizičko, PIB (9) za pravno lice. */}
+        <input value={taxId} onChange={(e) => setTaxId(e.target.value)} required={type === 'company'}
+          maxLength={type === 'company' ? 9 : 13} />
       </label>
 
       <label className="field">

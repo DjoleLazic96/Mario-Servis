@@ -310,6 +310,28 @@ for (const [put, pojam, kartica] of [['/vozila', 'olf'], ['/klijenti', 'ark'], [
   }
 }
 
+// ── Dužina JMBG/PIB (isto polje, dva broja) ─────────────────────────────────────
+console.log('\n=== JMBG / PIB ===');
+{
+  await p.goto(`${BASE}/klijenti`, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(300);
+  const novi = p.locator('button', { hasText: /Novi klijent|\+ Klijent/ }).first();
+  if (await novi.count()) {
+    await novi.click();
+    await p.waitForSelector('.modal-card');
+    const m = p.locator('.modal-card');
+    const tax = m.locator('.field input').nth(1);   // 0 = ime, 1 = JMBG/PIB
+    await tax.fill('12345678901234567890');
+    check('JMBG ograničen na 13 znakova', (await tax.inputValue()).length === 13, `${(await tax.inputValue()).length} znakova`);
+    await m.locator('input[type=radio]').nth(1).click();   // pravno lice
+    await p.waitForTimeout(200);
+    await tax.fill('12345678901234567890');
+    check('PIB ograničen na 9 znakova', (await tax.inputValue()).length === 9, `${(await tax.inputValue()).length} znakova`);
+    await m.locator('.modal-close').click();
+    await p.waitForTimeout(200);
+  }
+}
+
 // ── Ugnježdeni modali-forme (bug 18.07.2026: <form> u <form> je pucao pri čuvanju) ──
 console.log('\n=== UGNJEŽDENI MODALI (novo vozilo/klijent iz naloga) ===');
 {

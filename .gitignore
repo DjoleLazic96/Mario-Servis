@@ -29,3 +29,6 @@ secrets.env
 
 # Slike izgleda dokumenata — generisano radi pregleda, ne pripada repou
 izgled-dokumenata/
+
+# Backup i izvoz produkcije — sadrže podatke, NIKAD u (javni) repo
+backup-produkcije/

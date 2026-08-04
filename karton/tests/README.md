@@ -141,6 +141,16 @@ kolone) koje se brišu izlaskom iz statusa. Proverava i `active=true` filter (sa
 python tests/reklamacija.py
 ```
 
+## `delete.py` — admin brisanje majstora/vozila/naloga (8 provera)
+
+Admin može da obriše greškom uneto; sve sa istorijom je blokirano (koristi neaktivan/arhiva/
+otkazano). Proverava: admin briše „čist" zapis (204); blokadu kad majstor ima rad, vozilo ima
+nalog, nalog ima dokument (422 HAS_HISTORY/HAS_DOCUMENTS); i da ne-admin dobija 403.
+
+```bash
+python tests/delete.py
+```
+
 ## `ui.mjs` — regresije u pregledaču (34 provere)
 
 Stvari koje se ne vide iz koda, nego tek kad se **izmere**:

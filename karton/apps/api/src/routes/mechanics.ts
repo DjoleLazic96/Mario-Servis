@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import type { Mechanic, Unavailability } from '@karton/shared';
-import { pool } from '../db.ts';
+import { pool, tx } from '../db.ts';
 import { sendError } from '../http.ts';
 import { requireAuth } from '../auth-guards.ts';
+import { writeAudit } from '../audit.ts';
 import { orderBy } from '../query.ts';
 
 const mechanicSchema = z.object({
@@ -118,6 +119,28 @@ export async function mechanicRoutes(app: FastifyInstance): Promise<void> {
   app.delete('/mechanics/:id/unavailabilities/:uid', async (request, reply) => {
     const uid = Number((request.params as { uid: string }).uid);
     await pool.query('DELETE FROM mechanic_unavailability WHERE id = $1', [uid]);
+    return reply.code(204).send();
+  });
+
+  // DELETE /mechanics/:id — brisanje greškom unetog majstora (SAMO admin).
+  // Blokirano ako je majstor radio na nalozima (stavke rada nose evidenciju/izveštaj);
+  // takav se postavlja na „neaktivan", ne briše.
+  app.delete('/mechanics/:id', async (request, reply) => {
+    if (request.currentUser!.role !== 'admin') return sendError(reply, 403, 'FORBIDDEN', 'Samo administrator može da briše.');
+    const id = Number((request.params as { id: string }).id);
+    const m = await pool.query<{ full_name: string }>('SELECT full_name FROM mechanic WHERE id=$1', [id]);
+    if (!m.rows[0]) return sendError(reply, 404, 'NOT_FOUND', 'Majstor ne postoji.');
+
+    const used = await pool.query('SELECT 1 FROM labor_item WHERE mechanic_id=$1 LIMIT 1', [id]);
+    if ((used.rowCount ?? 0) > 0) return sendError(reply, 422, 'HAS_HISTORY', 'Majstor je radio na nalozima — postavite ga na „neaktivan" umesto brisanja.');
+
+    await tx(async (client) => {
+      await client.query('UPDATE appointment SET mechanic_id=NULL WHERE mechanic_id=$1', [id]);
+      await client.query('DELETE FROM mechanic_unavailability WHERE mechanic_id=$1', [id]);
+      await client.query('DELETE FROM mechanic WHERE id=$1', [id]);
+      await writeAudit({ userId: request.currentUser!.id, entityType: 'mechanic', entityId: id,
+        action: 'mechanic.deleted', oldValue: { name: m.rows[0]!.full_name } }, client);
+    });
     return reply.code(204).send();
   });
 }

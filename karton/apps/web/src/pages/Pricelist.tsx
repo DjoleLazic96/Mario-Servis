@@ -3,6 +3,7 @@ import { formatDate } from '../lib/documentHelpers.ts';
 import type { Mechanic, MechanicInput, Service, ServiceInput } from '@karton/shared';
 import { labels } from '@karton/shared';
 import { api, ApiRequestError } from '../api.ts';
+import { useAuth } from '../auth.tsx';
 import { Modal } from '../components/Modal.tsx';
 import { MechanicForm } from '../components/MechanicForm.tsx';
 import { ServiceForm } from '../components/ServiceForm.tsx';
@@ -29,11 +30,23 @@ export function Pricelist(): React.JSX.Element {
 }
 
 function MechanicsTab(): React.JSX.Element {
+  const { user } = useAuth();
   const [list, setList] = useState<Mechanic[]>([]);
   const [sort, setSort] = useState<string | undefined>();
   const [dialog, setDialog] = useState<{ mode: 'new' } | { mode: 'edit'; mechanic: Mechanic } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function deleteMechanic(m: Mechanic): Promise<void> {
+    if (!confirm(`Obrisati majstora ${m.fullName}? Ovo se NE MOŽE poništiti.`)) return;
+    try {
+      await api.del(`/mechanics/${m.id}`);
+      setDialog(null);
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiRequestError ? e.body.message : 'Greška pri brisanju.');
+    }
+  }
 
   const load = useCallback(async () => setList(await api.get<Mechanic[]>('/mechanics')), []);
   useEffect(() => { void load(); }, [load]);
@@ -84,6 +97,14 @@ function MechanicsTab(): React.JSX.Element {
           <MechanicForm initial={dialog.mode === 'edit' ? dialog.mechanic : undefined} submitting={saving} error={error} onSubmit={save} />
           {dialog.mode === 'edit' && (
             <><hr className="modal-sep" /><UnavailabilityManager mechanicId={dialog.mechanic.id} /></>
+          )}
+          {/* Brisanje — samo admin; backend blokira ako je majstor radio na nalozima. */}
+          {dialog.mode === 'edit' && user?.role === 'admin' && (
+            <><hr className="modal-sep" />
+              <div className="row-end">
+                <button className="btn-danger" onClick={() => deleteMechanic(dialog.mechanic)}>Obriši majstora</button>
+              </div>
+            </>
           )}
         </Modal>
       )}

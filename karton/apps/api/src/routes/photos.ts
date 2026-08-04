@@ -56,7 +56,7 @@ async function listPhotos(workOrderId: number): Promise<WorkOrderPhoto[]> {
 }
 
 /** Apsolutna putanja fajla; štiti od izlaska van UPLOADS_DIR (path traversal). */
-function absolutePath(relative: string): string {
+export function absolutePath(relative: string): string {
   const base = resolve(config.uploadsDir);
   const abs = resolve(base, relative);
   if (!abs.startsWith(base)) throw new Error('Putanja izvan uploads direktorijuma.');

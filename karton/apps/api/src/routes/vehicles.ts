@@ -312,4 +312,32 @@ export async function vehicleRoutes(app: FastifyInstance): Promise<void> {
     const r = rows[0]!;
     return { orders: Number(r.orders), totalSpent: Number(r.total_spent), lastVisit: r.last_visit };
   });
+
+  // DELETE /vehicles/:id — brisanje greškom unetog vozila (SAMO admin).
+  // Blokirano ako vozilo ima radne naloge, dokumente ili termine — to je istorija;
+  // takvo vozilo se ARHIVIRA, ne briše. Čisto vozilo (bez ičega) briše se sa istorijama.
+  app.delete('/vehicles/:id', async (request, reply) => {
+    if (request.currentUser!.role !== 'admin') return sendError(reply, 403, 'FORBIDDEN', 'Samo administrator može da briše.');
+    const id = Number((request.params as { id: string }).id);
+    const veh = await pool.query<{ vin: string }>('SELECT vin FROM vehicle WHERE id=$1', [id]);
+    if (!veh.rows[0]) return sendError(reply, 404, 'NOT_FOUND', 'Vozilo ne postoji.');
+
+    for (const [table, msg] of [
+      ['work_order', 'Vozilo ima radne naloge'],
+      ['document', 'Vozilo ima dokumente'],
+      ['appointment', 'Vozilo ima zakazane termine'],
+    ] as const) {
+      const r = await pool.query(`SELECT 1 FROM ${table} WHERE vehicle_id=$1 LIMIT 1`, [id]);
+      if ((r.rowCount ?? 0) > 0) return sendError(reply, 422, 'HAS_HISTORY', `${msg} — arhivirajte ga umesto brisanja.`);
+    }
+
+    await tx(async (client) => {
+      await client.query('DELETE FROM registration_history WHERE vehicle_id=$1', [id]);
+      await client.query('DELETE FROM ownership_history WHERE vehicle_id=$1', [id]);
+      await client.query('DELETE FROM vehicle WHERE id=$1', [id]);
+      await writeAudit({ userId: request.currentUser!.id, entityType: 'vehicle', entityId: id,
+        action: 'vehicle.deleted', oldValue: { vin: veh.rows[0]!.vin } }, client);
+    });
+    return reply.code(204).send();
+  });
 }

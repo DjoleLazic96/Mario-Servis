@@ -100,6 +100,18 @@ export function WorkOrderDetail(): React.JSX.Element {
     } finally { setSaving(false); }
   }
 
+  async function deleteOrder(): Promise<void> {
+    if (!wo) return;
+    if (!confirm(`Obrisati nalog ${wo.number}? Ovo se NE MOŽE poništiti.`)) return;
+    setSaving(true);
+    try {
+      await api.del(`/work-orders/${id}`);
+      navigate('/nalozi');
+    } catch (e) {
+      alert(e instanceof ApiRequestError ? e.body.message : 'Greška pri brisanju.');
+    } finally { setSaving(false); }
+  }
+
   async function createReklamacija(): Promise<void> {
     if (!confirm('Otvoriti reklamacioni nalog za ovo vozilo? Vezuje se za ovaj nalog.')) return;
     setSaving(true);
@@ -149,6 +161,10 @@ export function WorkOrderDetail(): React.JSX.Element {
           {/* Reklamacija se otvara za GOTOV posao — otud samo na završenom nalogu. */}
           {wo.status === 'completed' && (
             <button className="btn-secondary" onClick={createReklamacija} disabled={saving}>Reklamacija</button>
+          )}
+          {/* Brisanje — samo admin, i samo za greškom uneto (backend blokira ako ima dokument/reklamaciju). */}
+          {user?.role === 'admin' && (
+            <button className="btn-danger" onClick={deleteOrder} disabled={saving}>Obriši</button>
           )}
         </div>
       </header>

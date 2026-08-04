@@ -14,6 +14,7 @@ import type {
   Paginated,
 } from '@karton/shared';
 import { api, ApiRequestError } from '../api.ts';
+import { useAuth } from '../auth.tsx';
 import { Modal } from '../components/Modal.tsx';
 import { VehicleForm } from '../components/VehicleForm.tsx';
 import { WorkOrderHistory } from '../components/WorkOrderHistory.tsx';
@@ -26,6 +27,7 @@ type Dialog = 'edit' | 'owner' | 'plate' | null;
 export function VehicleDetail(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [ownership, setOwnership] = useState<OwnershipRecord[]>([]);
   const [registrations, setRegistrations] = useState<RegistrationRecord[]>([]);
@@ -108,6 +110,17 @@ export function VehicleDetail(): React.JSX.Element {
     setVehicle(await api.post<Vehicle>(`/vehicles/${id}/${action}`));
   }
 
+  async function deleteVehicle(): Promise<void> {
+    if (!vehicle) return;
+    if (!confirm(`Obrisati vozilo ${vehicle.vin}? Ovo se NE MOŽE poništiti.`)) return;
+    try {
+      await api.del(`/vehicles/${id}`);
+      navigate('/vozila');
+    } catch (e) {
+      alert(e instanceof ApiRequestError ? e.body.message : 'Greška pri brisanju.');
+    }
+  }
+
   if (loading) return <div className="page"><p className="card-empty">Učitavanje…</p></div>;
   if (notFound || !vehicle) return <div className="page"><p className="card-empty">Vozilo ne postoji.</p></div>;
 
@@ -133,6 +146,8 @@ export function VehicleDetail(): React.JSX.Element {
           <button className="btn-secondary" onClick={toggleArchive}>
             {vehicle.status === 'active' ? 'Arhiviraj' : 'Dearhiviraj'}
           </button>
+          {/* Brisanje — samo admin; backend blokira ako vozilo ima naloge/dokumente/termine. */}
+          {user?.role === 'admin' && <button className="btn-danger" onClick={deleteVehicle}>Obriši</button>}
         </div>
       </header>
 

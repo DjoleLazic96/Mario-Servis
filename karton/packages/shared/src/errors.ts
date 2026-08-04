@@ -41,6 +41,10 @@ export const ERROR_CODE = [
   'SMTP_FAILED',
   'PHOTO_LIMIT_REACHED',
   'PHOTO_NOT_FOUND',
+  // Brisanje blokirano jer zapis ima istoriju (dokument/nalog/rad) — koristi meku alatku.
+  'HAS_DOCUMENTS',
+  'HAS_REKLAMACIJA',
+  'HAS_HISTORY',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODE)[number];
 

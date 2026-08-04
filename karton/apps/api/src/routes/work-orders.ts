@@ -18,6 +18,8 @@ import { parseListParams, offset, orderBy, normalizeSearch } from '../query.ts';
 import { workOrderTransition, isWorkOrderEditable } from '../transitions.ts';
 import { chainForWorkOrder } from '../documents-lib.ts';
 import { defaultPageSize } from '../settings-cache.ts';
+import { absolutePath } from './photos.ts';
+import { unlink } from 'node:fs/promises';
 
 // ---------- validacija ----------
 const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -464,6 +466,36 @@ export async function workOrderRoutes(app: FastifyInstance): Promise<void> {
     if (!isWorkOrderEditable(cur.rows[0].status)) return sendError(reply, 422, 'ENTITY_LOCKED', 'Nalog je zaključan.');
     await pool.query('UPDATE work_order SET source_quote_id=NULL, version=version+1, updated_at=now() WHERE id=$1', [id]);
     return (await loadDetail(id))!;
+  });
+
+  // DELETE /work-orders/:id — brisanje greškom unetog naloga (SAMO admin).
+  // Blokirano ako nalog ima dokument (predračun/račun) ili je osnov reklamacije —
+  // to su zapisi na kojima stoji evidencija; takvi se OTKAZUJU, ne brišu.
+  app.delete('/work-orders/:id', async (request, reply) => {
+    if (request.currentUser!.role !== 'admin') return sendError(reply, 403, 'FORBIDDEN', 'Samo administrator može da briše.');
+    const id = Number((request.params as { id: string }).id);
+    const wo = await pool.query<{ number: string }>('SELECT number FROM work_order WHERE id=$1', [id]);
+    if (!wo.rows[0]) return sendError(reply, 404, 'NOT_FOUND', 'Nalog ne postoji.');
+
+    const hasDoc = await pool.query('SELECT 1 FROM document WHERE work_order_id=$1 LIMIT 1', [id]);
+    if ((hasDoc.rowCount ?? 0) > 0) return sendError(reply, 422, 'HAS_DOCUMENTS', 'Nalog ima dokument (predračun/račun) — otkažite ga umesto brisanja.');
+    const isSource = await pool.query('SELECT 1 FROM work_order WHERE source_work_order_id=$1 LIMIT 1', [id]);
+    if ((isSource.rowCount ?? 0) > 0) return sendError(reply, 422, 'HAS_REKLAMACIJA', 'Na osnovu ovog naloga postoji reklamacija — ne može se obrisati.');
+
+    // Fajlove fotografija brišemo tek pošto brisanje u bazi uspe.
+    const photos = await pool.query<{ file_path: string }>('SELECT file_path FROM work_order_photo WHERE work_order_id=$1', [id]);
+    await tx(async (client) => {
+      await client.query('UPDATE appointment SET work_order_id=NULL WHERE work_order_id=$1', [id]);
+      await client.query('DELETE FROM labor_item WHERE work_order_id=$1', [id]);
+      await client.query('DELETE FROM part_item WHERE work_order_id=$1', [id]);
+      await client.query('DELETE FROM external_service_item WHERE work_order_id=$1', [id]);
+      await client.query('DELETE FROM work_order_photo WHERE work_order_id=$1', [id]);
+      await client.query('DELETE FROM work_order WHERE id=$1', [id]);
+      await writeAudit({ userId: request.currentUser!.id, entityType: 'work_order', entityId: id,
+        action: 'work_order.deleted', oldValue: { number: wo.rows[0]!.number } }, client);
+    });
+    for (const ph of photos.rows) { try { await unlink(absolutePath(ph.file_path)); } catch { /* fajl već nema — nema veze */ } }
+    return reply.code(204).send();
   });
 
   // ---------- Stavke rada ----------

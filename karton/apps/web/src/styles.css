@@ -825,7 +825,10 @@ mark { background: #ffe58a; color: #1c2127; border-radius: 2px; padding: 0 1px; 
   .dash-a-novac { grid-area: novac; }
   /* U mreži razmak drži row-gap; gasimo gornje margine prvog elementa u ćeliji. */
   .app-shell .dash-sec > :first-child { margin-top: 0; }
-  .dash .quick { max-width: none; }
+  /* Prečaci i brojčanici popunjavaju celu levu kolonu (bez ograničenja od 560px),
+     pa nema praznog prostora desno. */
+  .dash .quick,
+  .dash .gauges { max-width: none; }
   .dash-money { grid-template-columns: repeat(2, minmax(0, 300px)); }
 }
 

@@ -799,6 +799,10 @@ mark { background: #ffe58a; color: #1c2127; border-radius: 2px; padding: 0 1px; 
 .btn-mini:hover { background: rgba(53, 208, 107, 0.2); }
 
 .dash-money { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+/* Kartice su u mreži — razmak drži `gap` (i vodoravno i uspravno). Poništavamo opšte
+   pravilo .panel-card+.panel-card (12px gore), koje je drugoj kartici pravilo gornju
+   marginu, pa je pod „stretch" ispadala niža od prve. Sad su obe iste visine. */
+.dash-money .panel-card + .panel-card { margin-top: 0; }
 
 /* ≥1024: gore dve kolone (levo Posao, desno „Danas"), a Vozila i Novac preko CELE
    širine ispod. Tabela više nije stisnuta u usku kolonu, a „Danas" ne štrči. */

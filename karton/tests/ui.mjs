@@ -51,7 +51,7 @@ console.log('=== PRIKAŽI LOZINKU ===');
 await p.fill('input[autocomplete="username"]', USER);
 await p.locator('.pw-field input').first().fill(PW);
 await p.click('button[type="submit"]');
-await p.waitForSelector('.sidebar-nav', { timeout: 20000 });
+await p.waitForSelector('.app-main', { timeout: 20000 });
 
 // ── Ekran „Nezavršeni" (kartice po statusu) ─────────────────────────────────────
 console.log('\n=== NEZAVRŠENI (tabla) ===');
@@ -358,36 +358,48 @@ console.log('\n=== UGNJEŽDENI MODALI (novo vozilo/klijent iz naloga) ===');
   }
 }
 
-// ── Meni: „Monitoring", sklapanje, logo → Početna ───────────────────────────────
-console.log('\n=== MENI ===');
+// ── Meni + raspored: „Monitoring", desktop meni vs mobilni (hamburger + donja nav) ──
+console.log('\n=== MENI / RASPORED ===');
 {
+  // pomoćna: da li je element STVARNO prikazan (radi i za position:fixed, gde offsetParent laže)
+  const vidljiv = (sel) => p.evaluate((s) => {
+    const el = document.querySelector(s);
+    return !!el && getComputedStyle(el).display !== 'none';
+  }, sel);
+
+  // --- Desktop (1280): stalni bočni meni ---
   await p.goto(`${BASE}/vozila`, { waitUntil: 'networkidle' });
   await p.waitForTimeout(300);
-  const hasMon = await p.locator('.sidebar-nav', { hasText: 'Monitoring' }).count();
-  check('Meni ima „Monitoring"', hasMon > 0);
-  check('Meni više nema „Nezavršeni"', (await p.locator('.sidebar-nav', { hasText: 'Nezavršeni' }).count()) === 0);
-
-  // Sklapanje: sadržaj ne sme da se podvuče pod dugme.
-  await p.locator('.sidebar-collapse').click();
-  await p.waitForTimeout(300);
-  const collapsed = await p.evaluate(() => {
-    const navVisible = document.querySelector('.sidebar-nav')?.offsetParent !== null;
-    const btn = document.querySelector('.sidebar-collapse').getBoundingClientRect();
-    const h1 = document.querySelector('.page-head h1').getBoundingClientRect();
-    return { navHidden: !navVisible, overlap: btn.right > h1.left };
-  });
-  check('Sklapanjem se meni sakrije', collapsed.navHidden);
-  check('Sadržaj se ne podvlači pod dugme', !collapsed.overlap);
-
-  // Vraćanje.
-  await p.locator('.sidebar-collapse').click();
-  await p.waitForTimeout(300);
-  check('Dugme vraća meni', (await p.locator('.sidebar-nav')).isVisible !== undefined && await p.locator('.sidebar-nav').isVisible());
+  check('Meni ima „Monitoring"', (await p.locator('.side-nav', { hasText: 'Monitoring' }).count()) > 0);
+  check('Meni više nema „Nezavršeni"', (await p.locator('.side-nav', { hasText: 'Nezavršeni' }).count()) === 0);
+  check('Desktop: bočni meni je vidljiv', await vidljiv('.sidebar'));
+  check('Desktop: donja navigacija je skrivena', !(await vidljiv('nav.bottom')));
+  check('Desktop: mobilna gornja traka je skrivena', !(await vidljiv('.app-header')));
 
   // Logo → Početna.
-  await p.locator('.sidebar-brand').click();
+  await p.locator('.side-brand').click();
   await p.waitForTimeout(300);
   check('Klik na logo vodi na Početnu', new URL(p.url()).pathname === '/', new URL(p.url()).pathname);
+
+  // --- Mobilni (<1024): gornja traka + donja navigacija + „hamburger" fioka ---
+  await p.setViewportSize({ width: 390, height: 844 });
+  await p.goto(`${BASE}/vozila`, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(400);
+  check('Mobilni: bočni meni je skriven', !(await vidljiv('.sidebar')));
+  check('Mobilni: donja navigacija je vidljiva', await vidljiv('nav.bottom'));
+  check('Mobilni: gornja traka je vidljiva', await vidljiv('.app-header'));
+
+  // „Hamburger" otvara fioku sa celim menijem.
+  await p.locator('.burger').click();
+  await p.waitForTimeout(350);
+  const fioka = await p.evaluate(() => {
+    const d = document.querySelector('.drawer');
+    const link = document.querySelector('.drawer-panel .nav-link');
+    return { open: !!d?.classList.contains('open'), linkVidljiv: link ? link.getBoundingClientRect().width > 0 : false };
+  });
+  check('„Hamburger" otvara fioku', fioka.open);
+  check('U fioci se vide stavke menija', fioka.linkVidljiv);
+  await p.setViewportSize({ width: 1280, height: 900 });
 }
 
 await b.close();

@@ -151,7 +151,7 @@ nalog, nalog ima dokument (422 HAS_HISTORY/HAS_DOCUMENTS); i da ne-admin dobija 
 python tests/delete.py
 ```
 
-## `ui.mjs` — regresije u pregledaču (34 provere)
+## `ui.mjs` — regresije u pregledaču (47 provera)
 
 Stvari koje se ne vide iz koda, nego tek kad se **izmere**:
 
@@ -167,6 +167,10 @@ Stvari koje se ne vide iz koda, nego tek kad se **izmere**:
   logiku za cenu, pa je cena ostajala prazna); izbor majstora povlači njegovu cenu i preko
   ručno unete; zarez radi kao decimalni znak; decimalna cena uopšte prolazi.
 - **„Promeni"** kod izbora vozila — dugme, skroz desno u redu.
+- **Meni / raspored (tamna tema)** — meni ima „Monitoring" (ne više „Nezavršeni"); na
+  desktopu (≥1024px) stoji stalni bočni meni, a donja navigacija i mobilna traka su skrivene;
+  ispod 1024px je obrnuto — bočni meni nestaje, pojavljuju se gornja traka, donja navigacija i
+  „hamburger" fioka; klik na logo vodi na Početnu.
 
 ```bash
 APP_USER=admin APP_PW=admin node tests/ui.mjs http://localhost:5173

@@ -8,13 +8,15 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate', // automatska ažuriranja (odluka: PWA u v1)
+      // Font (Chakra Petch, woff2) ide u precache da „garaža" naslovi rade i offline.
+      workbox: { globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'] },
       manifest: {
         name: 'AUTO SERVIS S23 — vođenje auto servisa',
         short_name: 'AUTO SERVIS S23',
         description: 'Evidencija klijenata, vozila, radnih naloga i fakturisanja.',
         lang: 'sr',
-        theme_color: '#2a2e33',
-        background_color: '#f2f0e8',
+        theme_color: '#14171b',
+        background_color: '#14171b',
         display: 'standalone',
         start_url: '/',
         icons: [

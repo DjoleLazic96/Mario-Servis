@@ -40,8 +40,9 @@ for (const s of SIRINE) {
   await p.fill('input[autocomplete="username"]', process.env.APP_USER || 'mario');
   await p.fill('input[type="password"]', process.env.APP_PW);
   await p.click('button[type="submit"]');
-  // React Router menja adresu bez učitavanja strane — čekamo da se pojavi meni.
-  await p.waitForSelector('.sidebar-nav', { timeout: 15000 });
+  // React Router menja adresu bez učitavanja strane — čekamo da se pojavi sadržaj.
+  // (Bočni meni je na telefonu skriven, pa čekamo .app-main koji postoji na svim širinama.)
+  await p.waitForSelector('.app-main', { timeout: 15000 });
 
   const loši = [];
   for (const [put, ime] of STRANE) {
@@ -52,8 +53,8 @@ for (const s of SIRINE) {
       const de = document.documentElement;
       if (de.scrollWidth - de.clientWidth > 1) nalazi.push(`stranica se pomera vodoravno ${de.scrollWidth - de.clientWidth}px`);
 
-      // Ono što korisnik stvarno vidi: sadržaj koji prelива UNUTAR glavnog okvira.
-      // (.app-main ima overflow:auto, pa se stranica ne pomera — ali delovi ipak beže.)
+      // Ono što korisnik stvarno vidi: sadržaj koji preliva van glavnog okvira.
+      // (Uske tabele/dokumenti klize u svom okviru; ako nešto ipak viri, hvatamo ga.)
       const main = document.querySelector('.app-main');
       if (main && main.scrollWidth - main.clientWidth > 1) {
         nalazi.push(`sadržaj beži ${main.scrollWidth - main.clientWidth}px van okvira`);

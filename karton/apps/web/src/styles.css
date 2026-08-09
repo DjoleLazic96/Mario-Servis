@@ -829,7 +829,8 @@ mark { background: #ffe58a; color: #1c2127; border-radius: 2px; padding: 0 1px; 
      pa nema praznog prostora desno. */
   .dash .quick,
   .dash .gauges { max-width: none; }
-  .dash-money { grid-template-columns: repeat(2, minmax(0, 300px)); }
+  /* Dve kartice u „Novac" popunjavaju ceo red kao ravnomerne polovine (kao gore). */
+  .dash-money { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* Vrlo široki ekran — veći brojčanici i naslov. */

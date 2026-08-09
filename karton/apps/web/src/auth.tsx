@@ -12,7 +12,7 @@ interface CurrentUser {
 interface AuthState {
   user: CurrentUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, remember?: boolean) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -41,8 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
       .finally(() => setLoading(false));
   }, []);
 
-  async function login(email: string, password: string): Promise<void> {
-    const u = await api.post<CurrentUser>('/auth/login', { email, password });
+  async function login(email: string, password: string, remember = true): Promise<void> {
+    const u = await api.post<CurrentUser>('/auth/login', { email, password, remember });
     setUser(u);
   }
 

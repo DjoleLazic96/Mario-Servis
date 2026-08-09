@@ -11,6 +11,7 @@ export function Login(): React.JSX.Element {
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -22,7 +23,7 @@ export function Login(): React.JSX.Element {
     setBusy(true);
     setError(null);
     try {
-      await login(email, password);
+      await login(email, password, remember);
       navigate(from, { replace: true });
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.body.message : 'Greška pri prijavi.');
@@ -63,6 +64,11 @@ export function Login(): React.JSX.Element {
             autoComplete="current-password"
             required
           />
+        </label>
+
+        <label className="check-inline login-remember">
+          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+          Zapamti me
         </label>
 
         {error && <div className="login-error">{error}</div>}

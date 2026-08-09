@@ -151,7 +151,7 @@ nalog, nalog ima dokument (422 HAS_HISTORY/HAS_DOCUMENTS); i da ne-admin dobija 
 python tests/delete.py
 ```
 
-## `ui.mjs` — regresije u pregledaču (47 provera)
+## `ui.mjs` — regresije u pregledaču (58 provera)
 
 Stvari koje se ne vide iz koda, nego tek kad se **izmere**:
 
@@ -171,6 +171,12 @@ Stvari koje se ne vide iz koda, nego tek kad se **izmere**:
   desktopu (≥1024px) stoji stalni bočni meni, a donja navigacija i mobilna traka su skrivene;
   ispod 1024px je obrnuto — bočni meni nestaje, pojavljuju se gornja traka, donja navigacija i
   „hamburger" fioka; klik na logo vodi na Početnu.
+- **Sklapanje menija (desktop)** — dugme sklopi bočni meni (nestane, sadržaj preko cele širine),
+  a „☰" ga vraća.
+- **Raspored Početne (desktop)** — „Danas" je gore desno pored „Posla", a „Vozila u servisu"
+  i „Novac" idu preko cele širine ispod (na telefonu ostaje jedna kolona — ne dira se).
+- **„Zapamti me"** — postoji na prijavi i podrazumevano je čekirano; čekirano daje trajan
+  cookie (~30 dana), nečekirano „session" cookie (nestaje kad se zatvori browser).
 
 ```bash
 APP_USER=admin APP_PW=admin node tests/ui.mjs http://localhost:5173

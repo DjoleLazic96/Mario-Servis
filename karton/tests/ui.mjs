@@ -48,6 +48,13 @@ console.log('=== PRIKAŽI LOZINKU ===');
   await pw.fill('');
 }
 
+// ── „Zapamti me" postoji i podrazumevano je čekirano ────────────────────────────
+{
+  const cb = p.locator('.login-remember input[type="checkbox"]');
+  check('„Zapamti me" postoji na prijavi', (await cb.count()) === 1);
+  check('„Zapamti me" je podrazumevano čekirano', await cb.isChecked());
+}
+
 await p.fill('input[autocomplete="username"]', USER);
 await p.locator('.pw-field input').first().fill(PW);
 await p.click('button[type="submit"]');
@@ -376,10 +383,41 @@ console.log('\n=== MENI / RASPORED ===');
   check('Desktop: donja navigacija je skrivena', !(await vidljiv('nav.bottom')));
   check('Desktop: mobilna gornja traka je skrivena', !(await vidljiv('.app-header')));
 
+  // Sklapanje bočnog menija (samo desktop): meni nestane, sadržaj preko cele širine, „☰" ga vrati.
+  await p.locator('.side-collapse').click();
+  await p.waitForTimeout(300);
+  check('Sklapanje: bočni meni nestane', !(await vidljiv('.sidebar')));
+  check('Sklapanje: „☰" za vraćanje se pojavi', await vidljiv('.nav-reopen'));
+  check('Sklapanje: sadržaj bez leve margine (cela širina)',
+    await p.evaluate(() => parseInt(getComputedStyle(document.querySelector('.app-main')).marginLeft) === 0));
+  await p.locator('.nav-reopen').click();
+  await p.waitForTimeout(300);
+  check('„☰" vraća bočni meni', await vidljiv('.sidebar'));
+
   // Logo → Početna.
   await p.locator('.side-brand').click();
   await p.waitForTimeout(300);
   check('Klik na logo vodi na Početnu', new URL(p.url()).pathname === '/', new URL(p.url()).pathname);
+
+  // Raspored Početne (desktop): „Danas" gore desno pored Posla, tabela preko CELE širine.
+  await p.waitForTimeout(400);
+  const dash = await p.evaluate(() => {
+    const r = (s) => { const e = document.querySelector(s); return e && e.getBoundingClientRect(); };
+    const posao = r('.dash-a-posao'), danas = r('.dash-a-danas'), vozila = r('.dash-a-vozila');
+    if (!posao || !danas || !vozila) return null;
+    return {
+      danasDesno: danas.left > posao.right - 8,
+      danasIznadTabele: danas.top < vozila.top,
+      tabelaSira: vozila.width > posao.width * 1.4,
+    };
+  });
+  if (dash) {
+    check('Desktop Početna: „Danas" je gore desno (pored Posla)', dash.danasDesno);
+    check('Desktop Početna: „Danas" je iznad tabele „Vozila u servisu"', dash.danasIznadTabele);
+    check('Desktop Početna: tabela „Vozila u servisu" je preko cele širine', dash.tabelaSira);
+  } else {
+    check('Desktop Početna: raspored sekcija', false, 'sekcije nisu nađene');
+  }
 
   // --- Mobilni (<1024): gornja traka + donja navigacija + „hamburger" fioka ---
   await p.setViewportSize({ width: 390, height: 844 });
@@ -400,6 +438,24 @@ console.log('\n=== MENI / RASPORED ===');
   check('„Hamburger" otvara fioku', fioka.open);
   check('U fioci se vide stavke menija', fioka.linkVidljiv);
   await p.setViewportSize({ width: 1280, height: 900 });
+}
+
+// ── Zapamti me: trajan cookie kad je čekirano, „session" cookie kad nije ─────────
+console.log('\n=== ZAPAMTI ME (trajanje sesije) ===');
+for (const [labela, cekiraj] of [['čekirano → trajan cookie', true], ['nečekirano → session cookie', false]]) {
+  const c = await b.newContext({ viewport: { width: 1000, height: 800 } });
+  const pg = await c.newPage();
+  await pg.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
+  if (!cekiraj) await pg.locator('.login-remember input[type="checkbox"]').uncheck();
+  await pg.fill('input[autocomplete="username"]', USER);
+  await pg.locator('.pw-field input').first().fill(PW);
+  await pg.click('button[type="submit"]');
+  await pg.waitForSelector('.app-main', { timeout: 15000 });
+  const sess = (await c.cookies()).find((x) => x.name === 'karton_session');
+  // Playwright: expires === -1 znači „session" cookie (nestaje kad se zatvori browser).
+  const ok = cekiraj ? (!!sess && sess.expires > 0) : (!!sess && sess.expires === -1);
+  check(`Zapamti me ${labela}`, ok, sess ? `expires=${sess.expires}` : 'nema cookie');
+  await c.close();
 }
 
 await b.close();

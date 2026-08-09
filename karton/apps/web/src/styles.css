@@ -190,6 +190,11 @@ input[type="radio"] { accent-color: var(--green); }
   color: var(--ink-soft);
   font-size: 12.5px;
 }
+.login-remember {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin-top: -2px;
+}
 .field {
   display: flex;
   flex-direction: column;
@@ -324,6 +329,17 @@ nav.bottom a, nav.bottom button {
 nav.bottom a.active { color: var(--green); }
 nav.bottom svg { width: 22px; height: 22px; }
 
+/* „☰" za vraćanje sklopljenog menija — skriven osim na desktopu kad je sklopljen
+   (uključuje ga .app-shell.nav-collapsed .nav-reopen u desktop bloku niže). */
+.nav-reopen {
+  display: none;
+  position: fixed; top: 10px; left: 12px; z-index: 25;
+  place-items: center; width: 40px; height: 40px; border-radius: 10px;
+  background: var(--panel-2); border: 1px solid var(--edge); color: var(--text);
+  font-size: 18px; line-height: 1; cursor: pointer;
+}
+.nav-reopen:hover { border-color: var(--green); }
+
 /* ─────────────── DESKTOP ≥ 1024px ─────────────── */
 @media (min-width: 1024px) {
   .app-header, nav.bottom, .drawer { display: none; }
@@ -335,11 +351,21 @@ nav.bottom svg { width: 22px; height: 22px; }
     background: var(--panel); border-right: 1px solid var(--edge);
     padding: 20px 12px; z-index: 10;
   }
+  .side-top {
+    display: flex; align-items: center; gap: 4px; width: 100%;
+    padding: 0 4px 16px; margin-bottom: 12px; border-bottom: 1px solid var(--edge);
+  }
   .side-brand {
-    display: flex; align-items: center; gap: 10px; width: 100%;
-    padding: 0 8px 16px; margin-bottom: 12px; border: none; border-bottom: 1px solid var(--edge);
+    flex: 1; min-width: 0;
+    display: flex; align-items: center; gap: 10px;
+    padding: 4px; margin: 0; border: none;
     background: none; color: inherit; text-align: left; cursor: pointer;
   }
+  .side-collapse {
+    flex: none; background: none; border: none; color: var(--muted);
+    font-size: 20px; line-height: 1; padding: 4px 8px; border-radius: 7px; cursor: pointer;
+  }
+  .side-collapse:hover { background: var(--panel-2); color: var(--text); }
   .side-brand .sidebar-logo { width: 34px; height: 34px; }
   .side-brand span {
     font-family: var(--font-display); font-weight: 700; font-size: 14px; letter-spacing: 0.05em; color: #fff;
@@ -351,6 +377,13 @@ nav.bottom svg { width: 22px; height: 22px; }
 
   .hazard { margin-left: var(--sidebar-w); }
   .app-main { margin-left: var(--sidebar-w); padding: 26px 36px; }
+
+  /* Sklopljen meni (desktop): nestane, sadržaj preko cele širine; „☰" ga vraća.
+     Levi razmak (padding-left) ostavlja mesto za lebdeće dugme, da ne pokrije tekst. */
+  .app-shell.nav-collapsed .sidebar { display: none; }
+  .app-shell.nav-collapsed .hazard { margin-left: 0; }
+  .app-shell.nav-collapsed .app-main { margin-left: 0; padding-left: 64px; }
+  .app-shell.nav-collapsed .nav-reopen { display: grid; }
 }
 
 /* --- Page + cards --- */
@@ -703,6 +736,9 @@ mark { background: #ffe58a; color: #1c2127; border-radius: 2px; padding: 0 1px; 
 .stat-money-num.danger { color: var(--danger); }
 
 /* ═══════════════ Početna — „garaža" komandna tabla ═══════════════ */
+/* Sekcije: na telefonu providne (display:contents → sve teče istim redom kao pre,
+   mobilni se NE menja), a na desktopu (≥1024) postaju grid-ćelije — vidi @media niže. */
+.dash-sec { display: contents; }
 .dash-head .hello { font-size: 13px; color: var(--muted); }
 .dash-head h1 { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: 0.02em; margin: 2px 0 0; }
 
@@ -722,7 +758,9 @@ mark { background: #ffe58a; color: #1c2127; border-radius: 2px; padding: 0 1px; 
   font-family: var(--font-display); font-size: 12px; font-weight: 600; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--muted); margin: 26px 0 12px; display: flex; align-items: center; gap: 10px;
 }
-.section-label:first-child { margin-top: 6px; }
+/* Prvi naslov (Posao) i „Danas" imaju manji gornji razmak — tačno kao dosad na telefonu. */
+.dash-a-posao > .section-label,
+.dash-a-danas > .section-label { margin-top: 6px; }
 .section-label::after { content: ""; flex: 1; height: 1px; background: var(--edge); }
 
 /* Brojčanici (dial) */
@@ -762,11 +800,37 @@ mark { background: #ffe58a; color: #1c2127; border-radius: 2px; padding: 0 1px; 
 
 .dash-money { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 
-/* Široki ekran: sadržaj u dve kolone (glavno + „Danas" sa strane), kao u maketi.
-   Deli se tek od 1200px — na 1024–1199 (uz bočni meni) leva kolona bi bila preuska
-   za tabelu/brojčanike, pa tu ostaje jedna kolona preko cele širine. */
+/* ≥1024: gore dve kolone (levo Posao, desno „Danas"), a Vozila i Novac preko CELE
+   širine ispod. Tabela više nije stisnuta u usku kolonu, a „Danas" ne štrči. */
+@media (min-width: 1024px) {
+  .dash {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    column-gap: 28px;
+    row-gap: 22px;
+    align-items: start;
+    grid-template-areas:
+      "head   head"
+      "quick  danas"
+      "posao  danas"
+      "vozila vozila"
+      "novac  novac";
+  }
+  .dash-sec { display: block; min-width: 0; }
+  .dash-a-head { grid-area: head; }
+  .dash-a-quick { grid-area: quick; }
+  .dash-a-posao { grid-area: posao; }
+  .dash-a-danas { grid-area: danas; }
+  .dash-a-vozila { grid-area: vozila; }
+  .dash-a-novac { grid-area: novac; }
+  /* U mreži razmak drži row-gap; gasimo gornje margine prvog elementa u ćeliji. */
+  .app-shell .dash-sec > :first-child { margin-top: 0; }
+  .dash .quick { max-width: none; }
+  .dash-money { grid-template-columns: repeat(2, minmax(0, 300px)); }
+}
+
+/* Vrlo široki ekran — veći brojčanici i naslov. */
 @media (min-width: 1200px) {
-  .dash-cols { display: grid; grid-template-columns: 1fr 360px; gap: 28px; align-items: start; }
   .dash-head h1 { font-size: 30px; }
   .dial { width: 92px; height: 92px; }
   .dial .num { font-size: 32px; }

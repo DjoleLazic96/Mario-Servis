@@ -48,6 +48,15 @@ export function Layout(): React.JSX.Element {
   const [shopName, setShopName] = useState(APP_NAME);
   // „Hamburger" fioka (mobilni).
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Sklapanje bočnog menija (samo desktop) — stanje se pamti između poseta.
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === '1');
+  function toggleCollapsed(): void {
+    setCollapsed((c) => {
+      const next = !c;
+      localStorage.setItem('sidebar-collapsed', next ? '1' : '0');
+      return next;
+    });
+  }
 
   useEffect(() => {
     void api.get<{ shopName: string }>('/settings')
@@ -75,13 +84,16 @@ export function Layout(): React.JSX.Element {
   const linkClass = ({ isActive }: { isActive: boolean }): string => 'nav-link' + (isActive ? ' active' : '');
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${collapsed ? ' nav-collapsed' : ''}`}>
       {/* ── Bočni meni (desktop ≥1024px) ── */}
       <aside className="sidebar">
-        <button className="side-brand" onClick={() => navigate('/')} title="Početna">
-          <img className="sidebar-logo" src="/icon-192.png" alt="" />
-          <span>{shopName}</span>
-        </button>
+        <div className="side-top">
+          <button className="side-brand" onClick={() => navigate('/')} title="Početna">
+            <img className="sidebar-logo" src="/icon-192.png" alt="" />
+            <span>{shopName}</span>
+          </button>
+          <button className="side-collapse" onClick={toggleCollapsed} title="Sakrij meni" aria-label="Sakrij meni">‹</button>
+        </div>
         <nav className="side-nav">
           {navItems.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
@@ -96,6 +108,8 @@ export function Layout(): React.JSX.Element {
           {role}
         </div>
       </aside>
+      {/* „☰" za vraćanje sklopljenog menija — vidi se samo na desktopu kad je sklopljen. */}
+      <button className="nav-reopen" onClick={toggleCollapsed} title="Prikaži meni" aria-label="Prikaži meni">☰</button>
 
       {/* ── Gornja traka (mobilni <1024px) ── */}
       <header className="app-header">

@@ -12,6 +12,8 @@ const loginSchema = z.object({
   // Korisničko ime (identifikator). Ne mora biti email — dozvoljava npr. „admin".
   email: z.string().min(1),
   password: z.string().min(1),
+  // „Zapamti me": podrazumevano da (kao i do sada — trajna sesija ~30 dana).
+  remember: z.boolean().optional().default(true),
 });
 
 interface UserRow extends CurrentUser {
@@ -60,6 +62,15 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     await clearFailures(ip); // pošten korisnik ne nosi stare omaške
     request.session.userId = user.id;
+    // „Zapamti me" nečekirano → session cookie (nestane kad se zatvori browser).
+    // Čekirano (podrazumevano) → trajni cookie ~30 dana, kao i do sada.
+    // Mora i originalMaxAge = null: uz rolling, session.touch() na svakom zahtevu
+    // inače opet postavi 30-dnevni rok i cookie prestane da bude „session".
+    if (!body.remember) {
+      const c = request.session.cookie as { expires: Date | null; originalMaxAge: number | null };
+      c.expires = null;
+      c.originalMaxAge = null;
+    }
     return { id: user.id, name: user.name, email: user.email, role: user.role };
   });
 

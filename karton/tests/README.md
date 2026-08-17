@@ -151,7 +151,7 @@ nalog, nalog ima dokument (422 HAS_HISTORY/HAS_DOCUMENTS); i da ne-admin dobija 
 python tests/delete.py
 ```
 
-## `termin-nalog.py` — zakazivanje sa minimumom, nepotpun termin, „Napravi radni nalog" (24 provere)
+## `termin-nalog.py` — zakazivanje sa minimumom, nepotpun termin, „Napravi radni nalog" (28 provera)
 
 Vozilo se pravi BEZ VIN-a (zakazivanje: ime klijenta + marka/model); VIN je jedinstven samo
 kad je popunjen. „Napravi radni nalog" iz termina otvara nov nalog za to vozilo/klijenta,
@@ -162,6 +162,10 @@ Nepotpun termin: sme da se zakaže samo sa UPISANIM imenom klijenta i vozila (be
 zapisa) — customer/vehicle su null, tekst stoji; prazna strana → 422; nepotpun termin nema
 zakazan podsetnik. „Sređivanjem" (PATCH sa id-evima) se poveže sa pravim zapisima, a upisani
 tekst se tada briše.
+
+Brisanje naloga vraća termin na „zakazano": kad se realizovan termin veže za nalog pa se taj
+nalog obriše, termin se vraća na `scheduled` i veza se skida (ne ostaje „realizovano" bez
+naloga iza sebe).
 
 ```bash
 python tests/termin-nalog.py

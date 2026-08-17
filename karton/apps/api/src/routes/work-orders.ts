@@ -485,7 +485,14 @@ export async function workOrderRoutes(app: FastifyInstance): Promise<void> {
     // Fajlove fotografija brišemo tek pošto brisanje u bazi uspe.
     const photos = await pool.query<{ file_path: string }>('SELECT file_path FROM work_order_photo WHERE work_order_id=$1', [id]);
     await tx(async (client) => {
-      await client.query('UPDATE appointment SET work_order_id=NULL WHERE work_order_id=$1', [id]);
+      // Brisanjem naloga termin gubi osnov za „realizovano": vraćamo ga na „zakazano" i
+      // skidamo vezu (inače bi ostao realizovan a bez naloga iza sebe).
+      await client.query(
+        `UPDATE appointment
+           SET work_order_id = NULL,
+               status = CASE WHEN status = 'completed' THEN 'scheduled' ELSE status END,
+               version = version + 1, updated_at = now()
+         WHERE work_order_id = $1`, [id]);
       await client.query('DELETE FROM labor_item WHERE work_order_id=$1', [id]);
       await client.query('DELETE FROM part_item WHERE work_order_id=$1', [id]);
       await client.query('DELETE FROM external_service_item WHERE work_order_id=$1', [id]);

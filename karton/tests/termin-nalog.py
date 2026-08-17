@@ -141,6 +141,23 @@ call('PATCH', f"/vehicles/{v1['id']}", {'vin': 'TERMINTESTVIN0002', 'make': MAKE
 st, vv = call('GET', f"/vehicles/{v1['id']}")
 check('Izmena već upisanog VIN-a se ignoriše', st == 200 and vv.get('vin') == VIN_FILL, repr(vv.get('vin') if st == 200 else vv))
 
+print('\n=== BRISANJE NALOGA VRAĆA TERMIN NA „ZAKAZANO" ===')
+d3 = (date.today() + timedelta(days=4)).isoformat()
+st, apx = call('POST', '/appointments', {'date': d3, 'time': '09:00', 'durationMin': 60,
+              'customerId': cust['id'], 'vehicleId': v2['id'], 'note': 'Za brisanje',
+              'remindersEnabled': False, 'confirmed': True})
+assert st == 201, apx
+st, wox = call('POST', '/work-orders', {'vehicleId': v2['id'], 'customerId': cust['id'], 'requestedWork': 'x'})
+assert st == 201, wox
+st, _ = call('POST', f"/appointments/{apx['id']}/status", {'status': 'completed', 'workOrderId': wox['id'], 'version': apx['version']})
+check('Priprema: termin realizovan i vezan za nalog', st == 200, f'HTTP {st}')
+st, _ = call('DELETE', f"/work-orders/{wox['id']}")
+check('Prazan nalog se briše (204)', st == 204, f'HTTP {st}')
+st, appts2 = call('GET', f"/appointments?from={d3}&to={d3}")
+back = next((a for a in (appts2 or []) if a['id'] == apx['id']), None)
+check('Posle brisanja naloga: termin vraćen na „zakazano"', bool(back) and back['status'] == 'scheduled', repr(back['status'] if back else None))
+check('Posle brisanja naloga: veza na nalog skinuta', bool(back) and back['workOrderId'] is None, repr(back['workOrderId'] if back else None))
+
 print('\n=== NEPOTPUN TERMIN (slobodan tekst) + SREĐIVANJE ===')
 d2 = (date.today() + timedelta(days=3)).isoformat()
 st, ld = call('POST', '/appointments', {'date': d2, 'time': '11:00', 'durationMin': 60,

@@ -116,7 +116,7 @@ export function Vehicles(): React.JSX.Element {
                 </td>
                 <td data-label="Gorivo">{v.fuel ?? '—'}</td>
                 <td data-label="Vlasnik">{v.currentOwner?.name ?? '—'}</td>
-                <td className="mono muted" data-label="VIN"><Highlight text={v.vin} q={q} /></td>
+                <td className="mono muted" data-label="VIN"><Highlight text={v.vin ?? '—'} q={q} /></td>
               </tr>
             ))}
             {!loading && result?.data.length === 0 && (

@@ -99,7 +99,7 @@ function Card({ o, onClick }: { o: WorkOrder; onClick: () => void }): React.JSX.
         <span className="nz-date mono">{formatDate(o.receivedOn)}</span>
       </div>
       <div className="nz-veh">
-        <span className="mono">{o.vehicle.plate ?? o.vehicle.vin}</span> {o.vehicle.make} {o.vehicle.model}
+        <span className="mono">{o.vehicle.plate ?? o.vehicle.vin ?? '—'}</span> {o.vehicle.make} {o.vehicle.model}
       </div>
       <div className="nz-cust">{o.customer.name}</div>
       {o.requestedWork && <div className="nz-complaint">„{o.requestedWork}"</div>}

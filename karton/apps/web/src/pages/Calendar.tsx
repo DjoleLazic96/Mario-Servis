@@ -68,6 +68,22 @@ export function Calendar(): React.JSX.Element {
     try { await api.del(`/appointments/${a.id}`); setSelected(null); await load(); }
     catch (e) { alert(e instanceof ApiRequestError ? e.body.message : 'Greška.'); }
   }
+  // „Napravi radni nalog": otvori NOV nalog za vozilo/klijenta termina, prenesi napomenu u
+  // zahtevani rad, veži termin za taj nalog (i realizuj ga), pa idi na nalog. Ako vozilu fali
+  // tablica i/ili VIN — meko upozorenje (potvrda), ne blokada.
+  async function makeWorkOrder(a: Appointment): Promise<void> {
+    const missing: string[] = [];
+    if (!a.vehicle.plate) missing.push('registarske oznake');
+    if (!a.vehicle.vin) missing.push('VIN-a');
+    if (missing.length && !window.confirm(`Napraviti radni nalog bez ${missing.join(' i ')}?`)) return;
+    try {
+      const wo = await api.post<{ id: number }>('/work-orders', {
+        vehicleId: a.vehicle.id, customerId: a.customer.id, requestedWork: a.note ?? undefined,
+      });
+      await api.post(`/appointments/${a.id}/status`, { status: 'completed', workOrderId: wo.id, version: a.version });
+      navigate(`/nalozi/${wo.id}`);
+    } catch (e) { alert(e instanceof ApiRequestError ? e.body.message : 'Greška.'); }
+  }
 
   return (
     <div className="page">
@@ -198,6 +214,7 @@ export function Calendar(): React.JSX.Element {
             </dl>
             <div className="btn-group" style={{ flexWrap: 'wrap' }}>
               {selected.status === 'scheduled' && <>
+                <button className="btn-primary btn-sm" onClick={() => makeWorkOrder(selected)}>Napravi radni nalog</button>
                 <button className="btn-secondary btn-sm" onClick={() => setDialog('complete')}>Realizovano</button>
                 <button className="btn-secondary btn-sm" onClick={() => setDialog('edit')}>Izmeni</button>
                 <button className="btn-secondary btn-sm" onClick={() => changeStatus(selected, 'no_show')}>Nije se pojavio</button>

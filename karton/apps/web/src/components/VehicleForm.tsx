@@ -37,12 +37,15 @@ export function VehicleForm({
   submitting,
   error,
   onSubmit,
+  vinRequired = true,
 }: {
   mode: 'create' | 'edit';
   initial?: Vehicle;
   submitting: boolean;
   error?: string | null;
   onSubmit: (input: VehicleInput) => void;
+  /** VIN je obavezan pri pravom unosu vozila; u zakazivanju se šalje false (dopuna kasnije). */
+  vinRequired?: boolean;
 }): React.JSX.Element {
   const [vin, setVin] = useState(initial?.vin ?? '');
   const [make, setMake] = useState(initial?.make ?? '');
@@ -107,7 +110,7 @@ export function VehicleForm({
   function submit(e: FormEvent): void {
     e.preventDefault();
     onSubmit({
-      vin: vin.trim(),
+      vin: vin.trim() || null,
       make: make.trim(),
       model: model.trim(),
       year: year.trim() ? Number(year) : null,
@@ -136,16 +139,18 @@ export function VehicleForm({
       )}
 
       <label className="field">
-        <span>VIN (broj šasije)</span>
+        <span>VIN (broj šasije){vinRequired ? '' : ' — opciono'}</span>
         <input
           className="mono"
           value={vin}
           onChange={(e) => setVin(e.target.value.toUpperCase())}
-          required
+          required={vinRequired && mode === 'create'}
           maxLength={17}
-          readOnly={mode === 'edit'}
-          title={mode === 'edit' ? 'VIN se ne menja' : 'VIN ima 17 znakova'}
+          readOnly={mode === 'edit' && !!initial?.vin}
+          title={mode === 'edit' ? (initial?.vin ? 'VIN se ne menja' : 'VIN nije upisan — dopuni ga') : 'VIN ima 17 znakova'}
         />
+        {!vinRequired && <span className="hint">Može kasnije — dopuni se na kartonu vozila.</span>}
+        {vinRequired && mode === 'edit' && !initial?.vin && <span className="hint">VIN nije upisan — možeš ga sada dopuniti.</span>}
       </label>
 
       <div className="form-2col">

@@ -440,6 +440,35 @@ console.log('\n=== MENI / RASPORED ===');
   await p.setViewportSize({ width: 1280, height: 900 });
 }
 
+// ── VIN: obavezan pri pravom unosu vozila, opcion u zakazivanju ──────────────────
+console.log('\n=== VIN: unos vozila vs zakazivanje ===');
+{
+  // „Vozila" → „+ Novo vozilo": VIN je obavezan.
+  await p.goto(`${BASE}/vozila`, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(300);
+  const noviV = p.locator('button', { hasText: 'Novo vozilo' }).first();
+  if (await noviV.count()) {
+    await noviV.click();
+    await p.waitForSelector('.modal-card input.mono');
+    const req = await p.locator('.modal-card').last().locator('input.mono').first().evaluate((el) => el.required);
+    check('Unos vozila: VIN je obavezan', req === true, `required=${req}`);
+    await p.locator('.modal-card').last().locator('.modal-close').click();
+    await p.waitForTimeout(200);
+  } else {
+    check('Unos vozila: dugme „Novo vozilo"', false, 'nije nađeno');
+  }
+
+  // „Kalendar" → „+ Novi termin" → „+ Novo vozilo": VIN NIJE obavezan.
+  await p.goto(`${BASE}/kalendar`, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(400);
+  await p.locator('button', { hasText: '+ Novi termin' }).first().click();
+  await p.waitForSelector('.modal-card');
+  await p.locator('.modal-card').last().locator('button', { hasText: '+ Novo vozilo' }).click();
+  await p.waitForTimeout(400);
+  const reqSched = await p.locator('.modal-card').last().locator('input.mono').first().evaluate((el) => el.required);
+  check('Zakazivanje: VIN NIJE obavezan (može samo marka/model)', reqSched === false, `required=${reqSched}`);
+}
+
 // ── Zapamti me: trajan cookie kad je čekirano, „session" cookie kad nije ─────────
 console.log('\n=== ZAPAMTI ME (trajanje sesije) ===');
 for (const [labela, cekiraj] of [['čekirano → trajan cookie', true], ['nečekirano → session cookie', false]]) {

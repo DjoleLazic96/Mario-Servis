@@ -151,7 +151,18 @@ nalog, nalog ima dokument (422 HAS_HISTORY/HAS_DOCUMENTS); i da ne-admin dobija 
 python tests/delete.py
 ```
 
-## `ui.mjs` — regresije u pregledaču (58 provera)
+## `termin-nalog.py` — zakazivanje sa minimumom + „Napravi radni nalog" (16 provera)
+
+Vozilo se pravi BEZ VIN-a (zakazivanje: ime klijenta + marka/model); VIN je jedinstven samo
+kad je popunjen. „Napravi radni nalog" iz termina otvara nov nalog za to vozilo/klijenta,
+prenosi napomenu u „zahtevani rad", realizuje i veže termin. Naknadni unos VIN-a i tablice se
+POVLAČI na nalog uživo (preko veze na vozilo). VIN je nepromenljiv kad je već upisan.
+
+```bash
+python tests/termin-nalog.py
+```
+
+## `ui.mjs` — regresije u pregledaču (60 provera)
 
 Stvari koje se ne vide iz koda, nego tek kad se **izmere**:
 
@@ -177,6 +188,8 @@ Stvari koje se ne vide iz koda, nego tek kad se **izmere**:
   i „Novac" idu preko cele širine ispod (na telefonu ostaje jedna kolona — ne dira se).
 - **„Zapamti me"** — postoji na prijavi i podrazumevano je čekirano; čekirano daje trajan
   cookie (~30 dana), nečekirano „session" cookie (nestaje kad se zatvori browser).
+- **VIN: unos vs zakazivanje** — u „Novo vozilo" (ekran Vozila) VIN je obavezan; u zakazivanju
+  („Novi termin" → „Novo vozilo") VIN NIJE obavezan (može samo marka/model).
 
 ```bash
 APP_USER=admin APP_PW=admin node tests/ui.mjs http://localhost:5173

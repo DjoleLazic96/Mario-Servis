@@ -71,8 +71,8 @@ export async function photoRoutes(app: FastifyInstance): Promise<void> {
     const id = Number((request.params as { id: string }).id);
     const b = uploadSchema.parse(request.body);
 
-    const wo = await pool.query<{ status: string; number: string; received_on: string; vin: string }>(
-      `SELECT wo.status, wo.number, to_char(wo.received_on,'YYYY-MM-DD') received_on, v.vin
+    const wo = await pool.query<{ status: string; number: string; received_on: string; vin: string | null; vehicle_id: number }>(
+      `SELECT wo.status, wo.number, to_char(wo.received_on,'YYYY-MM-DD') received_on, v.vin, v.id vehicle_id
        FROM work_order wo JOIN vehicle v ON v.id = wo.vehicle_id WHERE wo.id=$1`, [id]);
     if (!wo.rows[0]) return sendError(reply, 404, 'NOT_FOUND', 'Nalog ne postoji.');
 
@@ -93,8 +93,10 @@ export async function photoRoutes(app: FastifyInstance): Promise<void> {
       return sendError(reply, 422, 'VALIDATION_FAILED', 'Slika je prevelika (max 1.5 MB posle kompresije).');
     }
 
-    const { vin, received_on, number } = wo.rows[0];
-    const relative = join('vozila', vin, `${received_on}_${number}`, `${randomUUID()}.${MIME_EXT[mime] ?? 'jpg'}`);
+    const { vin, received_on, number, vehicle_id } = wo.rows[0];
+    // Vozilo bez VIN-a (uneto sa minimumom) → folder po ID-u vozila, da slike imaju gde da stanu.
+    const folder = vin && vin.length ? vin : `vozilo-${vehicle_id}`;
+    const relative = join('vozila', folder, `${received_on}_${number}`, `${randomUUID()}.${MIME_EXT[mime] ?? 'jpg'}`);
     const abs = absolutePath(relative);
     await mkdir(dirname(abs), { recursive: true });
     await writeFile(abs, buf);

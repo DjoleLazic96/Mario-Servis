@@ -172,7 +172,7 @@ function CustomerVehicles({ customerId }: { customerId: number }): React.JSX.Ele
             <tr key={v.id} className="clickable" onClick={() => navigate(`/vozila/${v.id}`)}>
               <td className="mono strong" data-label="Tablica">{v.currentPlate ?? '—'}</td>
               <td data-label="Vozilo">{v.make} {v.model}</td>
-              <td className="mono" data-label="VIN">{v.vin}</td>
+              <td className="mono" data-label="VIN">{v.vin ?? '—'}</td>
               <td className="mono" data-label="Godište">{v.year ?? '—'}</td>
             </tr>
           ))}

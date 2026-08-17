@@ -70,7 +70,7 @@ export function WorkOrderPrint(): React.JSX.Element {
           <dl className="pl-kv">
             <dt>Marka i model</dt><dd>{wo.vehicle.make} {wo.vehicle.model}</dd>
             <dt>Reg. oznaka</dt><dd className="mono">{wo.vehicle.plate ?? '—'}</dd>
-            <dt>Broj šasije</dt><dd className="mono">{wo.vehicle.vin}</dd>
+            <dt>Broj šasije</dt><dd className="mono">{wo.vehicle.vin ?? '—'}</dd>
             <dt>Kilometraža</dt><dd className="mono">{wo.odometerKm != null ? `${wo.odometerKm.toLocaleString('sr-RS')} km` : '—'}</dd>
           </dl>
         </div>

@@ -147,7 +147,7 @@ export function WorkOrderDetail(): React.JSX.Element {
             {wo.fieldVisit && <span className="badge badge-accent" style={{ marginLeft: 6 }}>teren</span>}
           </h1>
           <p className="page-sub">
-            <button className="btn-link mono" onClick={() => navigate(`/vozila/${wo.vehicle.id}`)}>{wo.vehicle.plate ?? wo.vehicle.vin}</button>
+            <button className="btn-link mono" onClick={() => navigate(`/vozila/${wo.vehicle.id}`)}>{wo.vehicle.plate ?? wo.vehicle.vin ?? '—'}</button>
             {' '}{wo.vehicle.make} {wo.vehicle.model} · <button className="btn-link" onClick={() => navigate(`/klijenti/${wo.customer.id}`)}>{wo.customer.name}</button>
           </p>
         </div>

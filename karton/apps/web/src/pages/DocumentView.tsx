@@ -83,7 +83,7 @@ export function DocumentView(): React.JSX.Element {
           <h1><span className="mono">{doc.number}</span>
             <span className={`badge ${docStatusClass[doc.status]}`} style={{ marginLeft: 10 }}>{docStatusLabel(doc.type, doc.status)}</span>
           </h1>
-          <p className="page-sub">{docTypeLabel[doc.type]} · {doc.customer.name} · <span className="mono">{doc.vehicle.plate ?? doc.vehicle.vin}</span> {doc.vehicle.make} {doc.vehicle.model}</p>
+          <p className="page-sub">{docTypeLabel[doc.type]} · {doc.customer.name} · <span className="mono">{doc.vehicle.plate ?? doc.vehicle.vin ?? '—'}</span> {doc.vehicle.make} {doc.vehicle.model}</p>
         </div>
         <button className="btn-secondary" onClick={() => window.print()}>Štampaj / PDF</button>
       </header>
@@ -161,7 +161,7 @@ export function DocumentView(): React.JSX.Element {
             <h4>Vozilo</h4>
             <div className="dp-name">{doc.vehicle.make} {doc.vehicle.model}</div>
             {doc.vehicle.plate && <div className="dp-line mono">{doc.vehicle.plate}</div>}
-            <div className="dp-line mono muted">VIN {doc.vehicle.vin}</div>
+            {doc.vehicle.vin && <div className="dp-line mono muted">VIN {doc.vehicle.vin}</div>}
           </section>
         </div>
 

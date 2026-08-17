@@ -11,7 +11,9 @@ import { todayBelgrade } from '../time.ts';
 import { defaultPageSize } from '../settings-cache.ts';
 
 const createSchema = z.object({
-  vin: z.string().trim().min(1).max(17), // VIN je standardno 17 znakova
+  // VIN je opcion pri unosu (zakazivanje sa minimumom); jedinstven KADA je popunjen.
+  // U formi „Novo vozilo" je i dalje obavezan — to je pravilo na klijentu, ne u shemi.
+  vin: z.string().trim().max(17).nullish(),
   make: z.string().trim().min(1),
   model: z.string().trim().min(1),
   year: z.number().int().min(1900).max(2100).nullish(),
@@ -22,6 +24,9 @@ const createSchema = z.object({
 });
 
 const updateSchema = z.object({
+  // VIN se u izmeni prima SAMO da bi se DOPUNIO kad je bio prazan (vozilo uneto sa
+  // minimumom); kad je već upisan, ostaje nepromenljiv (BR-01) i ovo se ignoriše.
+  vin: z.string().trim().max(17).nullish(),
   make: z.string().trim().min(1),
   model: z.string().trim().min(1),
   year: z.number().int().min(1900).max(2100).nullish(),
@@ -158,18 +163,22 @@ export async function vehicleRoutes(app: FastifyInstance): Promise<void> {
   // POST /vehicles — VIN duplikat → 409; otvara istoriju vlasnika i tablice
   app.post('/vehicles', async (request, reply) => {
     const body = createSchema.parse(request.body);
-    const dup = await pool.query<{ id: number }>('SELECT id FROM vehicle WHERE vin = $1', [body.vin]);
-    if (dup.rows[0]) {
-      return sendError(reply, 409, 'DUPLICATE_VIN', 'Vozilo sa istim VIN brojem već postoji.', {
-        existingId: dup.rows[0].id,
-      });
+    const vin = body.vin && body.vin.length ? body.vin : null;
+    // VIN je jedinstven SAMO kad je popunjen; bez VIN-a se dozvoljava (dopunjava se kasnije).
+    if (vin) {
+      const dup = await pool.query<{ id: number }>('SELECT id FROM vehicle WHERE vin = $1', [vin]);
+      if (dup.rows[0]) {
+        return sendError(reply, 409, 'DUPLICATE_VIN', 'Vozilo sa istim VIN brojem već postoji.', {
+          existingId: dup.rows[0].id,
+        });
+      }
     }
     const from = todayBelgrade();
     const created = await tx(async (client) => {
       const ins = await client.query<{ id: number }>(
         `INSERT INTO vehicle (vin, make, model, year, fuel, note, created_by)
          VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-        [body.vin, body.make, body.model, body.year ?? null, body.fuel ?? null, body.note ?? null, request.currentUser!.id],
+        [vin, body.make, body.model, body.year ?? null, body.fuel ?? null, body.note ?? null, request.currentUser!.id],
       );
       const id = ins.rows[0]!.id;
       if (body.ownerId) {
@@ -189,15 +198,25 @@ export async function vehicleRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(201).send(created);
   });
 
-  // PATCH /vehicles/:id — VIN se ne menja
+  // PATCH /vehicles/:id — VIN nepromenljiv kad je upisan; sme da se DOPUNI kad je prazan
   app.patch('/vehicles/:id', async (request, reply) => {
     const id = Number((request.params as { id: string }).id);
     const body = updateSchema.parse(request.body);
-    const exists = await pool.query('SELECT 1 FROM vehicle WHERE id = $1', [id]);
-    if (exists.rowCount === 0) return sendError(reply, 404, 'NOT_FOUND', 'Vozilo ne postoji.');
+    const cur = await pool.query<{ vin: string | null }>('SELECT vin FROM vehicle WHERE id = $1', [id]);
+    if (cur.rowCount === 0) return sendError(reply, 404, 'NOT_FOUND', 'Vozilo ne postoji.');
+    // VIN se dopunjava samo kad je do sada bio prazan (naknadni unos posle zakazivanja).
+    const newVin = body.vin && body.vin.length ? body.vin : null;
+    const fillVin = cur.rows[0]!.vin === null && newVin !== null;
+    if (fillVin) {
+      const dup = await pool.query<{ id: number }>('SELECT id FROM vehicle WHERE vin = $1 AND id <> $2', [newVin, id]);
+      if (dup.rows[0]) {
+        return sendError(reply, 409, 'DUPLICATE_VIN', 'Vozilo sa istim VIN brojem već postoji.', { existingId: dup.rows[0].id });
+      }
+    }
     await pool.query(
-      `UPDATE vehicle SET make=$1, model=$2, year=$3, fuel=$4, note=$5, updated_at=now() WHERE id=$6`,
-      [body.make, body.model, body.year ?? null, body.fuel ?? null, body.note ?? null, id],
+      `UPDATE vehicle SET make=$1, model=$2, year=$3, fuel=$4, note=$5,
+         vin = CASE WHEN $7 THEN $8 ELSE vin END, updated_at=now() WHERE id=$6`,
+      [body.make, body.model, body.year ?? null, body.fuel ?? null, body.note ?? null, id, fillVin, newVin],
     );
     return (await getVehicle(id))!;
   });

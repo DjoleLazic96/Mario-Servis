@@ -42,6 +42,11 @@ export function WorkOrderForm({
     e.preventDefault();
     if (!vehicle) { setLocalError('Izaberite vozilo.'); return; }
     if (!vehicle.currentOwner) { setLocalError('Vozilo nema vlasnika — dodajte vlasnika na vozilu.'); return; }
+    // Meko upozorenje: nalog za vozilo bez tablice i/ili VIN-a — potvrda, ne blokada.
+    const missing: string[] = [];
+    if (!vehicle.currentPlate) missing.push('registarske oznake');
+    if (!vehicle.vin) missing.push('VIN-a');
+    if (missing.length && !window.confirm(`Napraviti radni nalog bez ${missing.join(' i ')}?`)) return;
     setLocalError(null);
     onSubmit(
       {

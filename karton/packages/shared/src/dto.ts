@@ -67,7 +67,8 @@ export interface CustomerRef {
 
 export interface Vehicle {
   id: number;
-  vin: string;
+  /** Može biti null: vozilo uneto sa minimumom (zakazivanje), VIN se dopuni kasnije. */
+  vin: string | null;
   make: string;
   model: string;
   year: number | null;
@@ -78,9 +79,9 @@ export interface Vehicle {
   currentOwner: CustomerRef | null;
 }
 
-/** VIN je nepromenljiv (BR-01) — u izmeni se ne šalje. */
+/** VIN je nepromenljiv (BR-01) — u izmeni se ne šalje. Opcion pri unosu (zakazivanje). */
 export interface VehicleInput {
-  vin: string;
+  vin: string | null;
   make: string;
   model: string;
   year?: number | null;
@@ -161,7 +162,7 @@ export interface ServiceInput {
 
 export interface VehicleRef {
   id: number;
-  vin: string;
+  vin: string | null;
   make: string;
   model: string;
   plate: string | null;

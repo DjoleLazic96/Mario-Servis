@@ -112,7 +112,7 @@ export function VehicleDetail(): React.JSX.Element {
 
   async function deleteVehicle(): Promise<void> {
     if (!vehicle) return;
-    if (!confirm(`Obrisati vozilo ${vehicle.vin}? Ovo se NE MOŽE poništiti.`)) return;
+    if (!confirm(`Obrisati vozilo ${vehicle.vin ?? `${vehicle.make} ${vehicle.model}`}? Ovo se NE MOŽE poništiti.`)) return;
     try {
       await api.del(`/vehicles/${id}`);
       navigate('/vozila');
@@ -155,7 +155,7 @@ export function VehicleDetail(): React.JSX.Element {
         <section className="card">
           <h2 className="card-title">Podaci</h2>
           <dl className="kv">
-            <dt>VIN</dt><dd className="mono">{vehicle.vin}</dd>
+            <dt>VIN</dt><dd className="mono">{vehicle.vin ?? '—'}</dd>
             <dt>Vlasnik</dt>
             <dd>
               {vehicle.currentOwner ? (

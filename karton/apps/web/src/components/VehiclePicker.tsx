@@ -9,9 +9,12 @@ export function VehiclePicker({
   value,
   onChange,
   customerId,
+  vinOptional = false,
 }: {
   value: Vehicle | null;
   onChange: (v: Vehicle) => void;
+  /** U zakazivanju je true → novo vozilo može bez VIN-a (samo marka/model). */
+  vinOptional?: boolean;
   /**
    * Kad je klijent poznat, njegova vozila se nude ODMAH, bez kucanja — u servisu
    * čovek gotovo uvek dovozi svoje vozilo. Kucanje i dalje pretražuje sva vozila,
@@ -89,7 +92,7 @@ export function VehiclePicker({
       )}
       {showNew && (
         <Modal title="Novo vozilo" onClose={() => setShowNew(false)} width={520}>
-          <VehicleForm mode="create" submitting={saving} error={error} onSubmit={createVehicle} />
+          <VehicleForm mode="create" submitting={saving} error={error} onSubmit={createVehicle} vinRequired={!vinOptional} />
         </Modal>
       )}
     </div>

@@ -469,6 +469,45 @@ console.log('\n=== VIN: unos vozila vs zakazivanje ===');
   check('Zakazivanje: VIN NIJE obavezan (može samo marka/model)', reqSched === false, `required=${reqSched}`);
 }
 
+// ── Termin: podsetnik se ne štiklira sam na slobodnom unosu; predlozi se sklanjaju ──
+console.log('\n=== TERMIN: podsetnik + predlozi ===');
+{
+  await p.goto(`${BASE}/kalendar`, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(400);
+  await p.locator('button', { hasText: '+ Novi termin' }).first().click();
+  await p.waitForSelector('.modal-card');
+  const modal = p.locator('.modal-card').last();
+  const cb = modal.locator('.check-inline input[type="checkbox"]');
+
+  // 1) Nov termin bez izabranog klijenta → podsetnik NIJE štikliran i zasivljen je
+  //    (nepotpun termin nema mejl; ranije je „?? true" ostavljalo lažno uključenu kvačicu).
+  check('Nov termin: podsetnik nije sam štikliran (slobodan unos)',
+    !(await cb.isChecked()) && (await cb.isDisabled()),
+    `checked=${await cb.isChecked()} disabled=${await cb.isDisabled()}`);
+
+  // 2) Dok se kuca lista predloga se vidi; izlazak iz polja je sklanja, a upisani tekst ostaje.
+  const cust = modal.locator('input.owner-search').first();
+  await cust.fill('a');
+  await modal.locator('.owner-results li').first().waitFor({ timeout: 3000 });
+  const preBlur = await modal.locator('.owner-results li').count();
+  await cust.evaluate((el) => el.blur());
+  await p.waitForTimeout(200);
+  const postBlur = await modal.locator('.owner-results li').count();
+  check('Lista predloga se pokaže dok se kuca', preBlur > 0, `redova=${preBlur}`);
+  check('Izlazak iz polja sklanja listu predloga', postBlur === 0, `redova=${postBlur}`);
+  check('Upisani tekst ostaje u polju (nepotpun termin)', (await cust.inputValue()) === 'a');
+
+  // 3) Klik na predlog i dalje bira klijenta (mousedown preventDefault), a podsetnik se sam uključi.
+  await cust.click();
+  await modal.locator('.owner-results li').first().waitFor({ timeout: 3000 });
+  await modal.locator('.owner-results li').first().click();
+  await p.waitForTimeout(300);
+  check('Klik na predlog i dalje bira klijenta', (await modal.locator('.owner-picked').count()) > 0);
+  check('Izborom pravog klijenta podsetnik se sam uključi i otključa',
+    (await cb.isChecked()) && !(await cb.isDisabled()),
+    `checked=${await cb.isChecked()} disabled=${await cb.isDisabled()}`);
+}
+
 // ── Zapamti me: trajan cookie kad je čekirano, „session" cookie kad nije ─────────
 console.log('\n=== ZAPAMTI ME (trajanje sesije) ===');
 for (const [labela, cekiraj] of [['čekirano → trajan cookie', true], ['nečekirano → session cookie', false]]) {

@@ -556,6 +556,7 @@ select:focus { border-color: var(--accent); }
 textarea { padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px; font-family: inherit; outline: none; resize: vertical; }
 textarea:focus { border-color: var(--accent); }
 .check-inline { display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; }
+.check-inline.is-disabled { opacity: .5; cursor: default; }
 .fv-box { border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 12px; background: var(--panel-2); }
 
 /* --- Segmented control (billing mode) --- */

@@ -80,13 +80,14 @@ export function VehiclePicker({
     <div className="owner-picker">
       <div className="owner-search-row">
         <input className="owner-search" placeholder="Pretraži ili upiši vozilo…" value={q}
-          onChange={(e) => { setQ(e.target.value); onTextChange?.(e.target.value); }} onFocus={() => setOpen(true)} autoFocus={open} />
+          onChange={(e) => { setQ(e.target.value); onTextChange?.(e.target.value); }} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)} autoFocus={open} />
         <button type="button" className="btn-secondary btn-sm" onClick={() => { setError(null); setShowNew(true); }}>+ Novo vozilo</button>
       </div>
       {open && listingOwned && results.length > 0 && <div className="hint">Vozila ovog klijenta — kucajte da pretražite sva.</div>}
       {open && listingOwned && results.length === 0 && <div className="hint">Ovaj klijent nema zavedeno vozilo — kucajte da pretražite ili dodajte novo.</div>}
       {open && results.length > 0 && (
-        <ul className="owner-results">
+        // preventDefault na mousedown: input zadrži fokus pri biranju predloga (vidi OwnerPicker).
+        <ul className="owner-results" onMouseDown={(e) => e.preventDefault()}>
           {results.map((v) => (
             <li key={v.id} onClick={() => pick(v)}>
               <span className="strong mono">{v.currentPlate ?? '—'}</span>

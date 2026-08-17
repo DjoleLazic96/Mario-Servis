@@ -102,6 +102,7 @@ export function OwnerPicker({
           value={q}
           onChange={(e) => { setQ(e.target.value); onTextChange?.(e.target.value); }}
           onFocus={() => setOpen(true)}
+          onBlur={() => setOpen(false)}
           autoFocus={open}
         />
         <button type="button" className="btn-secondary btn-sm" onClick={() => { setFormError(null); setShowNew(true); }}>
@@ -115,7 +116,9 @@ export function OwnerPicker({
         </div>
       )}
       {open && results.length > 0 && (
-        <ul className="owner-results">
+        // preventDefault na mousedown: input zadrži fokus dok se bira predlog, pa `pick`
+        // stigne pre nego što `onBlur` sakrije listu (inače bi klik „progutao" blur).
+        <ul className="owner-results" onMouseDown={(e) => e.preventDefault()}>
           {results.map((c) => (
             <li key={c.id} onClick={() => pick(c)}>
               <span className="strong">{c.name}</span>

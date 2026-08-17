@@ -167,7 +167,7 @@ tekst se tada briše.
 python tests/termin-nalog.py
 ```
 
-## `ui.mjs` — regresije u pregledaču (60 provera)
+## `ui.mjs` — regresije u pregledaču (66 provera)
 
 Stvari koje se ne vide iz koda, nego tek kad se **izmere**:
 
@@ -195,6 +195,10 @@ Stvari koje se ne vide iz koda, nego tek kad se **izmere**:
   cookie (~30 dana), nečekirano „session" cookie (nestaje kad se zatvori browser).
 - **VIN: unos vs zakazivanje** — u „Novo vozilo" (ekran Vozila) VIN je obavezan; u zakazivanju
   („Novi termin" → „Novo vozilo") VIN NIJE obavezan (može samo marka/model).
+- **Termin — podsetnik i predlozi** — na novom terminu bez izabranog klijenta kvačica „Email
+  podsetnik" NIJE sama štiklirana i zasivljena je (nepotpun termin nema mejl); dok se kuca vide se
+  predlozi, a izlazak iz polja ih sklanja bez gubljenja upisanog teksta; klik na predlog i dalje
+  bira klijenta, čime se podsetnik sam uključi i otključa.
 
 ```bash
 APP_USER=admin APP_PW=admin node tests/ui.mjs http://localhost:5173

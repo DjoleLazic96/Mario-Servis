@@ -31,7 +31,9 @@ export function AppointmentForm({ mechanics, defaultDate, defaultTime = '09:00',
   const [duration, setDuration] = useState(String(initial?.durationMin ?? 60));
   const [mechanicId, setMechanicId] = useState(initial?.mechanic ? String(initial.mechanic.id) : '');
   const [note, setNote] = useState(initial?.note ?? '');
-  const [reminders, setReminders] = useState(initial?.remindersEnabled ?? true);
+  // Podsetnik ima smisla SAMO uz pravog klijenta (nepotpun termin nema mejl; bekend mu ni
+  // ne zakazuje podsetnik). Zato podrazumevano NIJE štikliran kad nema izabranog klijenta.
+  const [reminders, setReminders] = useState(initial?.remindersEnabled ?? Boolean(initial?.customer));
   const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -43,6 +45,13 @@ export function AppointmentForm({ mechanics, defaultDate, defaultTime = '09:00',
     if (!veh) return;
     void (async () => { setVehicle(await api.get<Vehicle>(`/vehicles/${veh.id}`)); })();
   }, [initial]);
+
+  // Kad se veže pravi klijent, podsetnik se sam uključi; na slobodnom unosu se isključi.
+  // Kod izmene ne diramo — poštuje se zatečeno stanje (da ne uključimo namerno ugašen podsetnik).
+  useEffect(() => {
+    if (editing) return;
+    setReminders(Boolean(customer));
+  }, [customer, editing]);
 
   async function doSubmit(confirmed: boolean): Promise<void> {
     // Svaka strana je ILI izabrana (pravi zapis) ILI upisana kao tekst (nepotpun termin).
@@ -87,7 +96,10 @@ export function AppointmentForm({ mechanics, defaultDate, defaultTime = '09:00',
           </select></label>
       </div>
       <label className="field"><span>Napomena</span><input value={note} onChange={(e) => setNote(e.target.value)} /></label>
-      <label className="check-inline"><input type="checkbox" checked={reminders} onChange={(e) => setReminders(e.target.checked)} /> Email podsetnik (dan pre)</label>
+      <label className={`check-inline${customer ? '' : ' is-disabled'}`}>
+        <input type="checkbox" checked={reminders} disabled={!customer} onChange={(e) => setReminders(e.target.checked)} /> Email podsetnik (dan pre)
+      </label>
+      {!customer && <p className="hint">Podsetnik je moguć tek kad se veže klijent (sa mejlom).</p>}
 
       {warnings.length > 0 && (
         <div className="warn-box">

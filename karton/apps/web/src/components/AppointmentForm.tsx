@@ -22,8 +22,10 @@ export function AppointmentForm({ mechanics, defaultDate, defaultTime = '09:00',
   onCreated: () => void;
 }): React.JSX.Element {
   const editing = initial !== undefined;
-  const [customer, setCustomer] = useState<CustomerRef | null>(initial ? initial.customer : null);
+  const [customer, setCustomer] = useState<CustomerRef | null>(initial?.customer ?? null);
+  const [customerText, setCustomerText] = useState(initial?.customerText ?? '');
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [vehicleText, setVehicleText] = useState(initial?.vehicleText ?? '');
   const [date, setDate] = useState(initial?.date ?? defaultDate);
   const [time, setTime] = useState(initial?.time ?? defaultTime);
   const [duration, setDuration] = useState(String(initial?.durationMin ?? 60));
@@ -34,17 +36,27 @@ export function AppointmentForm({ mechanics, defaultDate, defaultTime = '09:00',
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Termin nosi samo `VehicleRef`; za VehiclePicker treba pun `Vehicle`, pa ga dovlačimo.
+  // Termin nosi samo `VehicleRef`; za VehiclePicker treba pun `Vehicle` — dovlačimo ga
+  // SAMO ako je termin vezan za pravo vozilo (nepotpun termin ga nema, ima tekst).
   useEffect(() => {
-    if (!initial) return;
-    void (async () => { setVehicle(await api.get<Vehicle>(`/vehicles/${initial.vehicle.id}`)); })();
+    const veh = initial?.vehicle;
+    if (!veh) return;
+    void (async () => { setVehicle(await api.get<Vehicle>(`/vehicles/${veh.id}`)); })();
   }, [initial]);
 
   async function doSubmit(confirmed: boolean): Promise<void> {
-    if (!customer || !vehicle) { setError('Izaberite klijenta i vozilo.'); return; }
+    // Svaka strana je ILI izabrana (pravi zapis) ILI upisana kao tekst (nepotpun termin).
+    const cText = customerText.trim();
+    const vText = vehicleText.trim();
+    if (!customer && !cText) { setError('Upišite ili izaberite klijenta.'); return; }
+    if (!vehicle && !vText) { setError('Upišite ili izaberite vozilo.'); return; }
     setSaving(true); setError(null);
     const body = {
-      date, time, durationMin: Number(duration), customerId: customer.id, vehicleId: vehicle.id,
+      date, time, durationMin: Number(duration),
+      customerId: customer ? customer.id : null,
+      customerText: customer ? null : cText,
+      vehicleId: vehicle ? vehicle.id : null,
+      vehicleText: vehicle ? null : vText,
       mechanicId: mechanicId ? Number(mechanicId) : null, note: note.trim() || null, remindersEnabled: reminders, confirmed,
     };
     try {
@@ -60,8 +72,9 @@ export function AppointmentForm({ mechanics, defaultDate, defaultTime = '09:00',
 
   return (
     <form onSubmit={(e: FormEvent) => { e.preventDefault(); void doSubmit(false); }} className="form">
-      <div className="field"><span>Klijent</span><OwnerPicker value={customer} onChange={setCustomer} /></div>
-      <div className="field"><span>Vozilo</span><VehiclePicker value={vehicle} onChange={setVehicle} customerId={customer?.id} vinOptional /></div>
+      <div className="field"><span>Klijent</span><OwnerPicker value={customer} onChange={setCustomer} onTextChange={setCustomerText} initialText={initial?.customerText ?? undefined} /></div>
+      <div className="field"><span>Vozilo</span><VehiclePicker value={vehicle} onChange={setVehicle} customerId={customer?.id} vinOptional onTextChange={setVehicleText} initialText={initial?.vehicleText ?? undefined} /></div>
+      <p className="hint">Ako klijent ili vozilo nisu na spisku, samo ih upiši — termin ostaje „nepotpun", a središ ga kasnije.</p>
       <div className="form-2col">
         <label className="field"><span>Datum</span><DateInput value={date} onChange={setDate} required /></label>
         <label className="field"><span>Vreme</span><TimeInput value={time} onChange={setTime} required /></label>

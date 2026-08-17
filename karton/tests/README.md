@@ -151,12 +151,17 @@ nalog, nalog ima dokument (422 HAS_HISTORY/HAS_DOCUMENTS); i da ne-admin dobija 
 python tests/delete.py
 ```
 
-## `termin-nalog.py` — zakazivanje sa minimumom + „Napravi radni nalog" (16 provera)
+## `termin-nalog.py` — zakazivanje sa minimumom, nepotpun termin, „Napravi radni nalog" (24 provere)
 
 Vozilo se pravi BEZ VIN-a (zakazivanje: ime klijenta + marka/model); VIN je jedinstven samo
 kad je popunjen. „Napravi radni nalog" iz termina otvara nov nalog za to vozilo/klijenta,
 prenosi napomenu u „zahtevani rad", realizuje i veže termin. Naknadni unos VIN-a i tablice se
 POVLAČI na nalog uživo (preko veze na vozilo). VIN je nepromenljiv kad je već upisan.
+
+Nepotpun termin: sme da se zakaže samo sa UPISANIM imenom klijenta i vozila (bez pravljenja
+zapisa) — customer/vehicle su null, tekst stoji; prazna strana → 422; nepotpun termin nema
+zakazan podsetnik. „Sređivanjem" (PATCH sa id-evima) se poveže sa pravim zapisima, a upisani
+tekst se tada briše.
 
 ```bash
 python tests/termin-nalog.py

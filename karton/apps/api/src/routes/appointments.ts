@@ -15,13 +15,28 @@ const apptSchema = z.object({
   date: DATE,
   time: TIME,
   durationMin: z.number().int().positive().default(60),
-  customerId: z.number().int().positive(),
-  vehicleId: z.number().int().positive(),
+  // Klijent i vozilo mogu biti VEZANI (id) ILI upisani kao TEKST (nepotpun termin).
+  customerId: z.number().int().positive().nullish(),
+  vehicleId: z.number().int().positive().nullish(),
+  customerText: z.string().trim().nullish(),
+  vehicleText: z.string().trim().nullish(),
   mechanicId: z.number().int().positive().nullish(),
   note: z.string().trim().nullish(),
   remindersEnabled: z.boolean().default(true),
   confirmed: z.boolean().default(false),
 });
+
+// Svaka strana je ILI vezana (id) ILI tekst; kad postoji id, tekst se poništava.
+// Vraća grešku (poruku) ako je strana potpuno prazna.
+function resolveParties(b: z.infer<typeof apptSchema>): { customerId: number | null; customerText: string | null; vehicleId: number | null; vehicleText: string | null; error?: string } {
+  const customerId = b.customerId ?? null;
+  const customerText = customerId ? null : (b.customerText?.trim() || null);
+  const vehicleId = b.vehicleId ?? null;
+  const vehicleText = vehicleId ? null : (b.vehicleText?.trim() || null);
+  if (!customerId && !customerText) return { customerId, customerText, vehicleId, vehicleText, error: 'Upišite ili izaberite klijenta.' };
+  if (!vehicleId && !vehicleText) return { customerId, customerText, vehicleId, vehicleText, error: 'Upišite ili izaberite vozilo.' };
+  return { customerId, customerText, vehicleId, vehicleText };
+}
 
 const blockSchema = z.object({ fromDate: DATE, toDate: DATE, reason: z.string().trim().nullish() });
 
@@ -29,23 +44,26 @@ const blockSchema = z.object({ fromDate: DATE, toDate: DATE, reason: z.string().
 function toAppt(r: any): Appointment {
   return {
     id: r.id, date: r.date, time: r.time, durationMin: r.duration_min,
-    customer: { id: r.customer_id, name: r.customer_name, type: r.customer_type },
-    vehicle: { id: r.vehicle_id, vin: r.vin, make: r.make, model: r.model, plate: r.plate },
+    customer: r.customer_id ? { id: r.customer_id, name: r.customer_name, type: r.customer_type } : null,
+    customerText: r.customer_text ?? null,
+    vehicle: r.vehicle_id ? { id: r.vehicle_id, vin: r.vin, make: r.make, model: r.model, plate: r.plate } : null,
+    vehicleText: r.vehicle_text ?? null,
     mechanic: r.mechanic_id ? { id: r.mechanic_id, fullName: r.mechanic_name } : null,
     note: r.note, status: r.status, workOrderId: r.work_order_id,
     remindersEnabled: r.reminders_enabled, reminderStatus: r.reminder_status, reminderReason: r.reminder_reason, version: r.version,
   };
 }
+// LEFT JOIN: nepotpun termin nema vezan customer/vehicle (samo tekst).
 const APPT_SELECT = `
   SELECT a.id, to_char(a.date,'YYYY-MM-DD') date, to_char(a.time,'HH24:MI') time, a.duration_min,
-    a.customer_id, a.vehicle_id, a.mechanic_id, a.note, a.status, a.work_order_id, a.reminders_enabled, a.version,
+    a.customer_id, a.vehicle_id, a.customer_text, a.vehicle_text, a.mechanic_id, a.note, a.status, a.work_order_id, a.reminders_enabled, a.version,
     c.name customer_name, c.type customer_type, v.vin, v.make, v.model,
     (SELECT rh.plate FROM registration_history rh WHERE rh.vehicle_id=v.id AND rh.valid_to IS NULL LIMIT 1) plate,
     m.full_name mechanic_name,
     (SELECT ar.send_status FROM appointment_reminder ar WHERE ar.appointment_id=a.id ORDER BY ar.id DESC LIMIT 1) reminder_status,
     (SELECT ar.last_error FROM appointment_reminder ar WHERE ar.appointment_id=a.id ORDER BY ar.id DESC LIMIT 1) reminder_reason
   FROM appointment a
-  JOIN customer c ON c.id=a.customer_id JOIN vehicle v ON v.id=a.vehicle_id
+  LEFT JOIN customer c ON c.id=a.customer_id LEFT JOIN vehicle v ON v.id=a.vehicle_id
   LEFT JOIN mechanic m ON m.id=a.mechanic_id`;
 
 async function loadAppt(id: number, client?: PoolClient): Promise<Appointment | null> {
@@ -56,15 +74,14 @@ async function loadAppt(id: number, client?: PoolClient): Promise<Appointment | 
 // Podsetnik: jedan po terminu, dan pre u vreme iz podešavanja; samo ako uključen + klijent ima email
 async function syncReminder(client: PoolClient, apptId: number): Promise<void> {
   await client.query(`DELETE FROM appointment_reminder WHERE appointment_id=$1 AND send_status IN ('scheduled','failed')`, [apptId]);
-  const a = await client.query<{ date: string; enabled: boolean; status: string; has_email: boolean }>(
-    `SELECT to_char(a.date,'YYYY-MM-DD') date, a.reminders_enabled enabled, a.status,
-      EXISTS(SELECT 1 FROM customer_contact cc WHERE cc.customer_id=a.customer_id AND cc.kind='email') has_email
+  const a = await client.query<{ date: string; enabled: boolean; status: string; customer_id: number | null }>(
+    `SELECT to_char(a.date,'YYYY-MM-DD') date, a.reminders_enabled enabled, a.status, a.customer_id
      FROM appointment a WHERE a.id=$1`, [apptId]);
   const row = a.rows[0];
   // Podsetnik se zakazuje na osnovu namere (uključen + termin zakazan), BEZ obzira na email.
-  // Email se proverava tek u trenutku slanja u workeru (pravila podsetnika 4–6): tako
-  // email dodat pre vremena slanja stigne na vreme, a onaj dodat posle ne izaziva zakašnjelo slanje.
-  if (!row || !row.enabled || row.status !== 'scheduled') return;
+  // Email se proverava tek u trenutku slanja u workeru (pravila podsetnika 4–6). Ali nepotpun
+  // termin (bez vezanog klijenta) nema koga da podseti — tada se podsetnik ne zakazuje.
+  if (!row || !row.enabled || row.status !== 'scheduled' || !row.customer_id) return;
   const s = await client.query<{ t: string }>(`SELECT to_char(reminder_send_time,'HH24:MI') t FROM settings WHERE id=1`);
   const sendTime = s.rows[0]?.t ?? '09:00';
   // Dan pre termina, u vreme iz podešavanja — a to vreme je BEOGRADSKO (zidno vreme servisa).
@@ -102,7 +119,7 @@ async function checkConstraints(b: z.infer<typeof apptSchema>, excludeId?: numbe
 
   // Uključen podsetnik, a klijent nema email → meko upozorenje (ne tvrda greška):
   // podsetnik se „naoruža" i poslaće se samo ako se email doda pre vremena slanja (pravilo 5).
-  if (b.remindersEnabled) {
+  if (b.remindersEnabled && b.customerId) {
     const em = await pool.query(`SELECT 1 FROM customer_contact WHERE customer_id=$1 AND kind='email'`, [b.customerId]);
     if (em.rowCount === 0) warnings.push('NO_CUSTOMER_EMAIL');
   }
@@ -127,14 +144,16 @@ export async function appointmentRoutes(app: FastifyInstance): Promise<void> {
 
   app.post('/appointments', async (request, reply) => {
     const b = apptSchema.parse(request.body);
+    const p = resolveParties(b);
+    if (p.error) return sendError(reply, 422, 'VALIDATION_FAILED', p.error);
     const chk = await checkConstraints(b);
     if (chk.block) return sendError(reply, 422, 'CALENDAR_BLOCKED', 'Taj dan je blokiran u kalendaru.');
     if (chk.warnings.length && !b.confirmed) return sendError(reply, 409, 'CONFIRMATION_REQUIRED', 'Postoje upozorenja — potvrdite.', { warnings: chk.warnings });
     const created = await tx(async (client) => {
       const ins = await client.query<{ id: number }>(
-        `INSERT INTO appointment (date, time, duration_min, customer_id, vehicle_id, mechanic_id, note, reminders_enabled, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
-        [b.date, b.time, b.durationMin, b.customerId, b.vehicleId, b.mechanicId ?? null, b.note ?? null, b.remindersEnabled, request.currentUser!.id]);
+        `INSERT INTO appointment (date, time, duration_min, customer_id, vehicle_id, customer_text, vehicle_text, mechanic_id, note, reminders_enabled, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+        [b.date, b.time, b.durationMin, p.customerId, p.vehicleId, p.customerText, p.vehicleText, b.mechanicId ?? null, b.note ?? null, b.remindersEnabled, request.currentUser!.id]);
       const id = ins.rows[0]!.id;
       await syncReminder(client, id);
       return (await loadAppt(id, client))!;
@@ -148,14 +167,17 @@ export async function appointmentRoutes(app: FastifyInstance): Promise<void> {
     const cur = await pool.query<{ version: number }>('SELECT version FROM appointment WHERE id=$1', [id]);
     if (!cur.rows[0]) return sendError(reply, 404, 'NOT_FOUND', 'Termin ne postoji.');
     if (cur.rows[0].version !== b.version) return sendError(reply, 409, 'VERSION_CONFLICT', 'Termin je izmenjen u međuvremenu.');
+    const p = resolveParties(b);
+    if (p.error) return sendError(reply, 422, 'VALIDATION_FAILED', p.error);
     const chk = await checkConstraints(b, id);
     if (chk.block) return sendError(reply, 422, 'CALENDAR_BLOCKED', 'Taj dan je blokiran.');
     if (chk.warnings.length && !b.confirmed) return sendError(reply, 409, 'CONFIRMATION_REQUIRED', 'Postoje upozorenja — potvrdite.', { warnings: chk.warnings });
     const updated = await tx(async (client) => {
+      // Kad se termin „sredi" (dobije customer_id/vehicle_id), upisani tekst se poništava.
       await client.query(
-        `UPDATE appointment SET date=$1, time=$2, duration_min=$3, customer_id=$4, vehicle_id=$5, mechanic_id=$6, note=$7,
-          reminders_enabled=$8, version=version+1, updated_at=now() WHERE id=$9`,
-        [b.date, b.time, b.durationMin, b.customerId, b.vehicleId, b.mechanicId ?? null, b.note ?? null, b.remindersEnabled, id]);
+        `UPDATE appointment SET date=$1, time=$2, duration_min=$3, customer_id=$4, vehicle_id=$5, customer_text=$6, vehicle_text=$7, mechanic_id=$8, note=$9,
+          reminders_enabled=$10, version=version+1, updated_at=now() WHERE id=$11`,
+        [b.date, b.time, b.durationMin, p.customerId, p.vehicleId, p.customerText, p.vehicleText, b.mechanicId ?? null, b.note ?? null, b.remindersEnabled, id]);
       await syncReminder(client, id);
       return (await loadAppt(id, client))!;
     });

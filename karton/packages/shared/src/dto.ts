@@ -433,8 +433,11 @@ export interface Appointment {
   date: string;
   time: string;
   durationMin: number;
-  customer: CustomerRef;
-  vehicle: VehicleRef;
+  // Nepotpun termin: customer/vehicle su null, a ime/vozilo stoje kao tekst dok se ne „sredi".
+  customer: CustomerRef | null;
+  customerText: string | null;
+  vehicle: VehicleRef | null;
+  vehicleText: string | null;
   mechanic: { id: number; fullName: string } | null;
   note: string | null;
   status: AppointmentStatusT;
@@ -449,8 +452,11 @@ export interface AppointmentInput {
   date: string;
   time: string;
   durationMin?: number;
-  customerId: number;
-  vehicleId: number;
+  // Svaka strana je ILI vezana (id) ILI upisana kao tekst (nepotpun termin).
+  customerId?: number | null;
+  vehicleId?: number | null;
+  customerText?: string | null;
+  vehicleText?: string | null;
   mechanicId?: number | null;
   note?: string | null;
   remindersEnabled?: boolean;

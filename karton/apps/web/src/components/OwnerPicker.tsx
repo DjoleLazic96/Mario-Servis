@@ -16,14 +16,20 @@ export function OwnerPicker({
   value,
   onChange,
   prefill,
+  onTextChange,
+  initialText,
 }: {
   value: CustomerRef | null;
   onChange: (owner: CustomerRef) => void;
   prefill?: CustomerPrefill | null;
+  /** Prijavljuje upisani tekst roditelju — za „nepotpun termin" (tekst umesto izbora). */
+  onTextChange?: (t: string) => void;
+  /** Pred-popuni polje (npr. kod sređivanja nepotpunog termina). */
+  initialText?: string;
 }): React.JSX.Element {
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(initialText ?? '');
   const [results, setResults] = useState<Customer[]>([]);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(initialText));
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -92,9 +98,9 @@ export function OwnerPicker({
       <div className="owner-search-row">
         <input
           className="owner-search"
-          placeholder="Pretraži klijenta…"
+          placeholder="Pretraži ili upiši klijenta…"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => { setQ(e.target.value); onTextChange?.(e.target.value); }}
           onFocus={() => setOpen(true)}
           autoFocus={open}
         />

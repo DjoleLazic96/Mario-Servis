@@ -63,6 +63,8 @@ def db(sql):
 
 def cleanup():
     db(f"""
+      DELETE FROM appointment_reminder WHERE appointment_id IN (SELECT id FROM appointment WHERE customer_text='Pera sa telefona' OR vehicle_text='Nissan Juke');
+      DELETE FROM appointment WHERE customer_text='Pera sa telefona' OR vehicle_text='Nissan Juke';
       DELETE FROM appointment_reminder WHERE appointment_id IN (SELECT a.id FROM appointment a JOIN vehicle v ON v.id=a.vehicle_id WHERE v.make='{MAKE}');
       DELETE FROM appointment WHERE vehicle_id IN (SELECT id FROM vehicle WHERE make='{MAKE}');
       DELETE FROM labor_item WHERE work_order_id IN (SELECT wo.id FROM work_order wo JOIN vehicle v ON v.id=wo.vehicle_id WHERE v.make='{MAKE}');
@@ -138,6 +140,28 @@ print('\n=== VIN NEPROMENLJIV KADA JE VEĆ UPISAN ===')
 call('PATCH', f"/vehicles/{v1['id']}", {'vin': 'TERMINTESTVIN0002', 'make': MAKE, 'model': 'BezVina'})
 st, vv = call('GET', f"/vehicles/{v1['id']}")
 check('Izmena već upisanog VIN-a se ignoriše', st == 200 and vv.get('vin') == VIN_FILL, repr(vv.get('vin') if st == 200 else vv))
+
+print('\n=== NEPOTPUN TERMIN (slobodan tekst) + SREĐIVANJE ===')
+d2 = (date.today() + timedelta(days=3)).isoformat()
+st, ld = call('POST', '/appointments', {'date': d2, 'time': '11:00', 'durationMin': 60,
+              'customerText': 'Pera sa telefona', 'vehicleText': 'Nissan Juke',
+              'remindersEnabled': True, 'confirmed': True})
+check('Nepotpun termin (samo tekst) se pravi (201)', st == 201, f'HTTP {st} {ld if st != 201 else ""}')
+check('Klijent je null, tekst stoji', st == 201 and ld.get('customer') is None and ld.get('customerText') == 'Pera sa telefona')
+check('Vozilo je null, tekst stoji', st == 201 and ld.get('vehicle') is None and ld.get('vehicleText') == 'Nissan Juke')
+# strana bez i id-a i teksta → 422
+st, e1 = call('POST', '/appointments', {'date': d2, 'time': '12:00', 'vehicleText': 'X', 'confirmed': True})
+check('Bez klijenta (ni id ni tekst) → 422', st == 422, f'HTTP {st}')
+# podsetnik se NE zakazuje za nepotpun (nema koga da podseti)
+rem = db(f"SELECT count(*) FROM appointment_reminder WHERE appointment_id={ld['id']}")
+check('Nepotpun termin nema zakazan podsetnik', rem == '0', f'redova: {rem}')
+# „sredi": poveži prave zapise → upisani tekst se briše
+st, sr = call('PATCH', f"/appointments/{ld['id']}", {'date': d2, 'time': '11:00', 'durationMin': 60,
+              'customerId': cust['id'], 'vehicleId': v2['id'], 'remindersEnabled': False, 'confirmed': True,
+              'version': ld['version']})
+check('Sređivanje (PATCH sa id-evima) prolazi (200)', st == 200, f'HTTP {st} {sr if st != 200 else ""}')
+check('Po sređivanju: klijent vezan, tekst obrisan', st == 200 and sr.get('customer') and sr['customer']['id'] == cust['id'] and sr.get('customerText') is None)
+check('Po sređivanju: vozilo vezano, tekst obrisan', st == 200 and sr.get('vehicle') and sr['vehicle']['id'] == v2['id'] and sr.get('vehicleText') is None)
 
 print(f'\n═══ {ok} prošlo, {fail} palo ═══')
 sys.exit(1 if fail else 0)

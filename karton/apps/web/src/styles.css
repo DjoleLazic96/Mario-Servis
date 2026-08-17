@@ -956,6 +956,8 @@ mark { background: #ffe58a; color: #1c2127; border-radius: 2px; padding: 0 1px; 
 .cal-appt-who { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-appt-veh { color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-appt-rem { position: absolute; top: 2px; right: 4px; font-size: 9px; color: var(--ink-faint); }
+/* Nepotpun termin (samo tekst, bez vezanog klijenta/vozila) — mala amber tačkica. */
+.cal-appt-flag { color: var(--amber); font-size: 9px; margin-right: 3px; vertical-align: 1px; }
 .legend { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 /* Običan tekst, NE flex — okvir drži rečenice sa <strong>/<code> unutra.
    Sa `display:flex; flex-direction:column` svaki inline deo („celu", <strong>bazu</strong>,

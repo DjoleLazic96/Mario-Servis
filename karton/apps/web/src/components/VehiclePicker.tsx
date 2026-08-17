@@ -10,6 +10,8 @@ export function VehiclePicker({
   onChange,
   customerId,
   vinOptional = false,
+  onTextChange,
+  initialText,
 }: {
   value: Vehicle | null;
   onChange: (v: Vehicle) => void;
@@ -21,10 +23,14 @@ export function VehiclePicker({
    * jer vozilo ume da promeni vlasnika pa se zatekne pod tuđim imenom.
    */
   customerId?: number | null;
+  /** Prijavljuje upisani tekst roditelju — za „nepotpun termin" (tekst umesto izbora). */
+  onTextChange?: (t: string) => void;
+  /** Pred-popuni polje (npr. kod sređivanja nepotpunog termina). */
+  initialText?: string;
 }): React.JSX.Element {
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(initialText ?? '');
   const [results, setResults] = useState<Vehicle[]>([]);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(initialText));
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,8 +79,8 @@ export function VehiclePicker({
   return (
     <div className="owner-picker">
       <div className="owner-search-row">
-        <input className="owner-search" placeholder="Tablica, VIN, marka/model…" value={q}
-          onChange={(e) => setQ(e.target.value)} onFocus={() => setOpen(true)} autoFocus={open} />
+        <input className="owner-search" placeholder="Pretraži ili upiši vozilo…" value={q}
+          onChange={(e) => { setQ(e.target.value); onTextChange?.(e.target.value); }} onFocus={() => setOpen(true)} autoFocus={open} />
         <button type="button" className="btn-secondary btn-sm" onClick={() => { setError(null); setShowNew(true); }}>+ Novo vozilo</button>
       </div>
       {open && listingOwned && results.length > 0 && <div className="hint">Vozila ovog klijenta — kucajte da pretražite sva.</div>}

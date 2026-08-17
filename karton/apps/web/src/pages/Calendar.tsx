@@ -72,6 +72,7 @@ export function Calendar(): React.JSX.Element {
   // zahtevani rad, veži termin za taj nalog (i realizuj ga), pa idi na nalog. Ako vozilu fali
   // tablica i/ili VIN — meko upozorenje (potvrda), ne blokada.
   async function makeWorkOrder(a: Appointment): Promise<void> {
+    if (!a.customer || !a.vehicle) { alert('Prvo sredi termin — poveži klijenta i vozilo.'); return; }
     const missing: string[] = [];
     if (!a.vehicle.plate) missing.push('registarske oznake');
     if (!a.vehicle.vin) missing.push('VIN-a');
@@ -152,8 +153,8 @@ export function Calendar(): React.JSX.Element {
                     <button key={a.id} className={`cal-appt ${statusClass[a.status]}`} style={{ top, height: h }}
                       onClick={(e) => { e.stopPropagation(); setSelected(a); }}>
                       <span className="cal-appt-time mono">{a.time}</span>
-                      <span className="cal-appt-who">{a.customer.name}</span>
-                      <span className="cal-appt-veh">{a.vehicle.make} {a.vehicle.model}</span>
+                      <span className="cal-appt-who">{(!a.customer || !a.vehicle) && <span className="cal-appt-flag" title="Nepotpun termin">●</span>}{a.customer?.name ?? a.customerText ?? '—'}</span>
+                      <span className="cal-appt-veh">{a.vehicle ? `${a.vehicle.make} ${a.vehicle.model}` : (a.vehicleText ?? '')}</span>
                       {a.remindersEnabled && <span className="cal-appt-rem" title={`podsetnik: ${a.reminderStatus ? labels.reminderStatus[a.reminderStatus] : 'zakazan'}`}>✉</span>}
                     </button>
                   );
@@ -179,7 +180,7 @@ export function Calendar(): React.JSX.Element {
       )}
       {dialog === 'block' && <BlockModal onClose={() => setDialog(null)} onDone={() => { setDialog(null); void load(); }} blocks={blocks} />}
       {dialog === 'edit' && selected && (
-        <Modal title={`Izmena termina — ${selected.customer.name}`} onClose={() => setDialog(null)} width={520}>
+        <Modal title={`Izmena termina — ${selected.customer?.name ?? selected.customerText ?? 'nepotpun'}`} onClose={() => setDialog(null)} width={520}>
           <AppointmentForm mechanics={mechanics} defaultDate={selected.date} initial={selected}
             onCreated={() => { setDialog(null); setSelected(null); void load(); }} />
         </Modal>
@@ -193,14 +194,15 @@ export function Calendar(): React.JSX.Element {
           ali OVAJ prozor ostane iscrtan preko nje (poslednji je u DOM-u) — pa dugmad
           deluju mrtvo, iako rade. Detalj se sklanja dok je bilo koja forma otvorena. */}
       {selected && !dialog && (
-        <Modal title={`Termin — ${selected.customer.name}`} onClose={() => setSelected(null)}>
+        <Modal title={`Termin — ${selected.customer?.name ?? selected.customerText ?? 'nepotpun'}`} onClose={() => setSelected(null)}>
           <div className="form">
             <dl className="kv">
               <dt>Kada</dt><dd className="mono">{formatDate(selected.date)} {selected.time} ({selected.durationMin} min)</dd>
-              <dt>Vozilo</dt><dd>{selected.vehicle.make} {selected.vehicle.model} <span className="mono">{selected.vehicle.plate ?? ''}</span></dd>
+              <dt>Klijent</dt><dd>{selected.customer?.name ?? selected.customerText ?? '—'}{!selected.customer && <span className="badge st-progress" style={{ marginLeft: 8 }}>nepotpuno</span>}</dd>
+              <dt>Vozilo</dt><dd>{selected.vehicle ? <>{selected.vehicle.make} {selected.vehicle.model} <span className="mono">{selected.vehicle.plate ?? ''}</span></> : <>{selected.vehicleText ?? '—'}{!selected.vehicle && <span className="badge st-progress" style={{ marginLeft: 8 }}>nepotpuno</span>}</>}</dd>
               <dt>Majstor</dt><dd>{selected.mechanic?.fullName ?? '—'}</dd>
               <dt>Status</dt><dd><span className={`badge ${statusClass[selected.status]}`}>{labels.appointmentStatus[selected.status]}</span></dd>
-              {selected.remindersEnabled && <>
+              {selected.remindersEnabled && selected.customer && <>
                 <dt>Podsetnik</dt>
                 <dd>
                   <span className={`badge ${remClass(selected.reminderStatus)}`}>
@@ -214,9 +216,15 @@ export function Calendar(): React.JSX.Element {
             </dl>
             <div className="btn-group" style={{ flexWrap: 'wrap' }}>
               {selected.status === 'scheduled' && <>
-                <button className="btn-primary btn-sm" onClick={() => makeWorkOrder(selected)}>Napravi radni nalog</button>
-                <button className="btn-secondary btn-sm" onClick={() => setDialog('complete')}>Realizovano</button>
-                <button className="btn-secondary btn-sm" onClick={() => setDialog('edit')}>Izmeni</button>
+                {(!selected.customer || !selected.vehicle) ? (
+                  <button className="btn-primary btn-sm" onClick={() => setDialog('edit')}>Sredi (poveži klijenta/vozilo)</button>
+                ) : (
+                  <>
+                    <button className="btn-primary btn-sm" onClick={() => makeWorkOrder(selected)}>Napravi radni nalog</button>
+                    <button className="btn-secondary btn-sm" onClick={() => setDialog('complete')}>Realizovano</button>
+                    <button className="btn-secondary btn-sm" onClick={() => setDialog('edit')}>Izmeni</button>
+                  </>
+                )}
                 <button className="btn-secondary btn-sm" onClick={() => changeStatus(selected, 'no_show')}>Nije se pojavio</button>
                 <button className="btn-secondary btn-sm" onClick={() => changeStatus(selected, 'cancelled')}>Otkaži</button>
                 <button className="btn-secondary btn-sm" onClick={() => del(selected)}>Obriši</button>
@@ -259,11 +267,13 @@ function CompleteModal({ appt, onDone }: { appt: Appointment; onDone: (workOrder
   const [picked, setPicked] = useState<string>('');
 
   useEffect(() => {
+    const vid = appt.vehicle?.id;
+    if (!vid) { setOrders([]); return; }
     void (async () => {
-      const res = await api.get<Paginated<WorkOrder>>(`/work-orders?vehicleId=${appt.vehicle.id}&pageSize=20`);
+      const res = await api.get<Paginated<WorkOrder>>(`/work-orders?vehicleId=${vid}&pageSize=20`);
       setOrders(res.data);
     })();
-  }, [appt.vehicle.id]);
+  }, [appt.vehicle]);
 
   return (
     <div className="form">
